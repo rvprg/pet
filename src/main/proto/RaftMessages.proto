@@ -1,0 +1,51 @@
+syntax = "proto2";
+
+package com.rvprg.raft.protocol.messages;
+
+option java_outer_classname = "ProtocolMessages";
+
+message RaftMessage {
+    enum MessageType {
+        RequestVote = 1;
+        RequestVoteResponse = 2;
+        AppendEntries = 3;
+        AppendEntriesResponse = 4;
+    }
+
+    required MessageType type = 1;
+
+    optional RequestVote requestVote = 2;
+    optional RequestVoteResponse requestVoteResponse = 3;
+    optional AppendEntries appendEntries = 4;
+    optional AppendEntriesResponse appendEntriesResponse = 5;
+}
+
+message RequestVote {
+    required uint32 term = 1;
+    required string candidateId = 2;
+    required uint32 lastLogIndex = 3;
+    required uint32 lastLogTerm = 4;
+}
+
+message RequestVoteResponse {
+    required uint32 term = 1;
+    // TDB
+}
+
+message LogEntry {
+    required bytes entry = 1;
+}
+
+message AppendEntries {
+    required uint32 term = 1;
+    required string leaderId = 2;
+    required uint32 prevLogIndex = 3;
+    required uint32 leaderCommitIndex = 4;
+    repeated LogEntry logEntries = 5;
+}
+
+message AppendEntriesResponse {
+    required uint32 term = 1;
+    // TDB
+}
+
