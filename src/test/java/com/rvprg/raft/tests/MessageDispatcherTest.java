@@ -29,9 +29,9 @@ import com.rvprg.raft.transport.MemberId;
 
 import io.netty.channel.Channel;
 
-public class MessageHandlerTest {
+public class MessageDispatcherTest {
     @Test
-    public void testProtocolMessageHandler() throws InterruptedException {
+    public void testProtocolMessageDispatcher() throws InterruptedException {
         Injector injector = Guice.createInjector(new Module());
         MemberConnector connector = injector.getInstance(MemberConnector.class);
         ChannelPipelineInitializer pipelineInitializer = injector.getInstance(ChannelPipelineInitializer.class);
