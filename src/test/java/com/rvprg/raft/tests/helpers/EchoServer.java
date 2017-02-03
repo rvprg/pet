@@ -1,5 +1,9 @@
 package com.rvprg.raft.tests.helpers;
 
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.util.Random;
+
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage;
 import com.rvprg.raft.transport.ChannelPipelineInitializer;
 
@@ -15,10 +19,19 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 
 public class EchoServer {
+    private final int MAX_PORT = 65535;
+    private final int MIN_PORT = MAX_PORT / 2;
+
     private final EventLoopGroup bossGroup;
     private final EventLoopGroup workerGroup;
     private final ServerBootstrap server;
     private final ChannelPipelineInitializer pipelineInitializer;
+    private final Random random;
+    private int serverPort;
+
+    public int getPort() {
+        return serverPort;
+    }
 
     private static class EchoHandler extends SimpleChannelInboundHandler<RaftMessage> {
         @Override
@@ -32,6 +45,7 @@ public class EchoServer {
         this.workerGroup = new NioEventLoopGroup();
         this.server = new ServerBootstrap();
         this.pipelineInitializer = pipelineInitializer;
+        this.random = new Random();
     }
 
     public void shutdown() {
@@ -40,7 +54,44 @@ public class EchoServer {
         workerGroup.shutdownGracefully().awaitUninterruptibly();
     }
 
+    private boolean isPortFree(int port) {
+        ServerSocket serverSocket = null;
+        try {
+            serverSocket = new ServerSocket(port);
+            serverSocket.setReuseAddress(true);
+            return true;
+        } catch (IOException e) {
+        } finally {
+            if (serverSocket != null) {
+                try {
+                    serverSocket.close();
+                } catch (IOException ex) {
+                }
+            }
+        }
+        return false;
+    }
+
+    private int getRandomPort() {
+        return random.nextInt(MAX_PORT - MIN_PORT) + MIN_PORT;
+    }
+
+    private int getFreePort() {
+        int port = 0;
+        boolean found = false;
+        do {
+            port = getRandomPort();
+            found = isPortFree(port);
+        } while (!found);
+        return port;
+    }
+
+    public ChannelFuture start() throws InterruptedException {
+        return start(getFreePort());
+    }
+
     public ChannelFuture start(int port) throws InterruptedException {
+        serverPort = port;
         server.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)
                 .childHandler(new ChannelInitializer<SocketChannel>() {

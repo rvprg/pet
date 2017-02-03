@@ -12,9 +12,9 @@ import com.rvprg.raft.Module;
 import com.rvprg.raft.protocol.MessageConsumer;
 import com.rvprg.raft.tests.helpers.EchoServer;
 import com.rvprg.raft.tests.helpers.MemberConnectorObserverTestableImpl;
+import com.rvprg.raft.transport.ChannelPipelineInitializer;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberId;
-import com.rvprg.raft.transport.ChannelPipelineInitializer;
 
 public class MembersConnectorTest {
     @Test
@@ -56,19 +56,16 @@ public class MembersConnectorTest {
         MemberConnector connector = injector.getInstance(MemberConnector.class);
         ChannelPipelineInitializer pipelineInitializer = injector.getInstance(ChannelPipelineInitializer.class);
 
-        int port1 = 12345;
-        int port2 = 12346;
-
         EchoServer server1 = new EchoServer(pipelineInitializer);
-        server1.start(port1).awaitUninterruptibly();
+        server1.start().awaitUninterruptibly();
         EchoServer server2 = new EchoServer(pipelineInitializer);
-        server2.start(port2).awaitUninterruptibly();
+        server2.start().awaitUninterruptibly();
 
         MemberConnectorObserverTestableImpl observer1 = new MemberConnectorObserverTestableImpl(mock(MessageConsumer.class), pipelineInitializer);
         MemberConnectorObserverTestableImpl observer2 = new MemberConnectorObserverTestableImpl(mock(MessageConsumer.class), pipelineInitializer);
 
-        MemberId member1 = new MemberId("localhost", port1);
-        MemberId member2 = new MemberId("localhost", port2);
+        MemberId member1 = new MemberId("localhost", server1.getPort());
+        MemberId member2 = new MemberId("localhost", server2.getPort());
 
         connector.register(member1, observer1);
         connector.register(member2, observer2);
@@ -81,6 +78,7 @@ public class MembersConnectorTest {
 
         assertEquals(2, connector.getActiveMembers().getAll().size());
 
+        int server2Port = server2.getPort();
         server2.shutdown();
 
         observer2.awaitForDisconnectEvent();
@@ -91,7 +89,7 @@ public class MembersConnectorTest {
         assertEquals(member1, connector.getActiveMembers().get(member1).getMemberId());
 
         server2 = new EchoServer(pipelineInitializer);
-        server2.start(port2).awaitUninterruptibly();
+        server2.start(server2Port).awaitUninterruptibly();
 
         observer2.awaitForConnectEvent();
 

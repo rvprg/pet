@@ -20,12 +20,12 @@ import com.rvprg.raft.protocol.MessageConsumer;
 import com.rvprg.raft.protocol.messages.ProtocolMessages;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage.MessageType;
+import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVote;
 import com.rvprg.raft.tests.helpers.EchoServer;
 import com.rvprg.raft.tests.helpers.MemberConnectorObserverTestableImpl;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVote;
+import com.rvprg.raft.transport.ChannelPipelineInitializer;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberId;
-import com.rvprg.raft.transport.ChannelPipelineInitializer;
 
 import io.netty.channel.Channel;
 
@@ -39,11 +39,10 @@ public class MessageHandlerTest {
         MessageConsumer messageConsumer = mock(MessageConsumer.class);
         MemberConnectorObserverTestableImpl observer = new MemberConnectorObserverTestableImpl(messageConsumer, pipelineInitializer);
 
-        int port = 12345;
         EchoServer server = new EchoServer(pipelineInitializer);
-        server.start(port).awaitUninterruptibly();
+        server.start().awaitUninterruptibly();
 
-        MemberId member = new MemberId("localhost", port);
+        MemberId member = new MemberId("localhost", server.getPort());
         connector.register(member, observer);
         connector.connect(member);
 

@@ -1,6 +1,9 @@
 package com.rvprg.raft.tests;
 
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
+
+import java.util.List;
 
 import org.junit.Test;
 
@@ -10,9 +13,9 @@ import com.rvprg.raft.Module;
 import com.rvprg.raft.protocol.MessageConsumer;
 import com.rvprg.raft.tests.helpers.EchoServer;
 import com.rvprg.raft.tests.helpers.MemberConnectorObserverTestableImpl;
+import com.rvprg.raft.transport.ChannelPipelineInitializer;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberId;
-import com.rvprg.raft.transport.ChannelPipelineInitializer;
 
 public class MemberConnectorObserverImplTest {
     @Test
@@ -24,17 +27,20 @@ public class MemberConnectorObserverImplTest {
         MessageConsumer messageConsumer = mock(MessageConsumer.class);
         MemberConnectorObserverTestableImpl observer = new MemberConnectorObserverTestableImpl(messageConsumer, pipelineInitializer);
 
-        int port = 12345;
         EchoServer server = new EchoServer(pipelineInitializer);
-        server.start(port).awaitUninterruptibly();
+        server.start().awaitUninterruptibly();
 
-        MemberId member = new MemberId("localhost", port);
+        MemberId member = new MemberId("localhost", server.getPort());
         connector.register(member, observer);
         connector.connect(member);
 
         observer.awaitForConnectEvent();
 
-        // connector.getActiveMembers().get(member).getChannel().pipeline().
+        List<String> thisNames = connector.getActiveMembers().get(member).getChannel().pipeline().names();
+        List<String> otherNames = pipelineInitializer.getHandlerNames();
+        for (String name : otherNames) {
+            assertTrue(thisNames.contains(name));
+        }
 
         server.shutdown();
     }
