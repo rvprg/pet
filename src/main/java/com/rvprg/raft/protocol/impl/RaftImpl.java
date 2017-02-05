@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import com.google.inject.Inject;
 import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.protocol.Raft;
+import com.rvprg.raft.protocol.RaftObserver;
 import com.rvprg.raft.protocol.Role;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntries;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntriesResponse;
@@ -20,6 +21,8 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.util.concurrent.ScheduledFuture;
 
 public class RaftImpl implements Raft {
+    private final Object thisLock = new Object();
+
     private Role role = Role.Follower;
 
     private final Configuration configuration;
@@ -27,7 +30,8 @@ public class RaftImpl implements Raft {
     private final MemberConnector memberConnector;
     private final MessageReceiver messageReceiver;
 
-    private final long heartbeatTimeout = 150;
+    private final long heartbeatTimeout;
+
     private final int electionMinTimeout = 150;
     private final int electionMaxTimeout = 300;
 
@@ -35,11 +39,15 @@ public class RaftImpl implements Raft {
 
     private final AtomicReference<ScheduledFuture<?>> electionTrigger = new AtomicReference<ScheduledFuture<?>>();
 
+    private final RaftObserver observer;
+
     @Inject
-    public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver) {
+    public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, RaftObserver observer) {
+        this.heartbeatTimeout = configuration.getHeartbeatTimeout();
         this.memberConnector = memberConnector;
         this.messageReceiver = messageReceiver;
         this.configuration = configuration;
+        this.observer = observer;
     }
 
     @Override
@@ -51,6 +59,7 @@ public class RaftImpl implements Raft {
 
     @Override
     public void shutdown() {
+        cancelHeartbeatTask();
         this.messageReceiver.shutdown();
         this.eventLoop.shutdownGracefully().awaitUninterruptibly();
     }
@@ -75,10 +84,16 @@ public class RaftImpl implements Raft {
     }
 
     private ScheduledFuture<?> scheduleNextElection() {
+        observer.nextElectionScheduled();
         return this.eventLoop.schedule(() -> RaftImpl.this.sendVoteRequests(), heartbeatTimeout, TimeUnit.MILLISECONDS);
     }
 
     private void processHeartbeat(AppendEntries appendEntriesMessage) {
+        observer.heartbeatReceived();
+        cancelHeartbeatTask();
+    }
+
+    private void cancelHeartbeatTask() {
         ScheduledFuture<?> prevScheduledElection = electionTrigger.getAndSet(scheduleNextElection());
         if (prevScheduledElection != null) {
             prevScheduledElection.cancel(true);
@@ -86,7 +101,16 @@ public class RaftImpl implements Raft {
     }
 
     private void sendVoteRequests() {
+        synchronized (thisLock) {
+            role = Role.Candidate;
+        }
+        observer.electionInitiated();
+    }
 
+    public Role getRole() {
+        synchronized (thisLock) {
+            return role;
+        }
     }
 
 }
