@@ -2,9 +2,9 @@ package com.rvprg.raft.tests;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import java.util.concurrent.CountDownLatch;
@@ -35,9 +35,9 @@ public class RaftTest {
     }
 
     @Test
-    public void checkRaftHeartbeat() throws InterruptedException {
+    public void checkHeartbeatTimeout() throws InterruptedException {
         Configuration configuration = new Configuration();
-        configuration.setHeartbeatTimeout(500);
+        configuration.setHeartbeatTimeout(150);
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -47,8 +47,11 @@ public class RaftTest {
         final AtomicLong lastHeartbeatTime = new AtomicLong();
         final AtomicLong requestVotesInitiatedTime = new AtomicLong();
 
+        // Start as a follower with term set to 0.
         assertEquals(Role.Follower, raft.getRole());
+        assertEquals(0, raft.getTerm());
 
+        // Register when was the last heartbeat sent.
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
@@ -57,16 +60,22 @@ public class RaftTest {
             }
         }).when(raftObserver).heartbeatReceived();
 
-        final CountDownLatch requestVotesInitiatedLatch = new CountDownLatch(1);
+        // Set a latch on a new election event.
+        final CountDownLatch electionInitiatedLatch = new CountDownLatch(1);
         doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
                 requestVotesInitiatedTime.set(System.currentTimeMillis());
-                requestVotesInitiatedLatch.countDown();
+                electionInitiatedLatch.countDown();
                 return null;
             }
-        }).when(raftObserver).electionInitiated();
+        }).when(raftObserver).heartbeatTimedout();
 
+        // This will wait until an absence of heartbeats is detected. This
+        // event triggers a schedule of the next election. Therefore we
+        // immediately cancel it two times by sending desired heartbeats,
+        // so as to check that the action on receiving a heartbeat works as
+        // expected.
         final CountDownLatch nextElectionScheduledLatch = new CountDownLatch(2);
         doAnswer(new Answer<Void>() {
             @Override
@@ -81,15 +90,56 @@ public class RaftTest {
 
         raft.start();
 
+        // This will cancel a new election twice, as two heartbeats will be
+        // sent. Then it will initiate a new election.
         nextElectionScheduledLatch.await();
-        requestVotesInitiatedLatch.await();
-
-        verify(raftObserver, times(3)).nextElectionScheduled();
-        verify(raftObserver, times(2)).heartbeatReceived();
-
-        assertEquals(Role.Candidate, raft.getRole());
-        assertTrue(requestVotesInitiatedTime.get() - lastHeartbeatTime.get() >= configuration.getHeartbeatTimeout());
+        // Wait until a new election is initiated.
+        electionInitiatedLatch.await();
 
         raft.shutdown();
+
+        assertTrue(raft.getTerm() > 0);
+        assertEquals(Role.Candidate, raft.getRole());
+
+        verify(raftObserver, atLeast(1)).heartbeatReceived();
+        verify(raftObserver, atLeast(1)).heartbeatTimedout();
+        assertTrue(requestVotesInitiatedTime.get() - lastHeartbeatTime.get() >= configuration.getHeartbeatTimeout());
+    }
+
+    @Test
+    public void testElectionTimeout() throws InterruptedException {
+        Configuration configuration = new Configuration();
+        configuration.setHeartbeatTimeout(150);
+
+        MemberConnector memberConnector = mock(MemberConnector.class);
+        MessageReceiver messageReceiver = mock(MessageReceiver.class);
+        RaftObserver raftObserver = mock(RaftObserver.class);
+
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, raftObserver);
+        // Start as a follower with term set to 0.
+        assertEquals(Role.Follower, raft.getRole());
+        assertEquals(0, raft.getTerm());
+
+        // This set up tests that election time out works. Once a new election
+        // has been initiated, we allow it to time out twice. We should be able
+        // to see that the term at least 2, and that we are still a Candidate.
+        final CountDownLatch electionTimedoutLatch = new CountDownLatch(2);
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                electionTimedoutLatch.countDown();
+                return null;
+            }
+        }).when(raftObserver).electionTimedout();
+
+        raft.start();
+
+        electionTimedoutLatch.await();
+
+        raft.shutdown();
+
+        // At least two terms further.
+        assertTrue(raft.getTerm() >= 2);
+        assertEquals(Role.Candidate, raft.getRole());
     }
 }

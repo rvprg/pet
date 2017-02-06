@@ -5,4 +5,5 @@ public interface Raft extends MessageConsumer {
 
     public void shutdown();
 
+    public int getTerm();
 }

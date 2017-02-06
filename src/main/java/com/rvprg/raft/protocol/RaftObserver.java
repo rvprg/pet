@@ -1,9 +1,15 @@
 package com.rvprg.raft.protocol;
 
 public interface RaftObserver {
-    void electionInitiated();
+    void heartbeatTimedout();
 
     void nextElectionScheduled();
 
     void heartbeatReceived();
+
+    void voteReceived();
+
+    void electionWon();
+
+    void electionTimedout();
 }

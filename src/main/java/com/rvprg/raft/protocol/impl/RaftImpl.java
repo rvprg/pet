@@ -1,6 +1,8 @@
 package com.rvprg.raft.protocol.impl;
 
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.inject.Inject;
@@ -38,8 +40,14 @@ public class RaftImpl implements Raft {
     private final EventLoopGroup eventLoop = new NioEventLoopGroup();
 
     private final AtomicReference<ScheduledFuture<?>> electionTrigger = new AtomicReference<ScheduledFuture<?>>();
+    private final AtomicReference<ScheduledFuture<?>> electionTimeoutTrigger = new AtomicReference<ScheduledFuture<?>>();
 
     private final RaftObserver observer;
+
+    private final AtomicInteger term = new AtomicInteger(0);
+    private final AtomicInteger votesReceived = new AtomicInteger(0);
+
+    private final Random random = new Random();
 
     @Inject
     public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, RaftObserver observer) {
@@ -54,12 +62,13 @@ public class RaftImpl implements Raft {
     public void start() throws InterruptedException {
         // FIXME: Check if started.
         messageReceiver.start(this);
-        electionTrigger.set(scheduleNextElection());
+        scheduleHeartbeatTask();
     }
 
     @Override
     public void shutdown() {
         cancelHeartbeatTask();
+        cancelElectionTimeoutTask();
         this.messageReceiver.shutdown();
         this.eventLoop.shutdownGracefully().awaitUninterruptibly();
     }
@@ -70,6 +79,14 @@ public class RaftImpl implements Raft {
 
     @Override
     public void consumeRequestVoteResponse(Channel senderChannel, RequestVoteResponse requestVoteMessage) {
+        observer.voteReceived();
+        votesReceived.incrementAndGet();
+
+        if (votesReceived.get() >= getMajority()) {
+            cancelElectionTimeoutTask();
+            changeRole(Role.Leader);
+            observer.electionWon();
+        }
     }
 
     @Override
@@ -83,34 +100,83 @@ public class RaftImpl implements Raft {
     public void consumeAppendEntriesResponse(Channel senderChannel, AppendEntriesResponse appendEntriesResponse) {
     }
 
-    private ScheduledFuture<?> scheduleNextElection() {
+    private ScheduledFuture<?> scheduleNextElectionTask() {
         observer.nextElectionScheduled();
-        return this.eventLoop.schedule(() -> RaftImpl.this.sendVoteRequests(), heartbeatTimeout, TimeUnit.MILLISECONDS);
+        return this.eventLoop.schedule(() -> RaftImpl.this.heartbeatTimedout(), heartbeatTimeout, TimeUnit.MILLISECONDS);
+    }
+
+    private void cancelHeartbeatTask() {
+        cancelTask(electionTrigger.get());
+    }
+
+    private void scheduleHeartbeatTask() {
+        cancelTask(electionTrigger.getAndSet(scheduleNextElectionTask()));
     }
 
     private void processHeartbeat(AppendEntries appendEntriesMessage) {
         observer.heartbeatReceived();
-        cancelHeartbeatTask();
+        scheduleHeartbeatTask();
     }
 
-    private void cancelHeartbeatTask() {
-        ScheduledFuture<?> prevScheduledElection = electionTrigger.getAndSet(scheduleNextElection());
-        if (prevScheduledElection != null) {
-            prevScheduledElection.cancel(true);
+    private void cancelTask(ScheduledFuture<?> task) {
+        if (task != null) {
+            task.cancel(true);
         }
     }
 
-    private void sendVoteRequests() {
+    private void cancelElectionTimeoutTask() {
+        cancelTask(electionTimeoutTrigger.get());
+    }
+
+    private void createElectionTimeoutTask() {
+        final int timeout = random.nextInt(electionMaxTimeout - electionMinTimeout) + electionMinTimeout;
+        ScheduledFuture<?> prevTask = electionTimeoutTrigger.getAndSet(
+                this.eventLoop.schedule(() -> RaftImpl.this.electionTimedout(), timeout, TimeUnit.MILLISECONDS));
+        cancelTask(prevTask);
+    }
+
+    private int getMajority() {
+        return memberConnector.getActiveMembers().getAll().size() / 2 + 1;
+    }
+
+    private void changeRole(Role newRole) {
         synchronized (thisLock) {
-            role = Role.Candidate;
+            role = newRole;
         }
-        observer.electionInitiated();
+    }
+
+    private void electionTimedout() {
+        observer.electionTimedout();
+        initiateElection();
+    }
+
+    private void heartbeatTimedout() {
+        observer.heartbeatTimedout();
+        initiateElection();
+    }
+
+    private void initiateElection() {
+        cancelHeartbeatTask();
+        changeRole(Role.Candidate);
+        term.incrementAndGet();
+        votesReceived.set(0);
+        votesReceived.incrementAndGet();
+        sendoutVoteRequests();
+        createElectionTimeoutTask();
+    }
+
+    private void sendoutVoteRequests() {
     }
 
     public Role getRole() {
         synchronized (thisLock) {
             return role;
         }
+    }
+
+    @Override
+    public int getTerm() {
+        return term.get();
     }
 
 }
