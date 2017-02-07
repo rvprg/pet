@@ -12,8 +12,11 @@ import com.rvprg.raft.protocol.RaftObserver;
 import com.rvprg.raft.protocol.Role;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntries;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntriesResponse;
+import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage;
+import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage.MessageType;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVote;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse;
+import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse.Builder;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MessageReceiver;
 
@@ -42,10 +45,14 @@ public class RaftImpl implements Raft {
     private final AtomicReference<ScheduledFuture<?>> electionTrigger = new AtomicReference<ScheduledFuture<?>>();
     private final AtomicReference<ScheduledFuture<?>> electionTimeoutTrigger = new AtomicReference<ScheduledFuture<?>>();
 
+    private final AtomicReference<String> votedFor = new AtomicReference<>(null);
+
     private final RaftObserver observer;
 
     private final AtomicInteger term = new AtomicInteger(0);
     private final AtomicInteger votesReceived = new AtomicInteger(0);
+
+    private final String selfId;
 
     private final Random random = new Random();
 
@@ -56,6 +63,7 @@ public class RaftImpl implements Raft {
         this.messageReceiver = messageReceiver;
         this.configuration = configuration;
         this.observer = observer;
+        this.selfId = null; // FIXME: set
     }
 
     @Override
@@ -75,12 +83,39 @@ public class RaftImpl implements Raft {
 
     @Override
     public void consumeRequestVote(Channel senderChannel, RequestVote requestVoteMessage) {
+        Builder response = RequestVoteResponse.newBuilder().setTerm(getCurrentTerm());
+        String currVotedFor = votedFor.get();
+        boolean grantVote = false;
+
+        if (requestVoteMessage.getTerm() < getCurrentTerm()) {
+            grantVote = false;
+        } else if (currVotedFor == null || currVotedFor.equalsIgnoreCase(requestVoteMessage.getCandidateId())) {
+            grantVote = checkCandidatesLogIsUpToDate(requestVoteMessage);
+        }
+
+        if (grantVote) {
+            votedFor.set(requestVoteMessage.getCandidateId());
+        }
+
+        RaftMessage responseMessage = RaftMessage.newBuilder()
+                .setType(MessageType.RequestVoteResponse)
+                .setRequestVoteResponse(response.setVoteGranted(grantVote).build())
+                .build();
+        senderChannel.writeAndFlush(responseMessage);
+    }
+
+    private boolean checkCandidatesLogIsUpToDate(RequestVote requestVoteMessage) {
+        // TODO: implement
+        return false;
     }
 
     @Override
-    public void consumeRequestVoteResponse(Channel senderChannel, RequestVoteResponse requestVoteMessage) {
+    public void consumeRequestVoteResponse(Channel senderChannel, RequestVoteResponse requestVoteResponseMessage) {
         observer.voteReceived();
-        votesReceived.incrementAndGet();
+
+        if (requestVoteResponseMessage.getTerm() == getCurrentTerm()) {
+            votesReceived.incrementAndGet();
+        }
 
         if (votesReceived.get() >= getMajority()) {
             cancelElectionTimeoutTask();
@@ -159,8 +194,13 @@ public class RaftImpl implements Raft {
         cancelHeartbeatTask();
         changeRole(Role.Candidate);
         term.incrementAndGet();
+        votedFor.set(null);
         votesReceived.set(0);
-        votesReceived.incrementAndGet();
+
+        if (votedFor.compareAndSet(null, selfId)) {
+            votesReceived.incrementAndGet();
+        }
+
         sendoutVoteRequests();
         createElectionTimeoutTask();
     }
@@ -175,7 +215,7 @@ public class RaftImpl implements Raft {
     }
 
     @Override
-    public int getTerm() {
+    public int getCurrentTerm() {
         return term.get();
     }
 

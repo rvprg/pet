@@ -13,4 +13,8 @@ public class MemberId extends InetSocketAddress {
         super(hostname, port);
     }
 
+    public boolean isSameAs(String candidateId) {
+        // FIXME:
+        return getAddress().getHostAddress().equalsIgnoreCase(candidateId);
+    }
 }

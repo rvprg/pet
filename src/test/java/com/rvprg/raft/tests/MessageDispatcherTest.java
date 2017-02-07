@@ -51,6 +51,7 @@ public class MessageDispatcherTest {
     private RaftMessage getRequestVoteResponseInstance() {
         RequestVoteResponse requestVoteResponse = ProtocolMessages.RequestVoteResponse.newBuilder()
                 .setTerm(1)
+                .setVoteGranted(true)
                 .build();
         RaftMessage requestVoteResponseRaftMessage = ProtocolMessages.RaftMessage.newBuilder()
                 .setRequestVoteResponse(requestVoteResponse)

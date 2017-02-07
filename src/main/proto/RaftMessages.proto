@@ -29,7 +29,7 @@ message RequestVote {
 
 message RequestVoteResponse {
     required uint32 term = 1;
-    // TDB
+    required bool voteGranted = 2;
 }
 
 message LogEntry {

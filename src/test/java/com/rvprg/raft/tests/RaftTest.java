@@ -49,7 +49,7 @@ public class RaftTest {
 
         // Start as a follower with term set to 0.
         assertEquals(Role.Follower, raft.getRole());
-        assertEquals(0, raft.getTerm());
+        assertEquals(0, raft.getCurrentTerm());
 
         // Register when was the last heartbeat sent.
         doAnswer(new Answer<Void>() {
@@ -98,7 +98,7 @@ public class RaftTest {
 
         raft.shutdown();
 
-        assertTrue(raft.getTerm() > 0);
+        assertTrue(raft.getCurrentTerm() > 0);
         assertEquals(Role.Candidate, raft.getRole());
 
         verify(raftObserver, atLeast(1)).heartbeatReceived();
@@ -118,7 +118,7 @@ public class RaftTest {
         final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, raftObserver);
         // Start as a follower with term set to 0.
         assertEquals(Role.Follower, raft.getRole());
-        assertEquals(0, raft.getTerm());
+        assertEquals(0, raft.getCurrentTerm());
 
         // This set up tests that election time out works. Once a new election
         // has been initiated, we allow it to time out twice. We should be able
@@ -139,7 +139,7 @@ public class RaftTest {
         raft.shutdown();
 
         // At least two terms further.
-        assertTrue(raft.getTerm() >= 2);
+        assertTrue(raft.getCurrentTerm() >= 2);
         assertEquals(Role.Candidate, raft.getRole());
     }
 }
