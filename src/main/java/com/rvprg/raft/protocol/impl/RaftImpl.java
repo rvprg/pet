@@ -82,19 +82,19 @@ public class RaftImpl implements Raft {
     }
 
     @Override
-    public void consumeRequestVote(Channel senderChannel, RequestVote requestVoteMessage) {
+    public void consumeRequestVote(Channel senderChannel, RequestVote requestVote) {
         Builder response = RequestVoteResponse.newBuilder().setTerm(getCurrentTerm());
         String currVotedFor = votedFor.get();
         boolean grantVote = false;
 
-        if (requestVoteMessage.getTerm() < getCurrentTerm()) {
+        if (requestVote.getTerm() < getCurrentTerm()) {
             grantVote = false;
-        } else if (currVotedFor == null || currVotedFor.equalsIgnoreCase(requestVoteMessage.getCandidateId())) {
-            grantVote = checkCandidatesLogIsUpToDate(requestVoteMessage);
+        } else if (currVotedFor == null || currVotedFor.equalsIgnoreCase(requestVote.getCandidateId())) {
+            grantVote = checkCandidatesLogIsUpToDate(requestVote);
         }
 
         if (grantVote) {
-            votedFor.set(requestVoteMessage.getCandidateId());
+            votedFor.set(requestVote.getCandidateId());
         }
 
         RaftMessage responseMessage = RaftMessage.newBuilder()
@@ -104,16 +104,16 @@ public class RaftImpl implements Raft {
         senderChannel.writeAndFlush(responseMessage);
     }
 
-    private boolean checkCandidatesLogIsUpToDate(RequestVote requestVoteMessage) {
+    private boolean checkCandidatesLogIsUpToDate(RequestVote requestVote) {
         // TODO: implement
         return false;
     }
 
     @Override
-    public void consumeRequestVoteResponse(Channel senderChannel, RequestVoteResponse requestVoteResponseMessage) {
+    public void consumeRequestVoteResponse(Channel senderChannel, RequestVoteResponse requestVoteResponse) {
         observer.voteReceived();
 
-        if (requestVoteResponseMessage.getTerm() == getCurrentTerm()) {
+        if (requestVoteResponse.getTerm() == getCurrentTerm()) {
             votesReceived.incrementAndGet();
         }
 
@@ -125,9 +125,9 @@ public class RaftImpl implements Raft {
     }
 
     @Override
-    public void consumeAppendEntries(Channel senderChannel, AppendEntries appendEntriesMessage) {
-        if (appendEntriesMessage.getLogEntriesCount() == 0) {
-            processHeartbeat(appendEntriesMessage);
+    public void consumeAppendEntries(Channel senderChannel, AppendEntries appendEntries) {
+        if (appendEntries.getLogEntriesCount() == 0) {
+            processHeartbeat(appendEntries);
         }
     }
 
@@ -148,7 +148,7 @@ public class RaftImpl implements Raft {
         cancelTask(electionTrigger.getAndSet(scheduleNextElectionTask()));
     }
 
-    private void processHeartbeat(AppendEntries appendEntriesMessage) {
+    private void processHeartbeat(AppendEntries appendEntries) {
         observer.heartbeatReceived();
         scheduleHeartbeatTask();
     }
