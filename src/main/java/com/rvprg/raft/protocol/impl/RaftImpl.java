@@ -49,7 +49,7 @@ public class RaftImpl implements Raft {
 
     private final RaftObserver observer;
 
-    private final AtomicInteger term = new AtomicInteger(0);
+    private final AtomicInteger currentTerm = new AtomicInteger(0);
     private final AtomicInteger votesReceived = new AtomicInteger(0);
 
     private final String selfId;
@@ -150,8 +150,14 @@ public class RaftImpl implements Raft {
         cancelTask(electionTrigger.getAndSet(scheduleNextElectionTask()));
     }
 
-    private void processHeartbeat(AppendEntries appendEntries) {
+    private void processHeartbeat(AppendEntries heartbeat) {
         observer.heartbeatReceived();
+
+        if (heartbeat.getTerm() >= getCurrentTerm()) {
+            cancelElectionTimeoutTask();
+            changeRole(Role.Follower);
+        }
+
         scheduleHeartbeatTask();
     }
 
@@ -195,7 +201,7 @@ public class RaftImpl implements Raft {
     private void initiateElection() {
         cancelHeartbeatTask();
         changeRole(Role.Candidate);
-        term.incrementAndGet();
+        currentTerm.incrementAndGet();
         votedFor.set(null);
         votesReceived.set(0);
 
@@ -218,7 +224,7 @@ public class RaftImpl implements Raft {
 
     @Override
     public int getCurrentTerm() {
-        return term.get();
+        return currentTerm.get();
     }
 
 }
