@@ -63,7 +63,7 @@ public class RaftImpl implements Raft {
         this.messageReceiver = messageReceiver;
         this.configuration = configuration;
         this.observer = observer;
-        this.selfId = null; // FIXME: set
+        this.selfId = messageReceiver.getId();
     }
 
     @Override
@@ -91,7 +91,7 @@ public class RaftImpl implements Raft {
             grantVote = false;
         } else if (currVotedFor == null) {
             grantVote = true;
-        } else if (currVotedFor.equalsIgnoreCase(requestVote.getCandidateId())) {
+        } else if (currVotedFor.equals(requestVote.getCandidateId())) {
             grantVote = checkCandidatesLogIsUpToDate(requestVote);
         }
 

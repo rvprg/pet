@@ -4,6 +4,7 @@ import com.google.inject.Inject;
 import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.protocol.MessageConsumer;
 import com.rvprg.raft.transport.ChannelPipelineInitializer;
+import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.MessageReceiver;
 
 import io.netty.bootstrap.ServerBootstrap;
@@ -18,15 +19,16 @@ public class MessageReceiverImpl implements MessageReceiver {
     private final ServerBootstrap server;
     private final Configuration configuration;
     private final ChannelPipelineInitializer pipelineInitializer;
+    private final MemberId id;
 
     @Inject
     public MessageReceiverImpl(Configuration configuration, ChannelPipelineInitializer pipelineInitializer) {
         this.bossGroup = new NioEventLoopGroup();
         this.workerGroup = new NioEventLoopGroup();
         this.server = new ServerBootstrap();
-
         this.configuration = configuration;
         this.pipelineInitializer = pipelineInitializer;
+        this.id = new MemberId(configuration.getHost(), configuration.getPort());
     }
 
     @Override
@@ -46,6 +48,11 @@ public class MessageReceiverImpl implements MessageReceiver {
         server.bind(
                 configuration.getHost(),
                 configuration.getPort()).sync();
+    }
+
+    @Override
+    public String getId() {
+        return id.toString();
     }
 
 }
