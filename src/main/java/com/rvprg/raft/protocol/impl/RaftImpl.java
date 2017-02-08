@@ -89,7 +89,9 @@ public class RaftImpl implements Raft {
 
         if (requestVote.getTerm() < getCurrentTerm()) {
             grantVote = false;
-        } else if (currVotedFor == null || currVotedFor.equalsIgnoreCase(requestVote.getCandidateId())) {
+        } else if (currVotedFor == null) {
+            grantVote = true;
+        } else if (currVotedFor.equalsIgnoreCase(requestVote.getCandidateId())) {
             grantVote = checkCandidatesLogIsUpToDate(requestVote);
         }
 
