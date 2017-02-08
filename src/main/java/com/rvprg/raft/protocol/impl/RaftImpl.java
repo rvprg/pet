@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.inject.Inject;
 import com.rvprg.raft.configuration.Configuration;
+import com.rvprg.raft.protocol.Log;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftObserver;
 import com.rvprg.raft.protocol.Role;
@@ -56,14 +57,17 @@ public class RaftImpl implements Raft {
 
     private final Random random = new Random();
 
+    private final Log log;
+
     @Inject
-    public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, RaftObserver observer) {
+    public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, RaftObserver observer) {
         this.heartbeatTimeout = configuration.getHeartbeatTimeout();
         this.memberConnector = memberConnector;
         this.messageReceiver = messageReceiver;
         this.configuration = configuration;
         this.observer = observer;
         this.selfId = messageReceiver.getId();
+        this.log = log;
     }
 
     @Override

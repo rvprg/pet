@@ -2,9 +2,11 @@ package com.rvprg.raft;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Singleton;
+import com.rvprg.raft.protocol.Log;
 import com.rvprg.raft.protocol.MessageConsumer;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftObserver;
+import com.rvprg.raft.protocol.impl.TransientLogImpl;
 import com.rvprg.raft.protocol.impl.MemberConnectorObserverImpl;
 import com.rvprg.raft.protocol.impl.RaftImpl;
 import com.rvprg.raft.protocol.impl.RaftObserverImpl;
@@ -39,6 +41,7 @@ public class Module extends AbstractModule {
         bind(RaftImpl.class).in(Singleton.class);
         bind(MessageConsumer.class).to(RaftImpl.class);
         bind(Raft.class).to(RaftImpl.class);
+        bind(Log.class).to(TransientLogImpl.class);
 
         bind(RaftObserver.class).to(RaftObserverImpl.class);
     }

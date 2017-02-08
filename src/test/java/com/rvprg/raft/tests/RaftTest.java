@@ -15,6 +15,7 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 import com.rvprg.raft.configuration.Configuration;
+import com.rvprg.raft.protocol.Log;
 import com.rvprg.raft.protocol.RaftObserver;
 import com.rvprg.raft.protocol.Role;
 import com.rvprg.raft.protocol.impl.RaftImpl;
@@ -42,8 +43,9 @@ public class RaftTest {
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
         RaftObserver raftObserver = mock(RaftObserver.class);
+        Log log = mock(Log.class);
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, raftObserver);
         final AtomicLong lastHeartbeatTime = new AtomicLong();
         final AtomicLong requestVotesInitiatedTime = new AtomicLong();
 
@@ -114,8 +116,9 @@ public class RaftTest {
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
         RaftObserver raftObserver = mock(RaftObserver.class);
+        Log log = mock(Log.class);
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, raftObserver);
         // Start as a follower with term set to 0.
         assertEquals(Role.Follower, raft.getRole());
         assertEquals(0, raft.getCurrentTerm());
