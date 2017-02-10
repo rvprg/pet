@@ -111,8 +111,10 @@ public class RaftImpl implements Raft {
     }
 
     private boolean checkCandidatesLogIsUpToDate(RequestVote requestVote) {
-        // TODO: implement
-        return false;
+        if (log.getLast().getTerm() == requestVote.getLastLogTerm()) {
+            return requestVote.getLastLogIndex() >= log.length();
+        }
+        return requestVote.getLastLogTerm() >= log.getLast().getTerm();
     }
 
     @Override
@@ -132,6 +134,11 @@ public class RaftImpl implements Raft {
 
     @Override
     public void consumeAppendEntries(Channel senderChannel, AppendEntries appendEntries) {
+        if (appendEntries.getTerm() >= getCurrentTerm() && getRole() != Role.Follower) {
+            cancelElectionTimeoutTask();
+            changeRole(Role.Follower);
+        }
+
         if (appendEntries.getLogEntriesCount() == 0) {
             processHeartbeat(appendEntries);
         }
@@ -156,12 +163,6 @@ public class RaftImpl implements Raft {
 
     private void processHeartbeat(AppendEntries heartbeat) {
         observer.heartbeatReceived();
-
-        if (heartbeat.getTerm() >= getCurrentTerm()) {
-            cancelElectionTimeoutTask();
-            changeRole(Role.Follower);
-        }
-
         scheduleHeartbeatTask();
     }
 

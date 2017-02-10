@@ -26,4 +26,19 @@ public class TransientLogImpl implements Log {
 
     }
 
+    @Override
+    public int length() {
+        return 0;
+    }
+
+    @Override
+    public LogEntry get(int index) {
+        return null;
+    }
+
+    @Override
+    public LogEntry getLast() {
+        return null;
+    }
+
 }

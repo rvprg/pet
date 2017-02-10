@@ -8,4 +8,10 @@ public interface Log extends Closeable {
     int lastApplied();
 
     void add(int index, LogEntry logEntry);
+
+    LogEntry get(int index);
+
+    LogEntry getLast();
+
+    int length();
 }
