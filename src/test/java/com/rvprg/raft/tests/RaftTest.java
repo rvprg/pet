@@ -2,27 +2,38 @@ package com.rvprg.raft.tests;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.Test;
+import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.protocol.Log;
+import com.rvprg.raft.protocol.LogEntry;
 import com.rvprg.raft.protocol.RaftObserver;
 import com.rvprg.raft.protocol.Role;
 import com.rvprg.raft.protocol.impl.RaftImpl;
 import com.rvprg.raft.protocol.messages.ProtocolMessages;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntries;
+import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage;
+import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage.MessageType;
+import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVote;
+import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse;
+import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse.Builder;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MessageReceiver;
+
+import io.netty.channel.Channel;
 
 public class RaftTest {
     private AppendEntries getAppendEntriesInstance() {
@@ -144,5 +155,202 @@ public class RaftTest {
         // At least two terms further.
         assertTrue(raft.getCurrentTerm() >= 2);
         assertEquals(Role.Candidate, raft.getRole());
+    }
+
+    @Test
+    public void testConsumeVoteRequest_GiveVoteOnce() {
+        Configuration configuration = new Configuration();
+        configuration.setHeartbeatTimeout(150);
+
+        MemberConnector memberConnector = mock(MemberConnector.class);
+        MessageReceiver messageReceiver = mock(MessageReceiver.class);
+        RaftObserver raftObserver = mock(RaftObserver.class);
+        Log log = mock(Log.class);
+        Channel senderChannel = mock(Channel.class);
+
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, raftObserver);
+
+        assertEquals(0, raft.getCurrentTerm());
+        assertEquals(0, log.getCommitIndex());
+
+        RequestVote requestVote0 = ProtocolMessages.RequestVote.newBuilder()
+                .setTerm(0)
+                .setCandidateId("test")
+                .setLastLogIndex(0)
+                .setLastLogTerm(0)
+                .build();
+
+        LogEntry logEntry = mock(LogEntry.class);
+        Mockito.when(logEntry.getTerm()).thenReturn(0);
+        Mockito.when(log.getLast()).thenReturn(logEntry);
+        Mockito.when(log.length()).thenReturn(0);
+
+        raft.consumeRequestVote(senderChannel, requestVote0);
+
+        Builder response0 = RequestVoteResponse.newBuilder();
+        RaftMessage expectedResponse0 = RaftMessage.newBuilder()
+                .setType(MessageType.RequestVoteResponse)
+                .setRequestVoteResponse(response0.setVoteGranted(true).setTerm(0).build())
+                .build();
+
+        verify(senderChannel, times(1)).writeAndFlush(eq(expectedResponse0));
+
+        // Different candidate.
+        RequestVote requestVote1 = ProtocolMessages.RequestVote.newBuilder()
+                .setTerm(0)
+                .setCandidateId("test1")
+                .setLastLogIndex(0)
+                .setLastLogTerm(0)
+                .build();
+
+        raft.consumeRequestVote(senderChannel, requestVote1);
+
+        Builder response1 = RequestVoteResponse.newBuilder();
+        RaftMessage expectedResponse1 = RaftMessage.newBuilder()
+                .setType(MessageType.RequestVoteResponse)
+                .setRequestVoteResponse(response1.setVoteGranted(false).setTerm(0).build())
+                .build();
+
+        verify(senderChannel, times(1)).writeAndFlush(eq(expectedResponse1));
+    }
+
+    @Test
+    public void testConsumeVoteRequest_GiveVoteSameCandidate() {
+        Configuration configuration = new Configuration();
+        configuration.setHeartbeatTimeout(150);
+
+        MemberConnector memberConnector = mock(MemberConnector.class);
+        MessageReceiver messageReceiver = mock(MessageReceiver.class);
+        RaftObserver raftObserver = mock(RaftObserver.class);
+        Log log = mock(Log.class);
+        Channel senderChannel = mock(Channel.class);
+
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, raftObserver);
+
+        assertEquals(0, raft.getCurrentTerm());
+        assertEquals(0, log.getCommitIndex());
+
+        RequestVote requestVote = ProtocolMessages.RequestVote.newBuilder()
+                .setTerm(0)
+                .setCandidateId("test")
+                .setLastLogIndex(0)
+                .setLastLogTerm(0)
+                .build();
+
+        LogEntry logEntry = mock(LogEntry.class);
+        Mockito.when(logEntry.getTerm()).thenReturn(0);
+        Mockito.when(log.getLast()).thenReturn(logEntry);
+        Mockito.when(log.length()).thenReturn(0);
+
+        raft.consumeRequestVote(senderChannel, requestVote);
+
+        Builder response = RequestVoteResponse.newBuilder();
+        RaftMessage expectedResponse = RaftMessage.newBuilder()
+                .setType(MessageType.RequestVoteResponse)
+                .setRequestVoteResponse(response.setVoteGranted(true).setTerm(0).build())
+                .build();
+
+        verify(senderChannel, times(1)).writeAndFlush(eq(expectedResponse));
+
+        // Send the same request
+        raft.consumeRequestVote(senderChannel, requestVote);
+
+        // Should grant vote.
+        verify(senderChannel, times(2)).writeAndFlush(eq(expectedResponse));
+    }
+
+    @Test
+    public void testConsumeVoteRequest_GiveVoteIfLogIsAsUpToDateAsReceveirs() {
+        Configuration configuration = new Configuration();
+        configuration.setHeartbeatTimeout(150);
+
+        MemberConnector memberConnector = mock(MemberConnector.class);
+        MessageReceiver messageReceiver = mock(MessageReceiver.class);
+        RaftObserver raftObserver = mock(RaftObserver.class);
+        Log log = mock(Log.class);
+        Channel senderChannel = mock(Channel.class);
+
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, raftObserver);
+
+        assertEquals(0, raft.getCurrentTerm());
+        assertEquals(0, log.getCommitIndex());
+
+        RequestVote requestVote = ProtocolMessages.RequestVote.newBuilder()
+                .setTerm(1)
+                .setCandidateId("test")
+                .setLastLogIndex(1)
+                .setLastLogTerm(1)
+                .build();
+
+        LogEntry logEntry = mock(LogEntry.class);
+        Mockito.when(logEntry.getTerm()).thenReturn(0);
+        Mockito.when(log.getLast()).thenReturn(logEntry);
+        Mockito.when(log.length()).thenReturn(0);
+
+        raft.consumeRequestVote(senderChannel, requestVote);
+
+        Builder response = RequestVoteResponse.newBuilder();
+        RaftMessage expectedResponse = RaftMessage.newBuilder()
+                .setType(MessageType.RequestVoteResponse)
+                .setRequestVoteResponse(response.setVoteGranted(true).setTerm(0).build())
+                .build();
+
+        verify(senderChannel, atLeast(1)).writeAndFlush(eq(expectedResponse));
+
+        // Assume receiver's log is more up to date then no vote should be
+        // granted (i.e. last entry has more recent term, 1 != 2)
+        Mockito.when(logEntry.getTerm()).thenReturn(2);
+
+        raft.consumeRequestVote(senderChannel, requestVote);
+
+        Builder responseNoVoteGranted = RequestVoteResponse.newBuilder();
+        RaftMessage expectedResponseNoVoteGranted = RaftMessage.newBuilder()
+                .setType(MessageType.RequestVoteResponse)
+                .setRequestVoteResponse(responseNoVoteGranted.setVoteGranted(false).setTerm(0).build())
+                .build();
+
+        verify(senderChannel, atLeast(1)).writeAndFlush(eq(expectedResponseNoVoteGranted));
+
+        // Assume receiver's log ends with the same term, but its length is
+        // longer than candidates, so no vote should be granted.
+        Mockito.when(logEntry.getTerm()).thenReturn(1);
+        Mockito.when(log.length()).thenReturn(2);
+
+        raft.consumeRequestVote(senderChannel, requestVote);
+
+        verify(senderChannel, atLeast(1)).writeAndFlush(eq(expectedResponseNoVoteGranted));
+    }
+
+    @Test
+    public void testConsumeVoteRequest_DontGiveVoteIfTermIsOutdated() {
+        Configuration configuration = new Configuration();
+        configuration.setHeartbeatTimeout(150);
+
+        MemberConnector memberConnector = mock(MemberConnector.class);
+        MessageReceiver messageReceiver = mock(MessageReceiver.class);
+        RaftObserver raftObserver = mock(RaftObserver.class);
+        Log log = mock(Log.class);
+        Channel senderChannel = mock(Channel.class);
+
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, 2, raftObserver);
+
+        assertEquals(2, raft.getCurrentTerm());
+
+        RequestVote requestVote = ProtocolMessages.RequestVote.newBuilder()
+                .setTerm(1)
+                .setCandidateId("test")
+                .setLastLogIndex(1)
+                .setLastLogTerm(1)
+                .build();
+
+        raft.consumeRequestVote(senderChannel, requestVote);
+
+        Builder response = RequestVoteResponse.newBuilder();
+        RaftMessage expectedResponse = RaftMessage.newBuilder()
+                .setType(MessageType.RequestVoteResponse)
+                .setRequestVoteResponse(response.setVoteGranted(false).setTerm(2).build())
+                .build();
+
+        verify(senderChannel, atLeast(1)).writeAndFlush(eq(expectedResponse));
     }
 }

@@ -61,6 +61,11 @@ public class RaftImpl implements Raft {
 
     @Inject
     public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, RaftObserver observer) {
+        this(configuration, memberConnector, messageReceiver, log, 0, observer);
+    }
+
+    @Inject
+    public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, int initTerm, RaftObserver observer) {
         this.heartbeatTimeout = configuration.getHeartbeatTimeout();
         this.memberConnector = memberConnector;
         this.messageReceiver = messageReceiver;
@@ -68,6 +73,7 @@ public class RaftImpl implements Raft {
         this.observer = observer;
         this.selfId = messageReceiver.getId();
         this.log = log;
+        this.currentTerm.set(initTerm);
     }
 
     @Override
@@ -93,9 +99,7 @@ public class RaftImpl implements Raft {
 
         if (requestVote.getTerm() < getCurrentTerm()) {
             grantVote = false;
-        } else if (currVotedFor == null) {
-            grantVote = true;
-        } else if (currVotedFor.equals(requestVote.getCandidateId())) {
+        } else if (currVotedFor == null || currVotedFor.equals(requestVote.getCandidateId())) {
             grantVote = checkCandidatesLogIsUpToDate(requestVote);
         }
 
@@ -105,7 +109,7 @@ public class RaftImpl implements Raft {
 
         RaftMessage responseMessage = RaftMessage.newBuilder()
                 .setType(MessageType.RequestVoteResponse)
-                .setRequestVoteResponse(response.setVoteGranted(grantVote).build())
+                .setRequestVoteResponse(response.setVoteGranted(grantVote).setTerm(getCurrentTerm()).build())
                 .build();
         senderChannel.writeAndFlush(responseMessage);
     }
