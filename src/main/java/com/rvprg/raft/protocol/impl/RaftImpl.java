@@ -121,6 +121,11 @@ public class RaftImpl implements Raft {
     public void consumeRequestVoteResponse(Channel senderChannel, RequestVoteResponse requestVoteResponse) {
         observer.voteReceived();
 
+        boolean changedToFollower = becomeFollowerIfNewerTerm(requestVoteResponse.getTerm());
+        if (changedToFollower) {
+            return;
+        }
+
         if (requestVoteResponse.getTerm() == getCurrentTerm()) {
             votesReceived.incrementAndGet();
         }
@@ -132,12 +137,30 @@ public class RaftImpl implements Raft {
         }
     }
 
+    private boolean updateTerm(int term) {
+        synchronized (thisLock) {
+            if (term > getCurrentTerm()) {
+                currentTerm.set(term);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean becomeFollowerIfNewerTerm(int term) {
+        if (updateTerm(term)) {
+            if (getRole() != Role.Follower) {
+                cancelElectionTimeoutTask();
+                changeRole(Role.Follower);
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     public void consumeAppendEntries(Channel senderChannel, AppendEntries appendEntries) {
-        if (appendEntries.getTerm() >= getCurrentTerm() && getRole() != Role.Follower) {
-            cancelElectionTimeoutTask();
-            changeRole(Role.Follower);
-        }
+        becomeFollowerIfNewerTerm(appendEntries.getTerm());
 
         if (appendEntries.getLogEntriesCount() == 0) {
             processHeartbeat(appendEntries);
