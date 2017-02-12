@@ -64,7 +64,6 @@ public class RaftImpl implements Raft {
         this(configuration, memberConnector, messageReceiver, log, 0, observer);
     }
 
-    @Inject
     public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, int initTerm, RaftObserver observer) {
         this.heartbeatTimeout = configuration.getHeartbeatTimeout();
         this.memberConnector = memberConnector;
