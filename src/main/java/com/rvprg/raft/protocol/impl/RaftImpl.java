@@ -96,6 +96,8 @@ public class RaftImpl implements Raft {
         String currVotedFor = votedFor.get();
         boolean grantVote = false;
 
+        becomeFollowerIfNewerTerm(requestVote.getTerm());
+
         if (requestVote.getTerm() < getCurrentTerm()) {
             grantVote = false;
         } else if (currVotedFor == null || currVotedFor.equals(requestVote.getCandidateId())) {
@@ -155,6 +157,7 @@ public class RaftImpl implements Raft {
             if (getRole() != Role.Follower) {
                 cancelElectionTimeoutTask();
                 changeRole(Role.Follower);
+                votedFor.set(null);
                 return true;
             }
         }
@@ -172,6 +175,7 @@ public class RaftImpl implements Raft {
 
     @Override
     public void consumeAppendEntriesResponse(Channel senderChannel, AppendEntriesResponse appendEntriesResponse) {
+        becomeFollowerIfNewerTerm(appendEntriesResponse.getTerm());
     }
 
     private ScheduledFuture<?> scheduleNextElectionTask() {

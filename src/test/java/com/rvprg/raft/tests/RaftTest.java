@@ -292,7 +292,7 @@ public class RaftTest {
         Builder response = RequestVoteResponse.newBuilder();
         RaftMessage expectedResponse = RaftMessage.newBuilder()
                 .setType(MessageType.RequestVoteResponse)
-                .setRequestVoteResponse(response.setVoteGranted(true).setTerm(0).build())
+                .setRequestVoteResponse(response.setVoteGranted(true).setTerm(1).build())
                 .build();
 
         verify(senderChannel, atLeast(1)).writeAndFlush(eq(expectedResponse));
@@ -306,7 +306,7 @@ public class RaftTest {
         Builder responseNoVoteGranted = RequestVoteResponse.newBuilder();
         RaftMessage expectedResponseNoVoteGranted = RaftMessage.newBuilder()
                 .setType(MessageType.RequestVoteResponse)
-                .setRequestVoteResponse(responseNoVoteGranted.setVoteGranted(false).setTerm(0).build())
+                .setRequestVoteResponse(responseNoVoteGranted.setVoteGranted(false).setTerm(1).build())
                 .build();
 
         verify(senderChannel, atLeast(1)).writeAndFlush(eq(expectedResponseNoVoteGranted));
