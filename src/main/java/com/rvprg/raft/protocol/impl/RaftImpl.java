@@ -1,6 +1,7 @@
 package com.rvprg.raft.protocol.impl;
 
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -18,6 +19,7 @@ import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage.MessageType
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVote;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse.Builder;
+import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MessageReceiver;
 
@@ -250,11 +252,36 @@ public class RaftImpl implements Raft {
             votesReceived.incrementAndGet();
         }
 
-        sendoutVoteRequests();
+        sendVoteRequests();
         createElectionTimeoutTask();
     }
 
-    private void sendoutVoteRequests() {
+    private void sendVoteRequests() {
+        RaftMessage requestVote = getRequestVoteMessage();
+        Set<Member> activeMembers = memberConnector.getActiveMembers().getAll();
+        activeMembers.forEach(member -> this.eventLoop.schedule(() -> RaftImpl.this.sendVoteRequest(member, requestVote), 0, TimeUnit.MILLISECONDS));
+    }
+
+    private RaftMessage getRequestVoteMessage() {
+        RequestVote req = RequestVote.newBuilder()
+                .setTerm(getCurrentTerm())
+                .setCandidateId(selfId)
+                .setLastLogIndex(log.length())
+                .setLastLogTerm(log.getLast().getTerm()).build();
+
+        RaftMessage requestVote = RaftMessage.newBuilder()
+                .setType(MessageType.RequestVote)
+                .setRequestVote(req)
+                .build();
+
+        return requestVote;
+    }
+
+    private void sendVoteRequest(Member member, RaftMessage req) {
+        Channel memberChannel = member.getChannel();
+        if (memberChannel.isActive()) {
+            memberChannel.writeAndFlush(req);
+        }
     }
 
     public Role getRole() {

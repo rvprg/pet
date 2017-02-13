@@ -9,6 +9,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -33,8 +34,10 @@ import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage.MessageType
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVote;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse.Builder;
+import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberId;
+import com.rvprg.raft.transport.MembersRegistry;
 import com.rvprg.raft.transport.MessageReceiver;
 
 import io.netty.channel.Channel;
@@ -129,9 +132,18 @@ public class RaftTest {
         configuration.setHeartbeatTimeout(150);
 
         MemberConnector memberConnector = mock(MemberConnector.class);
+        MembersRegistry memberRegistry = mock(MembersRegistry.class);
+        Set<Member> members = new HashSet<Member>();
+        Mockito.when(memberRegistry.getAll()).thenReturn(members);
+        Mockito.when(memberConnector.getActiveMembers()).thenReturn(memberRegistry);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
+        Mockito.when(messageReceiver.getId()).thenReturn("test");
         RaftObserver raftObserver = mock(RaftObserver.class);
         Log log = mock(Log.class);
+        LogEntry logEntry = mock(LogEntry.class);
+        Mockito.when(logEntry.getTerm()).thenReturn(0);
+        Mockito.when(log.getLast()).thenReturn(logEntry);
+        Mockito.when(log.length()).thenReturn(0);
 
         final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, raftObserver);
         // Start as a follower with term set to 0.
