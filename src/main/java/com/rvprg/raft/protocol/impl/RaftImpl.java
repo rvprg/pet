@@ -61,10 +61,10 @@ public class RaftImpl implements Raft {
 
     @Inject
     public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, RaftObserver observer) {
-        this(configuration, memberConnector, messageReceiver, log, 0, observer);
+        this(configuration, memberConnector, messageReceiver, log, 0, Role.Follower, observer);
     }
 
-    public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, int initTerm, RaftObserver observer) {
+    public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, int initTerm, Role initRole, RaftObserver observer) {
         this.heartbeatTimeout = configuration.getHeartbeatTimeout();
         this.memberConnector = memberConnector;
         this.messageReceiver = messageReceiver;
@@ -73,6 +73,7 @@ public class RaftImpl implements Raft {
         this.selfId = messageReceiver.getId();
         this.log = log;
         this.currentTerm.set(initTerm);
+        this.changeRole(initRole);
     }
 
     @Override
@@ -124,15 +125,18 @@ public class RaftImpl implements Raft {
 
     @Override
     public void consumeRequestVoteResponse(Channel senderChannel, RequestVoteResponse requestVoteResponse) {
-        observer.voteReceived();
-
         boolean changedToFollower = becomeFollowerIfNewerTerm(requestVoteResponse.getTerm());
         if (changedToFollower) {
             return;
         }
 
-        if (requestVoteResponse.getTerm() == getCurrentTerm()) {
+        boolean sameTerm = requestVoteResponse.getTerm() == getCurrentTerm();
+
+        if (sameTerm) {
+            observer.voteReceived();
             votesReceived.incrementAndGet();
+        } else {
+            observer.voteRejected();
         }
 
         if (votesReceived.get() >= getMajority()) {
@@ -154,10 +158,12 @@ public class RaftImpl implements Raft {
 
     private boolean becomeFollowerIfNewerTerm(int term) {
         if (updateTerm(term)) {
+            // FIXME: data race
             if (getRole() != Role.Follower) {
                 cancelElectionTimeoutTask();
                 changeRole(Role.Follower);
                 votedFor.set(null);
+                votesReceived.set(0);
                 return true;
             }
         }
@@ -214,7 +220,7 @@ public class RaftImpl implements Raft {
     }
 
     private int getMajority() {
-        return memberConnector.getActiveMembers().getAll().size() / 2 + 1;
+        return memberConnector.getRegisteredMemberIds().size() / 2 + 1;
     }
 
     private void changeRole(Role newRole) {

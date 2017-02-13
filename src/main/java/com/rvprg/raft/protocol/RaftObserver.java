@@ -9,6 +9,8 @@ public interface RaftObserver {
 
     void voteReceived();
 
+    void voteRejected();
+
     void electionWon();
 
     void electionTimedout();

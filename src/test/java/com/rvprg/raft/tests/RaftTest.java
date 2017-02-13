@@ -9,7 +9,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.Test;
@@ -31,6 +34,7 @@ import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVote;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse.Builder;
 import com.rvprg.raft.transport.MemberConnector;
+import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.MessageReceiver;
 
 import io.netty.channel.Channel;
@@ -332,7 +336,7 @@ public class RaftTest {
         Log log = mock(Log.class);
         Channel senderChannel = mock(Channel.class);
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, 2, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, 2, Role.Follower, raftObserver);
 
         assertEquals(2, raft.getCurrentTerm());
 
@@ -352,5 +356,117 @@ public class RaftTest {
                 .build();
 
         verify(senderChannel, atLeast(1)).writeAndFlush(eq(expectedResponse));
+    }
+
+    @Test
+    public void testConsumeVoteRequestResponse_CheckMajorityRule() {
+        Configuration configuration = new Configuration();
+        configuration.setHeartbeatTimeout(150);
+
+        MemberConnector memberConnector = mock(MemberConnector.class);
+        MessageReceiver messageReceiver = mock(MessageReceiver.class);
+        AtomicInteger votesReceived = new AtomicInteger(0);
+        AtomicInteger votesRejected = new AtomicInteger(0);
+        AtomicBoolean electionWon = new AtomicBoolean();
+        RaftObserver raftObserver = new RaftObserver() {
+
+            @Override
+            public void voteReceived() {
+                votesReceived.incrementAndGet();
+            }
+
+            @Override
+            public void nextElectionScheduled() {
+            }
+
+            @Override
+            public void heartbeatTimedout() {
+            }
+
+            @Override
+            public void heartbeatReceived() {
+            }
+
+            @Override
+            public void electionWon() {
+                electionWon.set(true);
+            }
+
+            @Override
+            public void electionTimedout() {
+            }
+
+            @Override
+            public void voteRejected() {
+                votesRejected.incrementAndGet();
+            }
+        };
+
+        Log log = mock(Log.class);
+        Channel senderChannel = mock(Channel.class);
+
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, 1, Role.Candidate, raftObserver);
+
+        assertEquals(1, raft.getCurrentTerm());
+
+        RequestVoteResponse requestVoteResponseTerm1 = ProtocolMessages.RequestVoteResponse.newBuilder()
+                .setTerm(1)
+                .setVoteGranted(true)
+                .build();
+        RequestVoteResponse requestVoteResponseTerm0 = ProtocolMessages.RequestVoteResponse.newBuilder()
+                .setTerm(0)
+                .setVoteGranted(true)
+                .build();
+
+        @SuppressWarnings("unchecked")
+        Set<MemberId> membersSet = mock(Set.class);
+        Mockito.when(membersSet.size()).thenReturn(5);
+        Mockito.when(memberConnector.getRegisteredMemberIds()).thenReturn(membersSet);
+
+        raft.consumeRequestVoteResponse(senderChannel, requestVoteResponseTerm1);
+        assertEquals(1, votesReceived.get());
+        assertEquals(0, votesRejected.get());
+        assertEquals(Role.Candidate, raft.getRole());
+
+        raft.consumeRequestVoteResponse(senderChannel, requestVoteResponseTerm1);
+        assertEquals(2, votesReceived.get());
+        assertEquals(0, votesRejected.get());
+        assertEquals(Role.Candidate, raft.getRole());
+
+        // Send from a different term, should reject.
+        raft.consumeRequestVoteResponse(senderChannel, requestVoteResponseTerm0);
+        assertEquals(2, votesReceived.get());
+        assertEquals(1, votesRejected.get());
+        assertEquals(Role.Candidate, raft.getRole());
+
+        raft.consumeRequestVoteResponse(senderChannel, requestVoteResponseTerm1);
+        assertEquals(3, votesReceived.get());
+        assertEquals(1, votesRejected.get());
+        assertEquals(Role.Leader, raft.getRole());
+    }
+
+    @Test
+    public void testConsumeVoteRequestResponse_CheckSateTerm() {
+        Configuration configuration = new Configuration();
+        configuration.setHeartbeatTimeout(150);
+
+        MemberConnector memberConnector = mock(MemberConnector.class);
+        MessageReceiver messageReceiver = mock(MessageReceiver.class);
+        RaftObserver raftObserver = mock(RaftObserver.class);
+        Log log = mock(Log.class);
+        Channel senderChannel = mock(Channel.class);
+
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, 1, Role.Candidate, raftObserver);
+
+        assertEquals(Role.Candidate, raft.getRole());
+        assertEquals(1, raft.getCurrentTerm());
+
+        RequestVoteResponse requestVoteResponseTerm1 = ProtocolMessages.RequestVoteResponse.newBuilder()
+                .setTerm(2)
+                .setVoteGranted(true)
+                .build();
+
+        raft.consumeRequestVoteResponse(senderChannel, requestVoteResponseTerm1);
+        assertEquals(Role.Follower, raft.getRole());
     }
 }

@@ -28,4 +28,8 @@ public class RaftObserverImpl implements RaftObserver {
     public void electionTimedout() {
     }
 
+    @Override
+    public void voteRejected() {
+    }
+
 }
