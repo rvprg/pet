@@ -7,12 +7,41 @@ import com.google.common.collect.ImmutableSet;
 import com.rvprg.raft.transport.MemberId;
 
 public class Configuration {
+    // TODO: Make proper builder-type configuration class.
     private String host;
     private int port;
-    private int heartbeatTimeout;
+    private int heartbeatTimeout = 200;
+    private int heartbeatPeriod = 50;
+    private int electionMinTimeout = 150;
+    private int electionMaxTimeout = 300;
+
+    public int getHeartbeatPeriod() {
+        return heartbeatPeriod;
+    }
+
+    public void setHeartbeatPeriod(int heartbeatPeriod) {
+        this.heartbeatPeriod = heartbeatPeriod;
+    }
+
+    public int getElectionMinTimeout() {
+        return electionMinTimeout;
+    }
+
+    public void setElectionMinTimeout(int electionMinTimeout) {
+        this.electionMinTimeout = electionMinTimeout;
+    }
+
+    public int getElectionMaxTimeout() {
+        return electionMaxTimeout;
+    }
+
+    public void setElectionMaxTimeout(int electionMaxTimeout) {
+        this.electionMaxTimeout = electionMaxTimeout;
+    }
+
     private final Set<MemberId> nodes = new HashSet<MemberId>();
 
-    public Set<MemberId> getMember() {
+    public Set<MemberId> getMembers() {
         return ImmutableSet.copyOf(nodes);
     }
 

@@ -2,10 +2,12 @@ package com.rvprg.raft.tests;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -56,7 +58,6 @@ public class RaftTest {
     @Test
     public void checkHeartbeatTimeout() throws InterruptedException {
         Configuration configuration = new Configuration();
-        configuration.setHeartbeatTimeout(150);
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -129,7 +130,6 @@ public class RaftTest {
     @Test
     public void testElectionTimeout() throws InterruptedException {
         Configuration configuration = new Configuration();
-        configuration.setHeartbeatTimeout(150);
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MembersRegistry memberRegistry = mock(MembersRegistry.class);
@@ -176,7 +176,6 @@ public class RaftTest {
     @Test
     public void testConsumeVoteRequest_GiveVoteOnce() {
         Configuration configuration = new Configuration();
-        configuration.setHeartbeatTimeout(150);
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -233,7 +232,6 @@ public class RaftTest {
     @Test
     public void testConsumeVoteRequest_GiveVoteSameCandidate() {
         Configuration configuration = new Configuration();
-        configuration.setHeartbeatTimeout(150);
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -278,7 +276,6 @@ public class RaftTest {
     @Test
     public void testConsumeVoteRequest_GiveVoteIfLogIsAsUpToDateAsReceveirs() {
         Configuration configuration = new Configuration();
-        configuration.setHeartbeatTimeout(150);
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -340,7 +337,6 @@ public class RaftTest {
     @Test
     public void testConsumeVoteRequest_DontGiveVoteIfTermIsOutdated() {
         Configuration configuration = new Configuration();
-        configuration.setHeartbeatTimeout(150);
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -361,19 +357,12 @@ public class RaftTest {
 
         raft.consumeRequestVote(senderChannel, requestVote);
 
-        Builder response = RequestVoteResponse.newBuilder();
-        RaftMessage expectedResponse = RaftMessage.newBuilder()
-                .setType(MessageType.RequestVoteResponse)
-                .setRequestVoteResponse(response.setVoteGranted(false).setTerm(2).build())
-                .build();
-
-        verify(senderChannel, atLeast(1)).writeAndFlush(eq(expectedResponse));
+        verify(senderChannel, never()).writeAndFlush(any());
     }
 
     @Test
     public void testConsumeVoteRequestResponse_CheckMajorityRule() {
         Configuration configuration = new Configuration();
-        configuration.setHeartbeatTimeout(150);
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -462,13 +451,17 @@ public class RaftTest {
         raft.consumeRequestVoteResponse(senderChannel, requestVoteResponseTerm1);
         assertEquals(3, votesReceived.get());
         assertEquals(1, votesRejected.get());
+        assertEquals(Role.Candidate, raft.getRole());
+
+        raft.consumeRequestVoteResponse(senderChannel, requestVoteResponseTerm1);
+        assertEquals(4, votesReceived.get());
+        assertEquals(1, votesRejected.get());
         assertEquals(Role.Leader, raft.getRole());
     }
 
     @Test
     public void testConsumeVoteRequestResponse_CheckSateTerm() {
         Configuration configuration = new Configuration();
-        configuration.setHeartbeatTimeout(150);
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);

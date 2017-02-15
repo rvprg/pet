@@ -38,10 +38,11 @@ message LogEntry {
 
 message AppendEntries {
     required uint32 term = 1;
-    required string leaderId = 2;
-    required uint32 prevLogIndex = 3;
-    required uint32 leaderCommitIndex = 4;
-    repeated LogEntry logEntries = 5;
+    optional string leaderId = 2;
+    optional uint32 prevLogIndex = 3;
+    optional uint32 prevLogTerm = 4;
+    optional uint32 leaderCommitIndex = 5;
+    repeated LogEntry logEntries = 6;
 }
 
 message AppendEntriesResponse {
