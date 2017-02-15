@@ -10,6 +10,7 @@ import org.junit.Test;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.rvprg.raft.Module;
+import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.protocol.MessageConsumer;
 import com.rvprg.raft.tests.helpers.EchoServer;
 import com.rvprg.raft.tests.helpers.MemberConnectorObserverTestableImpl;
@@ -20,7 +21,7 @@ import com.rvprg.raft.transport.MemberId;
 public class MemberConnectorObserverImplTest {
     @Test
     public void testObserverAddsHandlersOnConnect() throws InterruptedException {
-        Injector injector = Guice.createInjector(new Module());
+        Injector injector = Guice.createInjector(new Module(new Configuration()));
         MemberConnector connector = injector.getInstance(MemberConnector.class);
         ChannelPipelineInitializer pipelineInitializer = injector.getInstance(ChannelPipelineInitializer.class);
 

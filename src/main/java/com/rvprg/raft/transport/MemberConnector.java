@@ -18,4 +18,6 @@ public interface MemberConnector {
     public void shutdown();
 
     public boolean isShutdown();
+
+    public void connectAllRegistered();
 }

@@ -14,4 +14,8 @@ public interface RaftObserver {
     void electionWon();
 
     void electionTimedout();
+
+    void started();
+
+    void shutdown();
 }

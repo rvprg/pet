@@ -55,4 +55,9 @@ public class MessageReceiverImpl implements MessageReceiver {
         return id.toString();
     }
 
+    @Override
+    public ChannelPipelineInitializer getChannelPipelineInitializer() {
+        return pipelineInitializer;
+    }
+
 }

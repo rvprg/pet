@@ -16,6 +16,7 @@ import org.mockito.stubbing.Answer;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.rvprg.raft.Module;
+import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.protocol.MessageConsumer;
 import com.rvprg.raft.protocol.messages.ProtocolMessages;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntries;
@@ -158,7 +159,7 @@ public class MessageDispatcherTest {
 
     @Test
     public void testProtocolMessageDispatcher() throws InterruptedException {
-        Injector injector = Guice.createInjector(new Module());
+        Injector injector = Guice.createInjector(new Module(new Configuration()));
         MemberConnector connector = injector.getInstance(MemberConnector.class);
         ChannelPipelineInitializer pipelineInitializer = injector.getInstance(ChannelPipelineInitializer.class);
 

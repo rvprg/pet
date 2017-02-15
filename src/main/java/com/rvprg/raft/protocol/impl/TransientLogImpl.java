@@ -1,11 +1,14 @@
 package com.rvprg.raft.protocol.impl;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 import com.rvprg.raft.protocol.Log;
 import com.rvprg.raft.protocol.LogEntry;
 
 public class TransientLogImpl implements Log {
+
+    ArrayList<LogEntry> log = new ArrayList<LogEntry>();
 
     @Override
     public void close() throws IOException {
@@ -23,22 +26,22 @@ public class TransientLogImpl implements Log {
 
     @Override
     public void add(int index, LogEntry logEntry) {
-
+        log.add(index, logEntry);
     }
 
     @Override
     public int length() {
-        return 0;
+        return log.size();
     }
 
     @Override
     public LogEntry get(int index) {
-        return null;
+        return log.get(index);
     }
 
     @Override
     public LogEntry getLast() {
-        return null;
+        return log.get(log.size() - 1);
     }
 
 }

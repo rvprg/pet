@@ -33,8 +33,6 @@ public class RaftImpl implements Raft {
 
     private Role role = Role.Follower;
 
-    private final Configuration configuration;
-
     private final MemberConnector memberConnector;
     private final MessageReceiver messageReceiver;
 
@@ -67,30 +65,36 @@ public class RaftImpl implements Raft {
     }
 
     public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, int initTerm, Role initRole, RaftObserver observer) {
+        // FIXME: check messageReceiver is not started.
         this.heartbeatTimeout = configuration.getHeartbeatTimeout();
         this.memberConnector = memberConnector;
         this.messageReceiver = messageReceiver;
-        this.configuration = configuration;
         this.observer = observer;
         this.selfId = messageReceiver.getId();
         this.log = log;
         this.currentTerm.set(initTerm);
         this.changeRole(initRole);
+
+        MemberConnectorObserverImpl memberConnectorObserver = new MemberConnectorObserverImpl(this, messageReceiver.getChannelPipelineInitializer());
+        configuration.getMember().forEach(member -> memberConnector.register(member, memberConnectorObserver));
     }
 
     @Override
     public void start() throws InterruptedException {
         // FIXME: Check if started.
         messageReceiver.start(this);
-        scheduleHeartbeatTask();
+        memberConnector.connectAllRegistered();
+        scheduleHeartbeatMonitorTask();
+        observer.started();
     }
 
     @Override
     public void shutdown() {
-        cancelHeartbeatTask();
+        cancelHeartbeatMonitorTask();
         cancelElectionTimeoutTask();
         this.messageReceiver.shutdown();
         this.eventLoop.shutdownGracefully().awaitUninterruptibly();
+        observer.shutdown();
     }
 
     @Override
@@ -118,13 +122,6 @@ public class RaftImpl implements Raft {
         senderChannel.writeAndFlush(responseMessage);
     }
 
-    private boolean checkCandidatesLogIsUpToDate(RequestVote requestVote) {
-        if (log.getLast().getTerm() == requestVote.getLastLogTerm()) {
-            return requestVote.getLastLogIndex() >= log.length();
-        }
-        return requestVote.getLastLogTerm() >= log.getLast().getTerm();
-    }
-
     @Override
     public void consumeRequestVoteResponse(Channel senderChannel, RequestVoteResponse requestVoteResponse) {
         boolean changedToFollower = becomeFollowerIfNewerTerm(requestVoteResponse.getTerm());
@@ -146,6 +143,13 @@ public class RaftImpl implements Raft {
             changeRole(Role.Leader);
             observer.electionWon();
         }
+    }
+
+    private boolean checkCandidatesLogIsUpToDate(RequestVote requestVote) {
+        if (log.getLast().getTerm() == requestVote.getLastLogTerm()) {
+            return requestVote.getLastLogIndex() >= log.length();
+        }
+        return requestVote.getLastLogTerm() >= log.getLast().getTerm();
     }
 
     private boolean updateTerm(int term) {
@@ -186,22 +190,9 @@ public class RaftImpl implements Raft {
         becomeFollowerIfNewerTerm(appendEntriesResponse.getTerm());
     }
 
-    private ScheduledFuture<?> scheduleNextElectionTask() {
-        observer.nextElectionScheduled();
-        return this.eventLoop.schedule(() -> RaftImpl.this.heartbeatTimedout(), heartbeatTimeout, TimeUnit.MILLISECONDS);
-    }
-
-    private void cancelHeartbeatTask() {
-        cancelTask(electionTrigger.get());
-    }
-
-    private void scheduleHeartbeatTask() {
-        cancelTask(electionTrigger.getAndSet(scheduleNextElectionTask()));
-    }
-
     private void processHeartbeat(AppendEntries heartbeat) {
         observer.heartbeatReceived();
-        scheduleHeartbeatTask();
+        scheduleHeartbeatMonitorTask();
     }
 
     private void cancelTask(ScheduledFuture<?> task) {
@@ -210,11 +201,24 @@ public class RaftImpl implements Raft {
         }
     }
 
+    private void cancelHeartbeatMonitorTask() {
+        cancelTask(electionTrigger.get());
+    }
+
     private void cancelElectionTimeoutTask() {
         cancelTask(electionTimeoutTrigger.get());
     }
 
-    private void createElectionTimeoutTask() {
+    private void scheduleHeartbeatMonitorTask() {
+        cancelTask(electionTrigger.getAndSet(scheduleNextElectionTask()));
+    }
+
+    private ScheduledFuture<?> scheduleNextElectionTask() {
+        observer.nextElectionScheduled();
+        return this.eventLoop.schedule(() -> RaftImpl.this.heartbeatTimedout(), heartbeatTimeout, TimeUnit.MILLISECONDS);
+    }
+
+    private void scheduleElectionTimeoutTask() {
         final int timeout = random.nextInt(electionMaxTimeout - electionMinTimeout) + electionMinTimeout;
         ScheduledFuture<?> prevTask = electionTimeoutTrigger.getAndSet(
                 this.eventLoop.schedule(() -> RaftImpl.this.electionTimedout(), timeout, TimeUnit.MILLISECONDS));
@@ -242,7 +246,7 @@ public class RaftImpl implements Raft {
     }
 
     private void initiateElection() {
-        cancelHeartbeatTask();
+        cancelHeartbeatMonitorTask();
         changeRole(Role.Candidate);
         currentTerm.incrementAndGet();
         votedFor.set(null);
@@ -253,7 +257,7 @@ public class RaftImpl implements Raft {
         }
 
         sendVoteRequests();
-        createElectionTimeoutTask();
+        scheduleElectionTimeoutTask();
     }
 
     private void sendVoteRequests() {
@@ -284,6 +288,7 @@ public class RaftImpl implements Raft {
         }
     }
 
+    @Override
     public Role getRole() {
         synchronized (thisLock) {
             return role;

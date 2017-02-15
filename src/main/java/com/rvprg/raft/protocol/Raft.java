@@ -6,4 +6,6 @@ public interface Raft extends MessageConsumer {
     public void shutdown();
 
     public int getCurrentTerm();
+
+    public Role getRole();
 }

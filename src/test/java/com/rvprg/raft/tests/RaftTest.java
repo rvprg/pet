@@ -412,6 +412,14 @@ public class RaftTest {
             public void voteRejected() {
                 votesRejected.incrementAndGet();
             }
+
+            @Override
+            public void started() {
+            }
+
+            @Override
+            public void shutdown() {
+            }
         };
 
         Log log = mock(Log.class);
@@ -481,4 +489,5 @@ public class RaftTest {
         raft.consumeRequestVoteResponse(senderChannel, requestVoteResponseTerm1);
         assertEquals(Role.Follower, raft.getRole());
     }
+
 }

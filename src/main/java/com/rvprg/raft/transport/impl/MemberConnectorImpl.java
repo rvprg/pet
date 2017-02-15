@@ -150,4 +150,9 @@ public class MemberConnectorImpl implements MemberConnector {
         return workerGroup.isShuttingDown();
     }
 
+    @Override
+    public void connectAllRegistered() {
+        getRegisteredMemberIds().forEach(member -> connect(member));
+    }
+
 }

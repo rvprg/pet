@@ -32,4 +32,12 @@ public class RaftObserverImpl implements RaftObserver {
     public void voteRejected() {
     }
 
+    @Override
+    public void started() {
+    }
+
+    @Override
+    public void shutdown() {
+    }
+
 }
