@@ -11,56 +11,56 @@ public class MemberIdTest {
     @Test
     public void testMemberIdEquals_ipv4() {
         MemberId memberId0 = new MemberId("localhost", 12345);
-        assertEquals("localhost/127.0.0.1:12345", memberId0.getId());
+        assertEquals("localhost/127.0.0.1:12345", memberId0.toString());
         MemberId memberId1 = new MemberId("localhost", 12345);
-        assertEquals("localhost/127.0.0.1:12345", memberId1.getId());
+        assertEquals("localhost/127.0.0.1:12345", memberId1.toString());
 
-        assertEquals(memberId0.getId(), memberId1.getId());
+        assertEquals(memberId0.toString(), memberId1.toString());
         assertTrue(memberId0.equals(memberId1));
     }
 
     @Test
     public void testMemberIdEquals_ipv6() {
         MemberId memberId0 = new MemberId("0:0:0:0:0:0:0:1", 12345);
-        assertEquals("/0:0:0:0:0:0:0:1:12345", memberId0.getId());
+        assertEquals("/0:0:0:0:0:0:0:1:12345", memberId0.toString());
         MemberId memberId1 = new MemberId("::1", 12345);
-        assertEquals("/0:0:0:0:0:0:0:1:12345", memberId1.getId());
+        assertEquals("/0:0:0:0:0:0:0:1:12345", memberId1.toString());
 
-        assertEquals(memberId0.getId(), memberId1.getId());
+        assertEquals(memberId0.toString(), memberId1.toString());
         assertTrue(memberId0.equals(memberId1));
     }
 
     @Test
     public void testMemberIdParsingFromString_ShouldParse() {
-        MemberId memberId = MemberId.getInstanceFromString("localhost:12345");
-        assertEquals("localhost/127.0.0.1:12345", memberId.getId());
+        MemberId memberId = MemberId.fromString("localhost:12345");
+        assertEquals("localhost/127.0.0.1:12345", memberId.toString());
 
-        memberId = MemberId.getInstanceFromString("localhost/127.0.0.1:12345");
-        assertEquals("localhost/127.0.0.1:12345", memberId.getId());
+        memberId = MemberId.fromString("localhost/127.0.0.1:12345");
+        assertEquals("localhost/127.0.0.1:12345", memberId.toString());
 
-        memberId = MemberId.getInstanceFromString("/127.0.0.1:12345");
-        assertEquals("/127.0.0.1:12345", memberId.getId());
+        memberId = MemberId.fromString("/127.0.0.1:12345");
+        assertEquals("/127.0.0.1:12345", memberId.toString());
 
-        memberId = MemberId.getInstanceFromString("::1:12345");
-        assertEquals("/0:0:0:0:0:0:0:1:12345", memberId.getId());
+        memberId = MemberId.fromString("::1:12345");
+        assertEquals("/0:0:0:0:0:0:0:1:12345", memberId.toString());
 
-        memberId = MemberId.getInstanceFromString("/0:0:0:0:0:0:0:1:12345");
-        assertEquals("/0:0:0:0:0:0:0:1:12345", memberId.getId());
+        memberId = MemberId.fromString("/0:0:0:0:0:0:0:1:12345");
+        assertEquals("/0:0:0:0:0:0:0:1:12345", memberId.toString());
 
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testMemberIdParsingFromString_ShouldFail_NoAddress1() {
-        MemberId.getInstanceFromString("localhost/:12345");
+        MemberId.fromString("localhost/:12345");
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testMemberIdParsingFromString_ShouldFail_NoAddress2() {
-        MemberId.getInstanceFromString("/:12345");
+        MemberId.fromString("/:12345");
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testMemberIdParsingFromString_ShouldFail_NoPort() {
-        MemberId.getInstanceFromString("localhost:");
+        MemberId.fromString("localhost:");
     }
 }

@@ -2,7 +2,7 @@ package com.rvprg.raft.transport;
 
 import java.net.InetSocketAddress;
 
-public class MemberId extends InetSocketAddress implements Identifiable {
+public class MemberId extends InetSocketAddress {
     private static final long serialVersionUID = -8840089459612603760L;
 
     public MemberId(InetSocketAddress s) {
@@ -13,12 +13,7 @@ public class MemberId extends InetSocketAddress implements Identifiable {
         super(ip, port);
     }
 
-    @Override
-    public String getId() {
-        return toString();
-    }
-
-    public static MemberId getInstanceFromString(String memberId) {
+    public static MemberId fromString(String memberId) {
         int pos = memberId.lastIndexOf(":");
         if (pos == -1 || pos + 1 >= memberId.length()) {
             throw new IllegalArgumentException();

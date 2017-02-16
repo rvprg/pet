@@ -23,6 +23,7 @@ import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse.Builder;
 import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnector;
+import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.MessageReceiver;
 
 import io.netty.channel.Channel;
@@ -57,14 +58,13 @@ public class RaftImpl implements Raft {
     private int currentTerm = 0;
     @GuardedBy("stateLock")
     private int votesReceived = 0;
-    // FIXME: use MemberId, not string.
     @GuardedBy("stateLock")
-    private String votedFor = null;
+    private MemberId votedFor = null;
     @GuardedBy("stateLock")
-    private String leaderId;
+    private MemberId leader;
     private Role role = Role.Follower;
 
-    private final String selfId;
+    private final MemberId selfId;
 
     private final Random random = new Random();
 
@@ -83,11 +83,11 @@ public class RaftImpl implements Raft {
         this.memberConnector = memberConnector;
         this.messageReceiver = messageReceiver;
         this.observer = observer;
-        this.selfId = messageReceiver.getId();
+        this.selfId = messageReceiver.getMemberId();
         this.log = log;
         this.currentTerm = initTerm;
         this.role = initRole;
-        this.leaderId = null;
+        this.leader = null;
         this.heartbeatPeriod = configuration.getHeartbeatPeriod();
         this.electionMinTimeout = configuration.getElectionMinTimeout();
         this.electionMaxTimeout = configuration.getElectionMaxTimeout();
@@ -129,17 +129,18 @@ public class RaftImpl implements Raft {
 
         synchronized (stateLock) {
             response.setTerm(getCurrentTerm());
+            MemberId candidateId = MemberId.fromString(requestVote.getCandidateId());
             if (requestVote.getTerm() < getCurrentTerm()) {
                 grantVote = false;
-            } else if (votedFor == null || votedFor.equals(requestVote.getCandidateId())) {
+            } else if (votedFor == null || votedFor.equals(candidateId)) {
                 if (requestVote.getTerm() == getCurrentTerm()) {
                     grantVote = checkCandidatesLogIsUpToDate(requestVote);
                 }
             }
 
             if (grantVote) {
-                votedFor = requestVote.getCandidateId();
-                logger.debug("Member: {}. Term: {}. Giving vote to: {}.", selfId, currentTerm, requestVote.getCandidateId());
+                votedFor = candidateId;
+                logger.debug("Member: {}. Term: {}. Giving vote to: {}.", selfId, currentTerm, votedFor);
             }
         }
 
@@ -209,7 +210,7 @@ public class RaftImpl implements Raft {
             scheduleSendHeartbeats();
             schedulePeriodicHeartbeatTask();
             role = Role.Leader;
-            leaderId = selfId;
+            leader = selfId;
             votesReceived = 0;
         }
     }
@@ -245,12 +246,13 @@ public class RaftImpl implements Raft {
 
         synchronized (stateLock) {
             if (appendEntries.hasLeaderId()) {
-                if (leaderId != null &&
-                        !leaderId.equals(appendEntries.getLeaderId()) &&
+                MemberId otherLeader = MemberId.fromString(appendEntries.getLeaderId());
+                if (leader != null &&
+                        !leader.equals(otherLeader) &&
                         role != Role.Follower) {
                     becomeFollower();
                 }
-                leaderId = appendEntries.getLeaderId();
+                leader = otherLeader;
             }
         }
 
@@ -337,7 +339,7 @@ public class RaftImpl implements Raft {
             role = Role.Candidate;
             ++currentTerm;
             votedFor = null;
-            leaderId = null;
+            leader = null;
             votesReceived = 0;
             logger.debug("Member: {}, Term: {}, New election.", selfId, currentTerm);
         }
@@ -375,7 +377,7 @@ public class RaftImpl implements Raft {
     private RaftMessage getRequestVoteMessage() {
         RequestVote req = RequestVote.newBuilder()
                 .setTerm(getCurrentTerm())
-                .setCandidateId(selfId)
+                .setCandidateId(selfId.toString())
                 .setLastLogIndex(log.length())
                 .setLastLogTerm(log.getLast().getTerm()).build();
 
@@ -392,8 +394,8 @@ public class RaftImpl implements Raft {
 
         synchronized (stateLock) {
             req.setTerm(getCurrentTerm());
-            if (leaderId != null) {
-                req.setLeaderId(leaderId);
+            if (leader != null) {
+                req.setLeaderId(leader.toString());
             }
         }
 
@@ -409,7 +411,7 @@ public class RaftImpl implements Raft {
         Channel memberChannel = member.getChannel();
         if (memberChannel.isActive()) {
             if (req.getType() == RaftMessage.MessageType.RequestVote) {
-                logger.debug("Member: {}, Term: {}. Vote request sent to {}.", selfId, getCurrentTerm(), member.getMemberId().getId());
+                logger.debug("Member: {}, Term: {}. Vote request sent to {}.", selfId, getCurrentTerm(), member.getMemberId());
             }
             memberChannel.writeAndFlush(req);
         }

@@ -19,7 +19,7 @@ public class MessageReceiverImpl implements MessageReceiver {
     private final ServerBootstrap server;
     private final Configuration configuration;
     private final ChannelPipelineInitializer pipelineInitializer;
-    private final MemberId id;
+    private final MemberId memberId;
 
     @Inject
     public MessageReceiverImpl(Configuration configuration, ChannelPipelineInitializer pipelineInitializer) {
@@ -28,7 +28,7 @@ public class MessageReceiverImpl implements MessageReceiver {
         this.server = new ServerBootstrap();
         this.configuration = configuration;
         this.pipelineInitializer = pipelineInitializer;
-        this.id = new MemberId(configuration.getHost(), configuration.getPort());
+        this.memberId = new MemberId(configuration.getHost(), configuration.getPort());
     }
 
     @Override
@@ -51,13 +51,13 @@ public class MessageReceiverImpl implements MessageReceiver {
     }
 
     @Override
-    public String getId() {
-        return id.toString();
+    public ChannelPipelineInitializer getChannelPipelineInitializer() {
+        return pipelineInitializer;
     }
 
     @Override
-    public ChannelPipelineInitializer getChannelPipelineInitializer() {
-        return pipelineInitializer;
+    public MemberId getMemberId() {
+        return memberId;
     }
 
 }

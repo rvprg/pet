@@ -48,7 +48,7 @@ public class RaftTest {
     private AppendEntries getAppendEntriesInstance() {
         AppendEntries requestAppendEntries = ProtocolMessages.AppendEntries.newBuilder()
                 .setTerm(1)
-                .setLeaderId("test")
+                .setLeaderId("localhost:1234")
                 .setPrevLogIndex(0)
                 .setLeaderCommitIndex(1)
                 .build();
@@ -137,7 +137,7 @@ public class RaftTest {
         Mockito.when(memberRegistry.getAll()).thenReturn(members);
         Mockito.when(memberConnector.getActiveMembers()).thenReturn(memberRegistry);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
-        Mockito.when(messageReceiver.getId()).thenReturn("test");
+        Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("test", 1234));
         RaftObserver raftObserver = mock(RaftObserver.class);
         Log log = mock(Log.class);
         LogEntry logEntry = mock(LogEntry.class);
@@ -190,7 +190,7 @@ public class RaftTest {
 
         RequestVote requestVote0 = ProtocolMessages.RequestVote.newBuilder()
                 .setTerm(0)
-                .setCandidateId("test")
+                .setCandidateId("localhost:1234")
                 .setLastLogIndex(0)
                 .setLastLogTerm(0)
                 .build();
@@ -213,7 +213,7 @@ public class RaftTest {
         // Different candidate.
         RequestVote requestVote1 = ProtocolMessages.RequestVote.newBuilder()
                 .setTerm(0)
-                .setCandidateId("test1")
+                .setCandidateId("localhost:1235")
                 .setLastLogIndex(0)
                 .setLastLogTerm(0)
                 .build();
@@ -246,7 +246,7 @@ public class RaftTest {
 
         RequestVote requestVote = ProtocolMessages.RequestVote.newBuilder()
                 .setTerm(0)
-                .setCandidateId("test")
+                .setCandidateId("localhost:1234")
                 .setLastLogIndex(0)
                 .setLastLogTerm(0)
                 .build();
@@ -290,7 +290,7 @@ public class RaftTest {
 
         RequestVote requestVote = ProtocolMessages.RequestVote.newBuilder()
                 .setTerm(1)
-                .setCandidateId("test")
+                .setCandidateId("localhost:1234")
                 .setLastLogIndex(1)
                 .setLastLogTerm(1)
                 .build();
