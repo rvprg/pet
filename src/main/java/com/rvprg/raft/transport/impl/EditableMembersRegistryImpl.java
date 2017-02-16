@@ -8,6 +8,9 @@ import com.rvprg.raft.transport.EditableMembersRegistry;
 import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberId;
 
+import net.jcip.annotations.ThreadSafe;
+
+@ThreadSafe
 public class EditableMembersRegistryImpl implements EditableMembersRegistry {
     private final ConcurrentHashMap<MemberId, Member> members = new ConcurrentHashMap<MemberId, Member>();
 

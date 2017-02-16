@@ -29,6 +29,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.util.concurrent.ScheduledFuture;
+import net.jcip.annotations.GuardedBy;
 
 public class RaftImpl implements Raft {
     Logger logger = LoggerFactory.getLogger(RaftImpl.class);
@@ -52,11 +53,14 @@ public class RaftImpl implements Raft {
     private final RaftObserver observer;
 
     private final Object stateLock = new Object();
-    // Guarded by stateLock
+    @GuardedBy("stateLock")
     private int currentTerm = 0;
+    @GuardedBy("stateLock")
     private int votesReceived = 0;
     // FIXME: use MemberId, not string.
+    @GuardedBy("stateLock")
     private String votedFor = null;
+    @GuardedBy("stateLock")
     private String leaderId;
     private Role role = Role.Follower;
 
