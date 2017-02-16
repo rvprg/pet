@@ -213,6 +213,7 @@ public class RaftImpl implements Raft {
     private void becomeFollower() {
         cancelElectionTimeoutTask();
         cancelPeriodicHeartbeatTask();
+        scheduleHeartbeatMonitorTask();
         synchronized (stateLock) {
             role = Role.Follower;
             votedFor = null;
