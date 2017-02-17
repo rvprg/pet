@@ -431,6 +431,9 @@ public class RaftTest {
         Set<MemberId> membersSet = mock(Set.class);
         Mockito.when(membersSet.size()).thenReturn(5);
         Mockito.when(memberConnector.getRegisteredMemberIds()).thenReturn(membersSet);
+        MembersRegistry members = mock(MembersRegistry.class);
+        Mockito.when(memberConnector.getActiveMembers()).thenReturn(members);
+        Mockito.when(members.getAll()).thenReturn(new HashSet<Member>());
 
         raft.consumeRequestVoteResponse(senderChannel, requestVoteResponseTerm1);
         assertEquals(1, votesReceived.get());

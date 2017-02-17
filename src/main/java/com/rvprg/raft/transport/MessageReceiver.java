@@ -3,9 +3,11 @@ package com.rvprg.raft.transport;
 import com.rvprg.raft.protocol.MessageConsumer;
 
 public interface MessageReceiver extends MemberIdentifiable {
-    public ChannelPipelineInitializer getChannelPipelineInitializer();
+    ChannelPipelineInitializer getChannelPipelineInitializer();
 
-    public void shutdown();
+    boolean isStarted();
 
-    public void start(MessageConsumer messageConsumer) throws InterruptedException;
+    void shutdown() throws InterruptedException;
+
+    void start(MessageConsumer messageConsumer) throws InterruptedException;
 }

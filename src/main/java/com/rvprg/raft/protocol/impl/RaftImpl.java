@@ -1,8 +1,8 @@
 package com.rvprg.raft.protocol.impl;
 
 import java.util.Random;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.slf4j.Logger;
@@ -45,8 +45,6 @@ public class RaftImpl implements Raft {
     private final int electionMinTimeout;
     private final int electionMaxTimeout;
 
-    private final EventLoopGroup eventLoop;
-
     private final AtomicReference<ScheduledFuture<?>> newElectionInitiatorTask = new AtomicReference<ScheduledFuture<?>>();
     private final AtomicReference<ScheduledFuture<?>> electionTimeoutMonitorTask = new AtomicReference<ScheduledFuture<?>>();
     private final AtomicReference<ScheduledFuture<?>> periodicHeartbeatTask = new AtomicReference<ScheduledFuture<?>>();
@@ -62,7 +60,12 @@ public class RaftImpl implements Raft {
     private MemberId votedFor = null;
     @GuardedBy("stateLock")
     private MemberId leader;
+    @GuardedBy("stateLock")
     private Role role = Role.Follower;
+    @GuardedBy("stateLock")
+    private boolean started = false;
+    @GuardedBy("stateLock")
+    private AtomicReference<EventLoopGroup> eventLoop = new AtomicReference<EventLoopGroup>(null);
 
     private final MemberId selfId;
 
@@ -70,19 +73,15 @@ public class RaftImpl implements Raft {
 
     private final Log log;
 
-    private final AtomicBoolean started = new AtomicBoolean(false);
-
     @Inject
     public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, RaftObserver observer) {
         this(configuration, memberConnector, messageReceiver, log, 0, Role.Follower, observer);
     }
 
     public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, int initTerm, Role initRole, RaftObserver observer) {
-        // FIXME: check messageReceiver is not started.
         this.heartbeatTimeout = configuration.getHeartbeatTimeout();
         this.memberConnector = memberConnector;
         this.messageReceiver = messageReceiver;
-        this.observer = observer;
         this.selfId = messageReceiver.getMemberId();
         this.log = log;
         this.currentTerm = initTerm;
@@ -91,30 +90,45 @@ public class RaftImpl implements Raft {
         this.heartbeatPeriod = configuration.getHeartbeatPeriod();
         this.electionMinTimeout = configuration.getElectionMinTimeout();
         this.electionMaxTimeout = configuration.getElectionMaxTimeout();
-        this.eventLoop = new NioEventLoopGroup();
+
+        this.observer = observer == null ? RaftObserver.getDefaultObserverInstance() : observer;
+
+        // FIXME: double initialization
+        initializeEventLoop();
 
         MemberConnectorObserverImpl memberConnectorObserver = new MemberConnectorObserverImpl(this, messageReceiver.getChannelPipelineInitializer());
         configuration.getMembers().forEach(member -> memberConnector.register(member, memberConnectorObserver));
     }
 
-    @Override
-    public void start() throws InterruptedException {
-        // FIXME: Check if started.
-        messageReceiver.start(this);
-        memberConnector.connectAllRegistered();
-        scheduleHeartbeatMonitorTask();
-        started.set(true);
-        observer.started();
+    private void initializeEventLoop() {
+        EventLoopGroup prevEventLoop = eventLoop.getAndSet(new NioEventLoopGroup());
+        if (prevEventLoop != null) {
+            prevEventLoop.shutdownGracefully();
+        }
     }
 
     @Override
-    public void shutdown() {
-        cancelHeartbeatMonitorTask();
-        cancelElectionTimeoutTask();
-        messageReceiver.shutdown();
-        eventLoop.shutdownGracefully().awaitUninterruptibly();
-        started.set(false);
-        observer.shutdown();
+    public void start() throws InterruptedException {
+        synchronized (stateLock) {
+            initializeEventLoop();
+            messageReceiver.start(this);
+            memberConnector.connectAllRegistered();
+            scheduleHeartbeatMonitorTask();
+            started = true;
+            observer.started();
+        }
+    }
+
+    @Override
+    public void shutdown() throws InterruptedException {
+        synchronized (stateLock) {
+            cancelHeartbeatMonitorTask();
+            cancelElectionTimeoutTask();
+            messageReceiver.shutdown();
+            eventLoop.get().shutdownGracefully();
+            started = false;
+            observer.shutdown();
+        }
     }
 
     @Override
@@ -298,19 +312,19 @@ public class RaftImpl implements Raft {
 
     private ScheduledFuture<?> scheduleNextElectionTask() {
         observer.nextElectionScheduled();
-        return this.eventLoop.schedule(() -> RaftImpl.this.heartbeatTimedout(), heartbeatTimeout, TimeUnit.MILLISECONDS);
+        return eventLoop.get().schedule(() -> RaftImpl.this.heartbeatTimedout(), heartbeatTimeout, TimeUnit.MILLISECONDS);
     }
 
     private void scheduleElectionTimeoutTask() {
         final int timeout = random.nextInt(electionMaxTimeout - electionMinTimeout) + electionMinTimeout;
         ScheduledFuture<?> prevTask = electionTimeoutMonitorTask.getAndSet(
-                this.eventLoop.schedule(() -> RaftImpl.this.electionTimedout(), timeout, TimeUnit.MILLISECONDS));
+                eventLoop.get().schedule(() -> RaftImpl.this.electionTimedout(), timeout, TimeUnit.MILLISECONDS));
         cancelTask(prevTask);
     }
 
     private void schedulePeriodicHeartbeatTask() {
         ScheduledFuture<?> prevTask = periodicHeartbeatTask.getAndSet(
-                this.eventLoop.scheduleAtFixedRate(() -> RaftImpl.this.scheduleSendHeartbeats(), 0, heartbeatPeriod, TimeUnit.MILLISECONDS));
+                eventLoop.get().scheduleAtFixedRate(() -> RaftImpl.this.scheduleSendHeartbeats(), 0, heartbeatPeriod, TimeUnit.MILLISECONDS));
         cancelTask(prevTask);
     }
 
@@ -358,20 +372,23 @@ public class RaftImpl implements Raft {
     }
 
     private void scheduleSendMessageToEachMember(RaftMessage msg) {
-        memberConnector.getActiveMembers().getAll().forEach(
-                member -> this.eventLoop.schedule(() -> RaftImpl.this.sendMessage(member, msg), 0, TimeUnit.MILLISECONDS));
+        memberConnector.getActiveMembers().getAll().forEach(member -> scheduleSendMessageToMember(member, msg));
+    }
+
+    private void scheduleSendMessageToMember(Member member, RaftMessage msg) {
+        try {
+            member.getChannel().eventLoop().schedule(() -> RaftImpl.this.sendMessage(member, msg), 0, TimeUnit.MILLISECONDS);
+        } catch (RejectedExecutionException e) {
+            logger.error("Member: {}, Term: {}, Message type: {}, message send failed.", member, currentTerm, msg.getType(), e);
+        }
     }
 
     private void scheduleSendVoteRequests() {
-        if (started.get()) {
-            scheduleSendMessageToEachMember(getRequestVoteMessage());
-        }
+        scheduleSendMessageToEachMember(getRequestVoteMessage());
     }
 
     private void scheduleSendHeartbeats() {
-        if (started.get()) {
-            scheduleSendMessageToEachMember(getHeartbeatMessage());
-        }
+        scheduleSendMessageToEachMember(getHeartbeatMessage());
     }
 
     private RaftMessage getRequestVoteMessage() {
@@ -428,6 +445,13 @@ public class RaftImpl implements Raft {
     public int getCurrentTerm() {
         synchronized (stateLock) {
             return currentTerm;
+        }
+    }
+
+    @Override
+    public boolean isStarted() {
+        synchronized (stateLock) {
+            return started;
         }
     }
 
