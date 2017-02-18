@@ -14,6 +14,15 @@ public class Configuration {
     private int heartbeatPeriod = 50;
     private int electionMinTimeout = 150;
     private int electionMaxTimeout = 300;
+    private Set<MemberId> nodes = new HashSet<MemberId>();
+
+    public void addMemberId(MemberId id) {
+        nodes.add(id);
+    }
+
+    public Set<MemberId> getMemberIds() {
+        return ImmutableSet.copyOf(nodes);
+    }
 
     public int getHeartbeatPeriod() {
         return heartbeatPeriod;
@@ -37,16 +46,6 @@ public class Configuration {
 
     public void setElectionMaxTimeout(int electionMaxTimeout) {
         this.electionMaxTimeout = electionMaxTimeout;
-    }
-
-    private final Set<MemberId> nodes = new HashSet<MemberId>();
-
-    public Set<MemberId> getMembers() {
-        return ImmutableSet.copyOf(nodes);
-    }
-
-    public void addMember(MemberId member) {
-        nodes.add(member);
     }
 
     public int getHeartbeatTimeout() {

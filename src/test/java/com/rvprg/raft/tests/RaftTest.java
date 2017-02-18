@@ -120,7 +120,6 @@ public class RaftTest {
         raft.shutdown();
 
         assertTrue(raft.getCurrentTerm() > 0);
-        assertEquals(Role.Candidate, raft.getRole());
 
         verify(raftObserver, atLeast(1)).heartbeatReceived();
         verify(raftObserver, atLeast(1)).heartbeatTimedout();
@@ -389,7 +388,7 @@ public class RaftTest {
             }
 
             @Override
-            public void electionWon() {
+            public void electionWon(int term) {
                 electionWon.set(true);
             }
 

@@ -11,7 +11,7 @@ public interface RaftObserver {
 
     void voteRejected();
 
-    void electionWon();
+    void electionWon(int term);
 
     void electionTimedout();
 
@@ -19,7 +19,7 @@ public interface RaftObserver {
 
     void shutdown();
 
-    static RaftObserver getDefaultObserverInstance() {
+    static RaftObserver getDefaultInstance() {
         return new RaftObserver() {
 
             @Override
@@ -48,7 +48,7 @@ public interface RaftObserver {
             }
 
             @Override
-            public void electionWon() {
+            public void electionWon(int term) {
                 // nop
             }
 

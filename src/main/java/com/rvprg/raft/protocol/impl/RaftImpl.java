@@ -73,6 +73,8 @@ public class RaftImpl implements Raft {
 
     private final Log log;
 
+    private final Configuration configuration;
+
     @Inject
     public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, RaftObserver observer) {
         this(configuration, memberConnector, messageReceiver, log, 0, Role.Follower, observer);
@@ -90,14 +92,15 @@ public class RaftImpl implements Raft {
         this.heartbeatPeriod = configuration.getHeartbeatPeriod();
         this.electionMinTimeout = configuration.getElectionMinTimeout();
         this.electionMaxTimeout = configuration.getElectionMaxTimeout();
+        this.configuration = configuration;
 
-        this.observer = observer == null ? RaftObserver.getDefaultObserverInstance() : observer;
+        this.observer = observer == null ? RaftObserver.getDefaultInstance() : observer;
 
         // FIXME: double initialization
         initializeEventLoop();
 
         MemberConnectorObserverImpl memberConnectorObserver = new MemberConnectorObserverImpl(this, messageReceiver.getChannelPipelineInitializer());
-        configuration.getMembers().forEach(member -> memberConnector.register(member, memberConnectorObserver));
+        configuration.getMemberIds().forEach(memberId -> memberConnector.register(memberId, memberConnectorObserver));
     }
 
     private void initializeEventLoop() {
@@ -190,7 +193,7 @@ public class RaftImpl implements Raft {
 
             if (votesReceived >= getMajority()) {
                 becomeLeader();
-                observer.electionWon();
+                observer.electionWon(currentTerm);
             }
         }
     }
@@ -453,6 +456,16 @@ public class RaftImpl implements Raft {
         synchronized (stateLock) {
             return started;
         }
+    }
+
+    @Override
+    public Configuration getConfiguration() {
+        return configuration;
+    }
+
+    @Override
+    public MemberId getId() {
+        return selfId;
     }
 
 }
