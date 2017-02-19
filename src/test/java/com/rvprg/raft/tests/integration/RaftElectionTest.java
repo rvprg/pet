@@ -1,4 +1,4 @@
-package com.rvprg.raft.tests;
+package com.rvprg.raft.tests.integration;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -33,10 +33,7 @@ import com.rvprg.raft.transport.MessageReceiver;
 public class RaftElectionTest {
 
     private Raft getRaft(String host, int port, Set<MemberId> nodes, RaftObserver raftObserver) {
-        Configuration configuration = new Configuration();
-        configuration.setHost(host);
-        configuration.setPort(port);
-        nodes.forEach(member -> configuration.addMemberId(member));
+        Configuration configuration = Configuration.newBuilder().memberId(new MemberId(host, port)).addMemberIds(nodes).build();
 
         Injector injector = Guice.createInjector(new Module(configuration));
         MemberConnector memberConnector = injector.getInstance(MemberConnector.class);

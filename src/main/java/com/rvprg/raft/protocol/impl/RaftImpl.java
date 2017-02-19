@@ -33,18 +33,15 @@ import io.netty.util.concurrent.ScheduledFuture;
 import net.jcip.annotations.GuardedBy;
 
 public class RaftImpl implements Raft {
-    Logger logger = LoggerFactory.getLogger(RaftImpl.class);
+    private final Logger logger = LoggerFactory.getLogger(RaftImpl.class);
 
+    private final MemberId selfId;
+    private final Configuration configuration;
     private final MemberConnector memberConnector;
     private final MessageReceiver messageReceiver;
+    private final Log log;
 
     // TODO: Make debug messages consistent format.
-    // FIXME: Use configuration object instead?
-    private final long heartbeatTimeout;
-    private final int heartbeatPeriod;
-    private final int electionMinTimeout;
-    private final int electionMaxTimeout;
-
     private final AtomicReference<ScheduledFuture<?>> newElectionInitiatorTask = new AtomicReference<ScheduledFuture<?>>();
     private final AtomicReference<ScheduledFuture<?>> electionTimeoutMonitorTask = new AtomicReference<ScheduledFuture<?>>();
     private final AtomicReference<ScheduledFuture<?>> periodicHeartbeatTask = new AtomicReference<ScheduledFuture<?>>();
@@ -67,13 +64,7 @@ public class RaftImpl implements Raft {
     @GuardedBy("stateLock")
     private AtomicReference<EventLoopGroup> eventLoop = new AtomicReference<EventLoopGroup>(null);
 
-    private final MemberId selfId;
-
-    private final Random random = new Random();
-
-    private final Log log;
-
-    private final Configuration configuration;
+    private final Random random;
 
     @Inject
     public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, RaftObserver observer) {
@@ -81,7 +72,6 @@ public class RaftImpl implements Raft {
     }
 
     public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, int initTerm, Role initRole, RaftObserver observer) {
-        this.heartbeatTimeout = configuration.getHeartbeatTimeout();
         this.memberConnector = memberConnector;
         this.messageReceiver = messageReceiver;
         this.selfId = messageReceiver.getMemberId();
@@ -89,11 +79,8 @@ public class RaftImpl implements Raft {
         this.currentTerm = initTerm;
         this.role = initRole;
         this.leader = null;
-        this.heartbeatPeriod = configuration.getHeartbeatPeriod();
-        this.electionMinTimeout = configuration.getElectionMinTimeout();
-        this.electionMaxTimeout = configuration.getElectionMaxTimeout();
         this.configuration = configuration;
-
+        this.random = new Random();
         this.observer = observer == null ? RaftObserver.getDefaultInstance() : observer;
 
         // FIXME: double initialization
@@ -315,11 +302,11 @@ public class RaftImpl implements Raft {
 
     private ScheduledFuture<?> scheduleNextElectionTask() {
         observer.nextElectionScheduled();
-        return eventLoop.get().schedule(() -> RaftImpl.this.heartbeatTimedout(), heartbeatTimeout, TimeUnit.MILLISECONDS);
+        return eventLoop.get().schedule(() -> RaftImpl.this.heartbeatTimedout(), configuration.getHeartbeatTimeout(), TimeUnit.MILLISECONDS);
     }
 
     private void scheduleElectionTimeoutTask() {
-        final int timeout = random.nextInt(electionMaxTimeout - electionMinTimeout) + electionMinTimeout;
+        final int timeout = random.nextInt(configuration.getElectionMaxTimeout() - configuration.getElectionMinTimeout()) + configuration.getElectionMinTimeout();
         ScheduledFuture<?> prevTask = electionTimeoutMonitorTask.getAndSet(
                 eventLoop.get().schedule(() -> RaftImpl.this.electionTimedout(), timeout, TimeUnit.MILLISECONDS));
         cancelTask(prevTask);
@@ -327,7 +314,7 @@ public class RaftImpl implements Raft {
 
     private void schedulePeriodicHeartbeatTask() {
         ScheduledFuture<?> prevTask = periodicHeartbeatTask.getAndSet(
-                eventLoop.get().scheduleAtFixedRate(() -> RaftImpl.this.scheduleSendHeartbeats(), 0, heartbeatPeriod, TimeUnit.MILLISECONDS));
+                eventLoop.get().scheduleAtFixedRate(() -> RaftImpl.this.scheduleSendHeartbeats(), 0, configuration.getHeartbeatPeriod(), TimeUnit.MILLISECONDS));
         cancelTask(prevTask);
     }
 

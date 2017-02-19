@@ -20,7 +20,7 @@ import com.rvprg.raft.transport.MemberId;
 public class MembersConnectorTest {
     @Test
     public void testAutoReconnectionBookkeeping() throws InterruptedException {
-        Injector injector = Guice.createInjector(new Module(new Configuration()));
+        Injector injector = Guice.createInjector(new Module(Configuration.newBuilder().build()));
         MemberConnector connector = injector.getInstance(MemberConnector.class);
         ChannelPipelineInitializer pipelineInitializer = injector.getInstance(ChannelPipelineInitializer.class);
 
@@ -53,7 +53,7 @@ public class MembersConnectorTest {
 
     @Test
     public void testAutoReconnection() throws InterruptedException {
-        Injector injector = Guice.createInjector(new Module(new Configuration()));
+        Injector injector = Guice.createInjector(new Module(Configuration.newBuilder().build()));
         MemberConnector connector = injector.getInstance(MemberConnector.class);
         ChannelPipelineInitializer pipelineInitializer = injector.getInstance(ChannelPipelineInitializer.class);
 

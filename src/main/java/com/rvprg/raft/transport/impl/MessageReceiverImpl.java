@@ -33,7 +33,7 @@ public class MessageReceiverImpl implements MessageReceiver {
         this.server = new ServerBootstrap();
         this.configuration = configuration;
         this.pipelineInitializer = pipelineInitializer;
-        this.memberId = new MemberId(configuration.getHost(), configuration.getPort());
+        this.memberId = configuration.getMemberId();
     }
 
     private void createEventLoops() {
@@ -67,9 +67,7 @@ public class MessageReceiverImpl implements MessageReceiver {
                     .option(ChannelOption.SO_BACKLOG, 128)
                     .childOption(ChannelOption.SO_KEEPALIVE, true);
 
-            server.bind(
-                    configuration.getHost(),
-                    configuration.getPort()).sync();
+            server.bind(configuration.getMemberId()).sync();
 
             started = true;
         }

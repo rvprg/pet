@@ -159,7 +159,7 @@ public class MessageDispatcherTest {
 
     @Test
     public void testProtocolMessageDispatcher() throws InterruptedException {
-        Injector injector = Guice.createInjector(new Module(new Configuration()));
+        Injector injector = Guice.createInjector(new Module(Configuration.newBuilder().build()));
         MemberConnector connector = injector.getInstance(MemberConnector.class);
         ChannelPipelineInitializer pipelineInitializer = injector.getInstance(ChannelPipelineInitializer.class);
 

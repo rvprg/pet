@@ -98,7 +98,7 @@ public class MemberConnectorImpl implements MemberConnector {
             @Override
             public void operationComplete(ChannelFuture future) throws Exception {
                 if (!future.isSuccess()) {
-                    logger.error("Connection to {} failed. Retrying in {} ms.", memberId, retryDelay);
+                    logger.warn("Connection to {} failed. Retrying in {} ms.", memberId, retryDelay);
                     memberScheduledReconnect(memberId);
 
                     channelFuture.channel().eventLoop().schedule(new Runnable() {

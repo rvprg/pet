@@ -21,7 +21,7 @@ import com.rvprg.raft.transport.MemberId;
 public class MemberConnectorObserverImplTest {
     @Test
     public void testObserverAddsHandlersOnConnect() throws InterruptedException {
-        Injector injector = Guice.createInjector(new Module(new Configuration()));
+        Injector injector = Guice.createInjector(new Module(Configuration.newBuilder().build()));
         MemberConnector connector = injector.getInstance(MemberConnector.class);
         ChannelPipelineInitializer pipelineInitializer = injector.getInstance(ChannelPipelineInitializer.class);
 

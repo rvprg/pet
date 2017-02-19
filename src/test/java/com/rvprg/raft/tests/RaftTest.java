@@ -57,7 +57,7 @@ public class RaftTest {
 
     @Test
     public void checkHeartbeatTimeout() throws InterruptedException {
-        Configuration configuration = new Configuration();
+        Configuration configuration = Configuration.newBuilder().build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -128,7 +128,7 @@ public class RaftTest {
 
     @Test
     public void testElectionTimeout() throws InterruptedException {
-        Configuration configuration = new Configuration();
+        Configuration configuration = Configuration.newBuilder().build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MembersRegistry memberRegistry = mock(MembersRegistry.class);
@@ -174,7 +174,7 @@ public class RaftTest {
 
     @Test
     public void testConsumeVoteRequest_GiveVoteOnce() {
-        Configuration configuration = new Configuration();
+        Configuration configuration = Configuration.newBuilder().build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -230,7 +230,7 @@ public class RaftTest {
 
     @Test
     public void testConsumeVoteRequest_GiveVoteSameCandidate() {
-        Configuration configuration = new Configuration();
+        Configuration configuration = Configuration.newBuilder().build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -274,7 +274,7 @@ public class RaftTest {
 
     @Test
     public void testConsumeVoteRequest_GiveVoteIfLogIsAsUpToDateAsReceveirs() {
-        Configuration configuration = new Configuration();
+        Configuration configuration = Configuration.newBuilder().build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -335,7 +335,7 @@ public class RaftTest {
 
     @Test
     public void testConsumeVoteRequest_DontGiveVoteIfTermIsOutdated() {
-        Configuration configuration = new Configuration();
+        Configuration configuration = Configuration.newBuilder().build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -361,7 +361,7 @@ public class RaftTest {
 
     @Test
     public void testConsumeVoteRequestResponse_CheckMajorityRule() {
-        Configuration configuration = new Configuration();
+        Configuration configuration = Configuration.newBuilder().build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -463,7 +463,7 @@ public class RaftTest {
 
     @Test
     public void testConsumeVoteRequestResponse_CheckSateTerm() {
-        Configuration configuration = new Configuration();
+        Configuration configuration = Configuration.newBuilder().build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
