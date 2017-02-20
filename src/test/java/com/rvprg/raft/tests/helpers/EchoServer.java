@@ -1,7 +1,5 @@
 package com.rvprg.raft.tests.helpers;
 
-import java.util.Random;
-
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage;
 import com.rvprg.raft.transport.ChannelPipelineInitializer;
 
@@ -21,7 +19,6 @@ public class EchoServer {
     private final EventLoopGroup workerGroup;
     private final ServerBootstrap server;
     private final ChannelPipelineInitializer pipelineInitializer;
-    private final Random random;
     private int serverPort;
 
     public int getPort() {
@@ -40,7 +37,6 @@ public class EchoServer {
         this.workerGroup = new NioEventLoopGroup();
         this.server = new ServerBootstrap();
         this.pipelineInitializer = pipelineInitializer;
-        this.random = new Random();
     }
 
     public void shutdown() {

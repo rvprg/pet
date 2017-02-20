@@ -31,6 +31,9 @@ import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.MessageReceiver;
 
 public class RaftElectionTest {
+    // TODO:
+    // Test:Check that the candidate with the longer term should win the
+    // election
 
     private Raft getRaft(String host, int port, Set<MemberId> nodes, RaftObserver raftObserver) {
         Configuration configuration = Configuration.newBuilder().memberId(new MemberId(host, port)).addMemberIds(nodes).build();

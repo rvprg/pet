@@ -273,7 +273,7 @@ public class RaftTest {
     }
 
     @Test
-    public void testConsumeVoteRequest_GiveVoteIfLogIsAsUpToDateAsReceveirs() {
+    public void testConsumeVoteRequest_GiveVoteIfLogIsAsUpToDateAsReceivers() {
         Configuration configuration = Configuration.newBuilder().build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
