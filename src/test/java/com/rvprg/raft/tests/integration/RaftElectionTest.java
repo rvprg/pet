@@ -157,6 +157,9 @@ public class RaftElectionTest {
                     break;
                 }
             }
+            if (currentLeader == null) {
+                continue;
+            }
 
             rafts.remove(currentLeader);
             Configuration c = currentLeader.getConfiguration();

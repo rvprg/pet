@@ -50,6 +50,15 @@ public class Configuration {
         }
 
         public Configuration build() {
+            if (electionMinTimeout > electionMaxTimeout) {
+                throw new IllegalArgumentException("electionMaxTimeout must not be smaller than election electionMinTimeout");
+            }
+            if (heartbeatTimeout < heartbeatPeriod) {
+                throw new IllegalArgumentException("heartbeatTimeout must not be smaller than heartbeatPeriod");
+            }
+            if (memberId == null) {
+                throw new IllegalArgumentException("memberId must not be null");
+            }
             return new Configuration(this);
         }
 
