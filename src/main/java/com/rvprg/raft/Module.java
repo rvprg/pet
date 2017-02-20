@@ -10,6 +10,8 @@ import com.rvprg.raft.protocol.RaftObserver;
 import com.rvprg.raft.protocol.impl.MemberConnectorObserverImpl;
 import com.rvprg.raft.protocol.impl.RaftImpl;
 import com.rvprg.raft.protocol.impl.TransientLogImpl;
+import com.rvprg.raft.sm.StateMachine;
+import com.rvprg.raft.sm.impl.StateMachineImpl;
 import com.rvprg.raft.transport.ChannelPipelineInitializer;
 import com.rvprg.raft.transport.EditableMembersRegistry;
 import com.rvprg.raft.transport.MemberConnector;
@@ -49,6 +51,7 @@ public class Module extends AbstractModule {
         bind(MessageConsumer.class).to(RaftImpl.class);
         bind(Raft.class).to(RaftImpl.class);
         bind(Log.class).to(TransientLogImpl.class);
+        bind(StateMachine.class).to(StateMachineImpl.class);
 
         bind(RaftObserver.class).toInstance(RaftObserver.getDefaultInstance());
     }

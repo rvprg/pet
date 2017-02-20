@@ -36,6 +36,7 @@ import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage.MessageType
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVote;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse.Builder;
+import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberId;
@@ -61,10 +62,11 @@ public class RaftTest {
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
+        StateMachine stateMachine = mock(StateMachine.class);
         RaftObserver raftObserver = mock(RaftObserver.class);
         Log log = mock(Log.class);
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
         final AtomicLong lastHeartbeatTime = new AtomicLong();
         final AtomicLong requestVotesInitiatedTime = new AtomicLong();
 
@@ -132,6 +134,7 @@ public class RaftTest {
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MembersRegistry memberRegistry = mock(MembersRegistry.class);
+        StateMachine stateMachine = mock(StateMachine.class);
         Set<Member> members = new HashSet<Member>();
         Mockito.when(memberRegistry.getAll()).thenReturn(members);
         Mockito.when(memberConnector.getActiveMembers()).thenReturn(memberRegistry);
@@ -144,7 +147,7 @@ public class RaftTest {
         Mockito.when(log.getLast()).thenReturn(logEntry);
         Mockito.when(log.length()).thenReturn(0);
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
         // Start as a follower with term set to 0.
         assertEquals(Role.Follower, raft.getRole());
         assertEquals(0, raft.getCurrentTerm());
@@ -178,11 +181,12 @@ public class RaftTest {
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
+        StateMachine stateMachine = mock(StateMachine.class);
         RaftObserver raftObserver = mock(RaftObserver.class);
         Log log = mock(Log.class);
         Channel senderChannel = mock(Channel.class);
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
 
         assertEquals(0, raft.getCurrentTerm());
         assertEquals(0, log.getCommitIndex());
@@ -234,11 +238,12 @@ public class RaftTest {
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
+        StateMachine stateMachine = mock(StateMachine.class);
         RaftObserver raftObserver = mock(RaftObserver.class);
         Log log = mock(Log.class);
         Channel senderChannel = mock(Channel.class);
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
 
         assertEquals(0, raft.getCurrentTerm());
         assertEquals(0, log.getCommitIndex());
@@ -278,11 +283,12 @@ public class RaftTest {
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
+        StateMachine stateMachine = mock(StateMachine.class);
         RaftObserver raftObserver = mock(RaftObserver.class);
         Log log = mock(Log.class);
         Channel senderChannel = mock(Channel.class);
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
 
         assertEquals(0, raft.getCurrentTerm());
         assertEquals(0, log.getCommitIndex());
@@ -339,11 +345,12 @@ public class RaftTest {
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
+        StateMachine stateMachine = mock(StateMachine.class);
         RaftObserver raftObserver = mock(RaftObserver.class);
         Log log = mock(Log.class);
         Channel senderChannel = mock(Channel.class);
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, 2, Role.Follower, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 2, Role.Follower, raftObserver);
 
         assertEquals(2, raft.getCurrentTerm());
 
@@ -365,6 +372,7 @@ public class RaftTest {
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
+        StateMachine stateMachine = mock(StateMachine.class);
         AtomicInteger votesReceived = new AtomicInteger(0);
         AtomicInteger votesRejected = new AtomicInteger(0);
         AtomicBoolean electionWon = new AtomicBoolean();
@@ -413,7 +421,7 @@ public class RaftTest {
         Log log = mock(Log.class);
         Channel senderChannel = mock(Channel.class);
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, 1, Role.Candidate, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 1, Role.Candidate, raftObserver);
 
         assertEquals(1, raft.getCurrentTerm());
 
@@ -467,11 +475,12 @@ public class RaftTest {
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
+        StateMachine stateMachine = mock(StateMachine.class);
         RaftObserver raftObserver = mock(RaftObserver.class);
         Log log = mock(Log.class);
         Channel senderChannel = mock(Channel.class);
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, 1, Role.Candidate, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 1, Role.Candidate, raftObserver);
 
         assertEquals(Role.Candidate, raft.getRole());
         assertEquals(1, raft.getCurrentTerm());

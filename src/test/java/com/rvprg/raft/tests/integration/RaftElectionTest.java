@@ -25,6 +25,7 @@ import com.rvprg.raft.protocol.Role;
 import com.rvprg.raft.protocol.impl.RaftImpl;
 import com.rvprg.raft.protocol.impl.TransientLogImpl;
 import com.rvprg.raft.sm.Command;
+import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.tests.helpers.NetworkUtils;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberId;
@@ -40,6 +41,7 @@ public class RaftElectionTest {
 
         Injector injector = Guice.createInjector(new Module(configuration));
         MemberConnector memberConnector = injector.getInstance(MemberConnector.class);
+        StateMachine stateMachine = injector.getInstance(StateMachine.class);
 
         MessageReceiver messageReceiver = injector.getInstance(MessageReceiver.class);
         // Fake log entries.
@@ -56,7 +58,7 @@ public class RaftElectionTest {
             }
         });
 
-        return new RaftImpl(configuration, memberConnector, messageReceiver, log, raftObserver);
+        return new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
     }
 
     @Test

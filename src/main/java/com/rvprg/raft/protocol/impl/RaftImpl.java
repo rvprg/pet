@@ -21,6 +21,7 @@ import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage.MessageType
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVote;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse.Builder;
+import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberId;
@@ -66,12 +67,15 @@ public class RaftImpl implements Raft {
 
     private final Random random;
 
+    private final StateMachine stateMachine;
+
     @Inject
-    public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, RaftObserver observer) {
-        this(configuration, memberConnector, messageReceiver, log, 0, Role.Follower, observer);
+    public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine, RaftObserver observer) {
+        this(configuration, memberConnector, messageReceiver, log, stateMachine, 0, Role.Follower, observer);
     }
 
-    public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, int initTerm, Role initRole, RaftObserver observer) {
+    public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine, int initTerm, Role initRole,
+            RaftObserver observer) {
         this.memberConnector = memberConnector;
         this.messageReceiver = messageReceiver;
         this.selfId = messageReceiver.getMemberId();
@@ -82,6 +86,7 @@ public class RaftImpl implements Raft {
         this.configuration = configuration;
         this.random = new Random();
         this.observer = observer == null ? RaftObserver.getDefaultInstance() : observer;
+        this.stateMachine = stateMachine;
 
         // FIXME: double initialization
         initializeEventLoop();
