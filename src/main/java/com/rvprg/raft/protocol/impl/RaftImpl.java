@@ -134,9 +134,7 @@ public class RaftImpl implements Raft {
         synchronized (stateLock) {
             response.setTerm(getCurrentTerm());
             MemberId candidateId = MemberId.fromString(requestVote.getCandidateId());
-            if (requestVote.getTerm() < getCurrentTerm()) {
-                grantVote = false;
-            } else if (votedFor == null || votedFor.equals(candidateId)) {
+            if (votedFor == null || votedFor.equals(candidateId)) {
                 if (requestVote.getTerm() == getCurrentTerm()) {
                     grantVote = checkCandidatesLogIsUpToDate(requestVote);
                 }
