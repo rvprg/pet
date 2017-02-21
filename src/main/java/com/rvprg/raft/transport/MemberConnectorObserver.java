@@ -9,7 +9,7 @@ public interface MemberConnectorObserver {
 
     public void exceptionCaught(MemberId memberId, Throwable cause);
 
-    static MemberConnectorObserver getDefaultObserverInstance() {
+    static MemberConnectorObserver getDefaultInstance() {
         return new MemberConnectorObserver() {
 
             @Override

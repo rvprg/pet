@@ -70,7 +70,7 @@ public class MemberConnectorImpl implements MemberConnector {
 
     @Override
     public void register(final MemberId member, final MemberConnectorObserver observer) {
-        registered.putIfAbsent(member, observer == null ? MemberConnectorObserver.getDefaultObserverInstance() : observer);
+        registered.putIfAbsent(member, observer == null ? MemberConnectorObserver.getDefaultInstance() : observer);
     }
 
     @Override
