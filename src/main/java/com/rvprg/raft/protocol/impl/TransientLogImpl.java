@@ -20,18 +20,8 @@ public class TransientLogImpl implements Log {
     }
 
     @Override
-    public int lastApplied() {
-        return 0;
-    }
-
-    @Override
-    public void add(int index, LogEntry logEntry) {
-        log.add(index, logEntry);
-    }
-
-    @Override
-    public int length() {
-        return log.size();
+    public void append(LogEntry logEntry) {
+        log.add(logEntry);
     }
 
     @Override
@@ -42,6 +32,16 @@ public class TransientLogImpl implements Log {
     @Override
     public LogEntry getLast() {
         return log.get(log.size() - 1);
+    }
+
+    @Override
+    public int getLastIndex() {
+        return 0;
+    }
+
+    @Override
+    public int getLastApplied() {
+        return 0;
     }
 
 }

@@ -145,7 +145,7 @@ public class RaftTest {
         LogEntry logEntry = mock(LogEntry.class);
         Mockito.when(logEntry.getTerm()).thenReturn(0);
         Mockito.when(log.getLast()).thenReturn(logEntry);
-        Mockito.when(log.length()).thenReturn(0);
+        Mockito.when(log.getLastIndex()).thenReturn(0);
 
         final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
         // Start as a follower with term set to 0.
@@ -201,7 +201,7 @@ public class RaftTest {
         LogEntry logEntry = mock(LogEntry.class);
         Mockito.when(logEntry.getTerm()).thenReturn(0);
         Mockito.when(log.getLast()).thenReturn(logEntry);
-        Mockito.when(log.length()).thenReturn(0);
+        Mockito.when(log.getLastIndex()).thenReturn(0);
 
         raft.consumeRequestVote(senderChannel, requestVote0);
 
@@ -258,7 +258,7 @@ public class RaftTest {
         LogEntry logEntry = mock(LogEntry.class);
         Mockito.when(logEntry.getTerm()).thenReturn(0);
         Mockito.when(log.getLast()).thenReturn(logEntry);
-        Mockito.when(log.length()).thenReturn(0);
+        Mockito.when(log.getLastIndex()).thenReturn(0);
 
         raft.consumeRequestVote(senderChannel, requestVote);
 
@@ -303,7 +303,7 @@ public class RaftTest {
         LogEntry logEntry = mock(LogEntry.class);
         Mockito.when(logEntry.getTerm()).thenReturn(0);
         Mockito.when(log.getLast()).thenReturn(logEntry);
-        Mockito.when(log.length()).thenReturn(0);
+        Mockito.when(log.getLastIndex()).thenReturn(0);
 
         raft.consumeRequestVote(senderChannel, requestVote);
 
@@ -332,7 +332,7 @@ public class RaftTest {
         // Assume receiver's log ends with the same term, but its length is
         // longer than candidates, so no vote should be granted.
         Mockito.when(logEntry.getTerm()).thenReturn(1);
-        Mockito.when(log.length()).thenReturn(2);
+        Mockito.when(log.getLastIndex()).thenReturn(2);
 
         raft.consumeRequestVote(senderChannel, requestVote);
 

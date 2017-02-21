@@ -190,7 +190,7 @@ public class RaftImpl implements Raft {
 
     private boolean checkCandidatesLogIsUpToDate(RequestVote requestVote) {
         if (log.getLast().getTerm() == requestVote.getLastLogTerm()) {
-            return requestVote.getLastLogIndex() >= log.length();
+            return requestVote.getLastLogIndex() >= log.getLastIndex();
         }
         return requestVote.getLastLogTerm() >= log.getLast().getTerm();
     }
@@ -388,7 +388,7 @@ public class RaftImpl implements Raft {
         RequestVote req = RequestVote.newBuilder()
                 .setTerm(getCurrentTerm())
                 .setCandidateId(selfId.toString())
-                .setLastLogIndex(log.length())
+                .setLastLogIndex(log.getLastIndex())
                 .setLastLogTerm(log.getLast().getTerm()).build();
 
         RaftMessage requestVote = RaftMessage.newBuilder()

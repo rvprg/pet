@@ -2,6 +2,7 @@ package com.rvprg.raft.tests.integration;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -12,6 +13,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Phaser;
 
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -23,8 +25,6 @@ import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftObserver;
 import com.rvprg.raft.protocol.Role;
 import com.rvprg.raft.protocol.impl.RaftImpl;
-import com.rvprg.raft.protocol.impl.TransientLogImpl;
-import com.rvprg.raft.sm.Command;
 import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.tests.helpers.NetworkUtils;
 import com.rvprg.raft.transport.MemberConnector;
@@ -45,18 +45,12 @@ public class RaftElectionTest {
 
         MessageReceiver messageReceiver = injector.getInstance(MessageReceiver.class);
         // Fake log entries.
-        Log log = new TransientLogImpl();
-        log.add(0, new LogEntry() {
-            @Override
-            public int getTerm() {
-                return 0;
-            }
 
-            @Override
-            public Command getCommand() {
-                return null;
-            }
-        });
+        Log log = mock(Log.class);
+        LogEntry logEntry = mock(LogEntry.class);
+        Mockito.when(logEntry.getTerm()).thenReturn(0);
+        Mockito.when(log.getLast()).thenReturn(logEntry);
+        Mockito.when(log.getLastIndex()).thenReturn(0);
 
         return new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
     }

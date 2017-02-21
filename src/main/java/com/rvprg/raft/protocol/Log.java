@@ -5,13 +5,13 @@ import java.io.Closeable;
 public interface Log extends Closeable {
     int getCommitIndex();
 
-    int lastApplied();
+    int getLastApplied();
 
-    void add(int index, LogEntry logEntry);
-
-    LogEntry get(int index);
+    int getLastIndex();
 
     LogEntry getLast();
 
-    int length();
+    void append(LogEntry logEntry);
+
+    LogEntry get(int index);
 }
