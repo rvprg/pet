@@ -3,6 +3,7 @@ package com.rvprg.raft.configuration;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.google.common.base.Verify;
 import com.google.common.collect.ImmutableSet;
 import com.rvprg.raft.transport.MemberId;
 
@@ -17,6 +18,7 @@ public class Configuration {
         private int heartbeatPeriod = 50;
         private int electionMinTimeout = 150;
         private int electionMaxTimeout = 300;
+        private int autoReconnectRetryInterval = 1000;
         private Set<MemberId> memberIds = new HashSet<MemberId>();
 
         public Builder memberId(MemberId memberId) {
@@ -44,21 +46,24 @@ public class Configuration {
             return this;
         }
 
+        public Builder autoReconnectInterval(int autoReconnectInterval) {
+            this.autoReconnectRetryInterval = autoReconnectInterval;
+            return this;
+        }
+
         public Builder addMemberIds(Set<MemberId> memberIds) {
             this.memberIds.addAll(memberIds);
             return this;
         }
 
         public Configuration build() {
-            if (electionMinTimeout > electionMaxTimeout) {
-                throw new IllegalArgumentException("electionMaxTimeout must not be smaller than election electionMinTimeout");
-            }
-            if (heartbeatTimeout < heartbeatPeriod) {
-                throw new IllegalArgumentException("heartbeatTimeout must not be smaller than heartbeatPeriod");
-            }
-            if (memberId == null) {
-                throw new IllegalArgumentException("memberId must not be null");
-            }
+            Verify.verify(autoReconnectRetryInterval > 0, "autoReconnectRetryInterval must be positive");
+            Verify.verify(electionMinTimeout > 0, "electionMinTimeout must be positive");
+            Verify.verify(electionMaxTimeout > 0, "electionMaxTimeout must be positive");
+            Verify.verify(heartbeatPeriod > 0, "heartbeatPeriod must be positive");
+            Verify.verify(electionMinTimeout < electionMaxTimeout, "electionMaxTimeout must not be smaller than election electionMinTimeout");
+            Verify.verify(heartbeatTimeout > heartbeatPeriod, "heartbeatTimeout must not be smaller than heartbeatPeriod");
+            Verify.verify(memberId != null, "memberId must not be null");
             return new Configuration(this);
         }
 
@@ -69,6 +74,7 @@ public class Configuration {
     private final int heartbeatPeriod;
     private final int electionMinTimeout;
     private final int electionMaxTimeout;
+    private final int autoReconnectRetryInterval;
     private final Set<MemberId> memberIds;
 
     public Configuration(Builder builder) {
@@ -77,6 +83,7 @@ public class Configuration {
         heartbeatPeriod = builder.heartbeatPeriod;
         electionMinTimeout = builder.electionMinTimeout;
         electionMaxTimeout = builder.electionMaxTimeout;
+        autoReconnectRetryInterval = builder.autoReconnectRetryInterval;
         memberIds = ImmutableSet.copyOf(builder.memberIds);
     }
 
@@ -107,4 +114,9 @@ public class Configuration {
     public static Builder newBuilder() {
         return new Builder();
     }
+
+    public int getAutoReconnectRetryInterval() {
+        return autoReconnectRetryInterval;
+    }
+
 }

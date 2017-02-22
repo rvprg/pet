@@ -8,6 +8,9 @@ import com.rvprg.raft.transport.MemberConnectorObserver;
 import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.impl.MessageDispatcher;
 
+import net.jcip.annotations.Immutable;
+
+@Immutable
 public class MemberConnectorObserverImpl implements MemberConnectorObserver {
     private final MessageConsumer messageConsumer;
     private final ChannelPipelineInitializer pipelineInitializer;

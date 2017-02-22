@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.Inject;
+import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.transport.EditableMembersRegistry;
 import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnector;
@@ -30,12 +31,12 @@ public class MemberConnectorImpl implements MemberConnector {
     private final static Logger logger = LoggerFactory.getLogger(MemberConnectorImpl.class);
 
     private final ConcurrentHashMap<MemberId, MemberConnectorObserver> registered = new ConcurrentHashMap<MemberId, MemberConnectorObserver>();
-    private final int retryDelay = 1000;
-
     private final Bootstrap clientBootstrap;
 
     private final EventLoopGroup workerGroup;
     private final MembersRegistry membersRegistry;
+
+    private final Configuration configuration;
 
     @Override
     public MembersRegistry getActiveMembers() {
@@ -43,8 +44,9 @@ public class MemberConnectorImpl implements MemberConnector {
     }
 
     @Inject
-    public MemberConnectorImpl(final EditableMembersRegistry members) {
+    public MemberConnectorImpl(final Configuration configuration, final EditableMembersRegistry members) {
         this.membersRegistry = members;
+        this.configuration = configuration;
         clientBootstrap = new Bootstrap();
         workerGroup = new NioEventLoopGroup();
         clientBootstrap.group(workerGroup);
@@ -98,7 +100,7 @@ public class MemberConnectorImpl implements MemberConnector {
             @Override
             public void operationComplete(ChannelFuture future) throws Exception {
                 if (!future.isSuccess()) {
-                    logger.warn("Connection to {} failed. Retrying in {} ms.", memberId, retryDelay);
+                    logger.warn("Connection to {} failed. Retrying in {} ms.", memberId, configuration.getAutoReconnectRetryInterval());
                     memberScheduledReconnect(memberId);
 
                     channelFuture.channel().eventLoop().schedule(new Runnable() {
@@ -106,7 +108,7 @@ public class MemberConnectorImpl implements MemberConnector {
                         public void run() {
                             connect(memberId);
                         }
-                    }, retryDelay, TimeUnit.MILLISECONDS);
+                    }, configuration.getAutoReconnectRetryInterval(), TimeUnit.MILLISECONDS);
                 }
             }
         });
