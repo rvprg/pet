@@ -1,4 +1,4 @@
-package com.rvprg.raft.tests.integration;
+package com.rvprg.raft.tests.functional;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
