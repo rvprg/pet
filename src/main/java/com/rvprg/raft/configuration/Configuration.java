@@ -61,6 +61,7 @@ public class Configuration {
             Verify.verify(electionMinTimeout > 0, "electionMinTimeout must be positive");
             Verify.verify(electionMaxTimeout > 0, "electionMaxTimeout must be positive");
             Verify.verify(heartbeatPeriod > 0, "heartbeatPeriod must be positive");
+            Verify.verify(heartbeatTimeout > 0, "heartbeatTimeout must be positive");
             Verify.verify(electionMinTimeout < electionMaxTimeout, "electionMaxTimeout must not be smaller than election electionMinTimeout");
             Verify.verify(heartbeatTimeout > heartbeatPeriod, "heartbeatTimeout must not be smaller than heartbeatPeriod");
             Verify.verify(memberId != null, "memberId must not be null");
