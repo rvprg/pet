@@ -1,7 +1,6 @@
 package com.rvprg.raft.protocol;
 
 import com.rvprg.raft.configuration.Configuration;
-import com.rvprg.raft.transport.MemberId;
 
 public interface Raft extends MessageConsumer {
     public void start() throws InterruptedException;
@@ -16,5 +15,4 @@ public interface Raft extends MessageConsumer {
 
     public Configuration getConfiguration();
 
-    public MemberId getId();
 }

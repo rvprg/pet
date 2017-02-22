@@ -184,7 +184,9 @@ public class RaftTest {
         StateMachine stateMachine = mock(StateMachine.class);
         RaftObserver raftObserver = mock(RaftObserver.class);
         Log log = mock(Log.class);
+        Member member = mock(Member.class);
         Channel senderChannel = mock(Channel.class);
+        Mockito.when(member.getChannel()).thenReturn(senderChannel);
 
         final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
 
@@ -203,7 +205,7 @@ public class RaftTest {
         Mockito.when(log.getLast()).thenReturn(logEntry);
         Mockito.when(log.getLastIndex()).thenReturn(0);
 
-        raft.consumeRequestVote(senderChannel, requestVote0);
+        raft.consumeRequestVote(member, requestVote0);
 
         Builder response0 = RequestVoteResponse.newBuilder();
         RaftMessage expectedResponse0 = RaftMessage.newBuilder()
@@ -221,7 +223,7 @@ public class RaftTest {
                 .setLastLogTerm(0)
                 .build();
 
-        raft.consumeRequestVote(senderChannel, requestVote1);
+        raft.consumeRequestVote(member, requestVote1);
 
         Builder response1 = RequestVoteResponse.newBuilder();
         RaftMessage expectedResponse1 = RaftMessage.newBuilder()
@@ -241,7 +243,9 @@ public class RaftTest {
         StateMachine stateMachine = mock(StateMachine.class);
         RaftObserver raftObserver = mock(RaftObserver.class);
         Log log = mock(Log.class);
+        Member member = mock(Member.class);
         Channel senderChannel = mock(Channel.class);
+        Mockito.when(member.getChannel()).thenReturn(senderChannel);
 
         final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
 
@@ -260,7 +264,7 @@ public class RaftTest {
         Mockito.when(log.getLast()).thenReturn(logEntry);
         Mockito.when(log.getLastIndex()).thenReturn(0);
 
-        raft.consumeRequestVote(senderChannel, requestVote);
+        raft.consumeRequestVote(member, requestVote);
 
         Builder response = RequestVoteResponse.newBuilder();
         RaftMessage expectedResponse = RaftMessage.newBuilder()
@@ -271,7 +275,7 @@ public class RaftTest {
         verify(senderChannel, times(1)).writeAndFlush(eq(expectedResponse));
 
         // Send the same request
-        raft.consumeRequestVote(senderChannel, requestVote);
+        raft.consumeRequestVote(member, requestVote);
 
         // Should grant vote.
         verify(senderChannel, times(2)).writeAndFlush(eq(expectedResponse));
@@ -286,7 +290,9 @@ public class RaftTest {
         StateMachine stateMachine = mock(StateMachine.class);
         RaftObserver raftObserver = mock(RaftObserver.class);
         Log log = mock(Log.class);
+        Member member = mock(Member.class);
         Channel senderChannel = mock(Channel.class);
+        Mockito.when(member.getChannel()).thenReturn(senderChannel);
 
         final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
 
@@ -305,7 +311,7 @@ public class RaftTest {
         Mockito.when(log.getLast()).thenReturn(logEntry);
         Mockito.when(log.getLastIndex()).thenReturn(0);
 
-        raft.consumeRequestVote(senderChannel, requestVote);
+        raft.consumeRequestVote(member, requestVote);
 
         Builder response = RequestVoteResponse.newBuilder();
         RaftMessage expectedResponse = RaftMessage.newBuilder()
@@ -319,7 +325,7 @@ public class RaftTest {
         // granted (i.e. last entry has more recent term, 1 != 2)
         Mockito.when(logEntry.getTerm()).thenReturn(2);
 
-        raft.consumeRequestVote(senderChannel, requestVote);
+        raft.consumeRequestVote(member, requestVote);
 
         Builder responseNoVoteGranted = RequestVoteResponse.newBuilder();
         RaftMessage expectedResponseNoVoteGranted = RaftMessage.newBuilder()
@@ -334,7 +340,7 @@ public class RaftTest {
         Mockito.when(logEntry.getTerm()).thenReturn(1);
         Mockito.when(log.getLastIndex()).thenReturn(2);
 
-        raft.consumeRequestVote(senderChannel, requestVote);
+        raft.consumeRequestVote(member, requestVote);
 
         verify(senderChannel, atLeast(1)).writeAndFlush(eq(expectedResponseNoVoteGranted));
     }
@@ -348,7 +354,9 @@ public class RaftTest {
         StateMachine stateMachine = mock(StateMachine.class);
         RaftObserver raftObserver = mock(RaftObserver.class);
         Log log = mock(Log.class);
+        Member member = mock(Member.class);
         Channel senderChannel = mock(Channel.class);
+        Mockito.when(member.getChannel()).thenReturn(senderChannel);
 
         final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 2, Role.Follower, raftObserver);
 
@@ -361,7 +369,7 @@ public class RaftTest {
                 .setLastLogTerm(1)
                 .build();
 
-        raft.consumeRequestVote(senderChannel, requestVote);
+        raft.consumeRequestVote(member, requestVote);
 
         verify(senderChannel, never()).writeAndFlush(any());
     }
@@ -419,7 +427,9 @@ public class RaftTest {
         };
 
         Log log = mock(Log.class);
+        Member member = mock(Member.class);
         Channel senderChannel = mock(Channel.class);
+        Mockito.when(member.getChannel()).thenReturn(senderChannel);
 
         final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 1, Role.Candidate, raftObserver);
 
@@ -442,28 +452,28 @@ public class RaftTest {
         Mockito.when(memberConnector.getActiveMembers()).thenReturn(members);
         Mockito.when(members.getAll()).thenReturn(new HashSet<Member>());
 
-        raft.consumeRequestVoteResponse(senderChannel, requestVoteResponseTerm1);
+        raft.consumeRequestVoteResponse(member, requestVoteResponseTerm1);
         assertEquals(1, votesReceived.get());
         assertEquals(0, votesRejected.get());
         assertEquals(Role.Candidate, raft.getRole());
 
-        raft.consumeRequestVoteResponse(senderChannel, requestVoteResponseTerm1);
+        raft.consumeRequestVoteResponse(member, requestVoteResponseTerm1);
         assertEquals(2, votesReceived.get());
         assertEquals(0, votesRejected.get());
         assertEquals(Role.Candidate, raft.getRole());
 
         // Send from a different term, should reject.
-        raft.consumeRequestVoteResponse(senderChannel, requestVoteResponseTerm0);
+        raft.consumeRequestVoteResponse(member, requestVoteResponseTerm0);
         assertEquals(2, votesReceived.get());
         assertEquals(1, votesRejected.get());
         assertEquals(Role.Candidate, raft.getRole());
 
-        raft.consumeRequestVoteResponse(senderChannel, requestVoteResponseTerm1);
+        raft.consumeRequestVoteResponse(member, requestVoteResponseTerm1);
         assertEquals(3, votesReceived.get());
         assertEquals(1, votesRejected.get());
         assertEquals(Role.Candidate, raft.getRole());
 
-        raft.consumeRequestVoteResponse(senderChannel, requestVoteResponseTerm1);
+        raft.consumeRequestVoteResponse(member, requestVoteResponseTerm1);
         assertEquals(4, votesReceived.get());
         assertEquals(1, votesRejected.get());
         assertEquals(Role.Leader, raft.getRole());
@@ -478,7 +488,9 @@ public class RaftTest {
         StateMachine stateMachine = mock(StateMachine.class);
         RaftObserver raftObserver = mock(RaftObserver.class);
         Log log = mock(Log.class);
+        Member member = mock(Member.class);
         Channel senderChannel = mock(Channel.class);
+        Mockito.when(member.getChannel()).thenReturn(senderChannel);
 
         final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 1, Role.Candidate, raftObserver);
 
@@ -490,7 +502,7 @@ public class RaftTest {
                 .setVoteGranted(true)
                 .build();
 
-        raft.consumeRequestVoteResponse(senderChannel, requestVoteResponseTerm1);
+        raft.consumeRequestVoteResponse(member, requestVoteResponseTerm1);
         assertEquals(Role.Follower, raft.getRole());
     }
 

@@ -56,7 +56,7 @@ public class RaftElectionTest {
     }
 
     @Test
-    public void testRandomCrashes() throws InterruptedException {
+    public void testElectionSafetyProperty() throws InterruptedException {
         // This test creates a cluster containing clusterSize members. It then
         // starts all of them, and waits until a leader is elected. Then it
         // kills the leader and restarts it. A new leader is elected. It
@@ -159,7 +159,7 @@ public class RaftElectionTest {
 
             rafts.remove(currentLeader);
             Configuration c = currentLeader.getConfiguration();
-            MemberId member = currentLeader.getId();
+            MemberId member = currentLeader.getMemberId();
             Raft newRaft = getRaft(member.getHostName(), member.getPort(), c.getMemberIds(), observer);
             newRaft.start();
             rafts.add(newRaft);

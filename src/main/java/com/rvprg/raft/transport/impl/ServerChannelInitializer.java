@@ -3,6 +3,7 @@ package com.rvprg.raft.transport.impl;
 import com.google.inject.Inject;
 import com.rvprg.raft.protocol.MessageConsumer;
 import com.rvprg.raft.transport.ChannelPipelineInitializer;
+import com.rvprg.raft.transport.Member;
 
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
@@ -19,7 +20,7 @@ public class ServerChannelInitializer extends ChannelInitializer<SocketChannel> 
 
     @Override
     protected void initChannel(SocketChannel ch) throws Exception {
-        pipelineInitializer.initialize(ch.pipeline()).addLast(new MessageDispatcher(messageConsumer));
+        pipelineInitializer.initialize(ch.pipeline()).addLast(new MessageDispatcher(new Member(ch), messageConsumer));
     }
 
 }

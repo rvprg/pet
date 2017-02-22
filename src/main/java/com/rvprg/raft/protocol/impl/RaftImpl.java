@@ -127,7 +127,7 @@ public class RaftImpl implements Raft {
     }
 
     @Override
-    public void consumeRequestVote(Channel senderChannel, RequestVote requestVote) {
+    public void consumeRequestVote(Member member, RequestVote requestVote) {
         boolean ignoreMessage = checkTermRecency(requestVote.getTerm());
         if (ignoreMessage) {
             return;
@@ -155,11 +155,11 @@ public class RaftImpl implements Raft {
                 .setType(MessageType.RequestVoteResponse)
                 .setRequestVoteResponse(response.setVoteGranted(grantVote).build())
                 .build();
-        senderChannel.writeAndFlush(responseMessage);
+        member.getChannel().writeAndFlush(responseMessage);
     }
 
     @Override
-    public void consumeRequestVoteResponse(Channel senderChannel, RequestVoteResponse requestVoteResponse) {
+    public void consumeRequestVoteResponse(Member member, RequestVoteResponse requestVoteResponse) {
         boolean ignoreMessage = checkTermRecency(requestVoteResponse.getTerm());
         if (ignoreMessage) {
             observer.voteRejected();
@@ -245,7 +245,7 @@ public class RaftImpl implements Raft {
     }
 
     @Override
-    public void consumeAppendEntries(Channel senderChannel, AppendEntries appendEntries) {
+    public void consumeAppendEntries(Member member, AppendEntries appendEntries) {
         boolean ignoreMessage = checkTermRecency(appendEntries.getTerm());
         if (ignoreMessage) {
             return;
@@ -269,7 +269,7 @@ public class RaftImpl implements Raft {
     }
 
     @Override
-    public void consumeAppendEntriesResponse(Channel senderChannel, AppendEntriesResponse appendEntriesResponse) {
+    public void consumeAppendEntriesResponse(Member member, AppendEntriesResponse appendEntriesResponse) {
         boolean ignoreMessage = checkTermRecency(appendEntriesResponse.getTerm());
         if (ignoreMessage) {
             return;
@@ -454,7 +454,7 @@ public class RaftImpl implements Raft {
     }
 
     @Override
-    public MemberId getId() {
+    public MemberId getMemberId() {
         return selfId;
     }
 

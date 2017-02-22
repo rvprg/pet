@@ -2,10 +2,10 @@ package com.rvprg.raft.protocol.impl;
 
 import com.google.inject.Inject;
 import com.rvprg.raft.protocol.MessageConsumer;
+import com.rvprg.raft.transport.ChannelPipelineInitializer;
 import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnectorObserver;
 import com.rvprg.raft.transport.MemberId;
-import com.rvprg.raft.transport.ChannelPipelineInitializer;
 import com.rvprg.raft.transport.impl.MessageDispatcher;
 
 public class MemberConnectorObserverImpl implements MemberConnectorObserver {
@@ -20,7 +20,7 @@ public class MemberConnectorObserverImpl implements MemberConnectorObserver {
 
     @Override
     public void connected(Member member) {
-        pipelineInitializer.initialize(member.getChannel().pipeline()).addLast(new MessageDispatcher(messageConsumer));
+        pipelineInitializer.initialize(member.getChannel().pipeline()).addLast(new MessageDispatcher(member, messageConsumer));
     }
 
     @Override

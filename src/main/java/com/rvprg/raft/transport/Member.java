@@ -23,6 +23,11 @@ public class Member {
 
     public Member(Channel channel) {
         this.channel = channel;
-        memberId = new MemberId((InetSocketAddress) channel.remoteAddress());
+        this.memberId = new MemberId((InetSocketAddress) channel.remoteAddress());
+    }
+
+    public Member(MemberId memberId, Channel channel) {
+        this.channel = channel;
+        this.memberId = memberId;
     }
 }

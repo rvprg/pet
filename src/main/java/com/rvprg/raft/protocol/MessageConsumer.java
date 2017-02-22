@@ -4,15 +4,15 @@ import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntries;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntriesResponse;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVote;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse;
+import com.rvprg.raft.transport.Member;
+import com.rvprg.raft.transport.MemberIdentifiable;
 
-import io.netty.channel.Channel;
+public interface MessageConsumer extends MemberIdentifiable {
+    void consumeRequestVote(Member member, RequestVote requestVote);
 
-public interface MessageConsumer {
-    void consumeRequestVote(Channel senderChannel, RequestVote requestVote);
+    void consumeRequestVoteResponse(Member member, RequestVoteResponse requestVote);
 
-    void consumeRequestVoteResponse(Channel senderChannel, RequestVoteResponse requestVote);
+    void consumeAppendEntries(Member member, AppendEntries appendEntries);
 
-    void consumeAppendEntries(Channel senderChannel, AppendEntries appendEntries);
-
-    void consumeAppendEntriesResponse(Channel senderChannel, AppendEntriesResponse appendEntriesResponse);
+    void consumeAppendEntriesResponse(Member member, AppendEntriesResponse appendEntriesResponse);
 }
