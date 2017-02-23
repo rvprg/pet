@@ -77,6 +77,7 @@ public class MessageDispatcherTest {
     private RaftMessage getAppendEntriesResponseInstance() {
         AppendEntriesResponse requestAppendEntriesResponse = ProtocolMessages.AppendEntriesResponse.newBuilder()
                 .setTerm(1)
+                .setSuccess(true)
                 .build();
         RaftMessage requestAppendEntriesRaftMessage = ProtocolMessages.RaftMessage.newBuilder()
                 .setAppendEntriesResponse(requestAppendEntriesResponse)

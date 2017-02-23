@@ -47,6 +47,6 @@ message AppendEntries {
 
 message AppendEntriesResponse {
     required uint32 term = 1;
-    // TDB
+    required bool success = 2;
 }
 
