@@ -1,6 +1,7 @@
 package com.rvprg.raft.protocol.impl;
 
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -46,6 +47,8 @@ public class RaftImpl implements Raft {
     private final AtomicReference<ScheduledFuture<?>> newElectionInitiatorTask = new AtomicReference<ScheduledFuture<?>>();
     private final AtomicReference<ScheduledFuture<?>> electionTimeoutMonitorTask = new AtomicReference<ScheduledFuture<?>>();
     private final AtomicReference<ScheduledFuture<?>> periodicHeartbeatTask = new AtomicReference<ScheduledFuture<?>>();
+
+    private final AtomicReference<ConcurrentHashMap<Member, Integer>> nextIndex = new AtomicReference<ConcurrentHashMap<Member, Integer>>(new ConcurrentHashMap<Member, Integer>());
 
     private final RaftObserver observer;
 
@@ -219,6 +222,7 @@ public class RaftImpl implements Raft {
             role = Role.Leader;
             leader = selfId;
             votesReceived = 0;
+            nextIndex.set(new ConcurrentHashMap<>());
         }
     }
 
@@ -230,6 +234,7 @@ public class RaftImpl implements Raft {
             role = Role.Follower;
             votedFor = null;
             votesReceived = 0;
+            nextIndex.set(new ConcurrentHashMap<>());
         }
     }
 
