@@ -1,9 +1,13 @@
 package com.rvprg.raft.protocol.impl;
 
+import java.util.Iterator;
+import java.util.Map.Entry;
 import java.util.Random;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.slf4j.Logger;
@@ -44,11 +48,13 @@ public class RaftImpl implements Raft {
     private final Log log;
 
     // TODO: Make debug messages consistent format.
-    private final AtomicReference<ScheduledFuture<?>> newElectionInitiatorTask = new AtomicReference<ScheduledFuture<?>>();
-    private final AtomicReference<ScheduledFuture<?>> electionTimeoutMonitorTask = new AtomicReference<ScheduledFuture<?>>();
-    private final AtomicReference<ScheduledFuture<?>> periodicHeartbeatTask = new AtomicReference<ScheduledFuture<?>>();
+    private final AtomicReference<ScheduledFuture<?>> newElectionInitiatorTask = new AtomicReference<>();
+    private final AtomicReference<ScheduledFuture<?>> electionTimeoutMonitorTask = new AtomicReference<>();
+    private final AtomicReference<ScheduledFuture<?>> periodicHeartbeatTask = new AtomicReference<>();
 
-    private final AtomicReference<ConcurrentHashMap<Member, Integer>> nextIndex = new AtomicReference<ConcurrentHashMap<Member, Integer>>(new ConcurrentHashMap<Member, Integer>());
+    private final ConcurrentHashMap<MemberId, AtomicInteger> nextIndexes = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<MemberId, AtomicInteger> matchIndexes = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Integer, CompletableFuture<Integer>> replicationCompletableFutures = new ConcurrentHashMap<>();
 
     private final RaftObserver observer;
 
@@ -222,7 +228,9 @@ public class RaftImpl implements Raft {
             role = Role.Leader;
             leader = selfId;
             votesReceived = 0;
-            nextIndex.set(new ConcurrentHashMap<>());
+            int lastLogIndex = log.getLastIndex();
+            memberConnector.getRegisteredMemberIds().forEach(
+                    memberId -> nextIndexes.put(memberId, new AtomicInteger(lastLogIndex + 1)));
         }
     }
 
@@ -234,7 +242,7 @@ public class RaftImpl implements Raft {
             role = Role.Follower;
             votedFor = null;
             votesReceived = 0;
-            nextIndex.set(new ConcurrentHashMap<>());
+            nextIndexes.clear();
         }
     }
 
@@ -278,6 +286,17 @@ public class RaftImpl implements Raft {
         boolean ignoreMessage = checkTermRecency(appendEntriesResponse.getTerm());
         if (ignoreMessage) {
             return;
+        }
+
+        MemberId senderMemberId = member.getMemberId();
+        boolean isAccepted = appendEntriesResponse.getSuccess();
+
+        if (isAccepted) {
+            // TODO: Maybe put in a queue and call this in a separate thread?
+            checkReplicationState();
+        } else {
+            nextIndexes.get(senderMemberId).decrementAndGet();
+            scheduleReplicatationRetryForMember(senderMemberId);
         }
     }
 
@@ -324,6 +343,37 @@ public class RaftImpl implements Raft {
         ScheduledFuture<?> prevTask = periodicHeartbeatTask.getAndSet(
                 eventLoop.get().scheduleAtFixedRate(() -> RaftImpl.this.scheduleSendHeartbeats(), 0, configuration.getHeartbeatPeriod(), TimeUnit.MILLISECONDS));
         cancelTask(prevTask);
+    }
+
+    private CompletableFuture<Integer> scheduleReplicatation(int index) {
+        CompletableFuture<Integer> future = new CompletableFuture<Integer>();
+        replicationCompletableFutures.put(index, future);
+        // TODO: schedule
+        return future;
+    }
+
+    private void scheduleReplicatationRetryForMember(MemberId member) {
+        // TODO: implement
+    }
+
+    private void checkReplicationState() {
+        Iterator<Entry<Integer, CompletableFuture<Integer>>> it = replicationCompletableFutures.entrySet().iterator();
+        while (it.hasNext()) {
+            Entry<Integer, CompletableFuture<Integer>> entry = it.next();
+            int currIndex = entry.getKey();
+
+            int replicationCount = 0;
+            for (AtomicInteger matchIndex : matchIndexes.values()) {
+                if (matchIndex.get() >= currIndex) {
+                    replicationCount++;
+                }
+            }
+
+            if (replicationCount >= getMajority()) {
+                entry.getValue().complete(replicationCount);
+                it.remove();
+            }
+        }
     }
 
     private int getMajority() {
