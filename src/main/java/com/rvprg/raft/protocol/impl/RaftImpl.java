@@ -288,15 +288,14 @@ public class RaftImpl implements Raft {
             return;
         }
 
-        MemberId senderMemberId = member.getMemberId();
         boolean isAccepted = appendEntriesResponse.getSuccess();
 
         if (isAccepted) {
-            // TODO: Maybe put in a queue and call this in a separate thread?
-            checkReplicationState();
+            scheduleCheckReplicationState(member);
         } else {
+            MemberId senderMemberId = member.getMemberId();
             nextIndexes.get(senderMemberId).decrementAndGet();
-            scheduleReplicatationRetryForMember(senderMemberId);
+            scheduleReplicatationRetry(senderMemberId);
         }
     }
 
@@ -352,8 +351,16 @@ public class RaftImpl implements Raft {
         return future;
     }
 
-    private void scheduleReplicatationRetryForMember(MemberId member) {
+    private void scheduleReplicatationRetry(MemberId member) {
         // TODO: implement
+    }
+
+    private void scheduleCheckReplicationState(Member member) {
+        try {
+            member.getChannel().eventLoop().schedule(() -> checkReplicationState(), 0, TimeUnit.MILLISECONDS);
+        } catch (RejectedExecutionException e) {
+            logger.error("Member: {}, Term: {}, scheduling replication check failed.", member, currentTerm, e);
+        }
     }
 
     private void checkReplicationState() {
