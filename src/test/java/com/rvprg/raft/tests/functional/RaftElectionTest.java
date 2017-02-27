@@ -20,10 +20,10 @@ import com.google.inject.Injector;
 import com.rvprg.raft.Module;
 import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.protocol.Log;
-import com.rvprg.raft.protocol.LogEntry;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftObserver;
 import com.rvprg.raft.protocol.Role;
+import com.rvprg.raft.protocol.impl.LogEntry;
 import com.rvprg.raft.protocol.impl.RaftImpl;
 import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.tests.helpers.NetworkUtils;
@@ -33,7 +33,7 @@ import com.rvprg.raft.transport.MessageReceiver;
 
 public class RaftElectionTest {
     // TODO:
-    // Test:Check that the candidate with the longer term should win the
+    // Test:Check that the candidate with the more up to date log should win the
     // election
 
     private Raft getRaft(String host, int port, Set<MemberId> nodes, RaftObserver raftObserver) {
@@ -47,8 +47,7 @@ public class RaftElectionTest {
         // Fake log entries.
 
         Log log = mock(Log.class);
-        LogEntry logEntry = mock(LogEntry.class);
-        Mockito.when(logEntry.getTerm()).thenReturn(0);
+        LogEntry logEntry = new LogEntry(0, null);
         Mockito.when(log.getLast()).thenReturn(logEntry);
         Mockito.when(log.getLastIndex()).thenReturn(0);
 

@@ -26,6 +26,7 @@ import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage.MessageType
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVote;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse.Builder;
+import com.rvprg.raft.sm.Command;
 import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnector;
@@ -55,6 +56,7 @@ public class RaftImpl implements Raft {
     private final ConcurrentHashMap<MemberId, AtomicInteger> nextIndexes = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<MemberId, AtomicInteger> matchIndexes = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Integer, CompletableFuture<Integer>> replicationCompletableFutures = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<MemberId, AtomicReference<ScheduledFuture<?>>> replicationResendTasks = new ConcurrentHashMap<>();
 
     private final RaftObserver observer;
 
@@ -295,7 +297,7 @@ public class RaftImpl implements Raft {
         } else {
             MemberId senderMemberId = member.getMemberId();
             nextIndexes.get(senderMemberId).decrementAndGet();
-            scheduleReplicatationRetry(senderMemberId);
+            // TODO: Retry
         }
     }
 
@@ -344,15 +346,37 @@ public class RaftImpl implements Raft {
         cancelTask(prevTask);
     }
 
-    private CompletableFuture<Integer> scheduleReplicatation(int index) {
+    public CompletableFuture<Integer> applyCommand(Command command) {
+        LogEntry logEntry = new LogEntry(getCurrentTerm(), command);
+        return scheduleReplication(log.append(logEntry));
+    }
+
+    private CompletableFuture<Integer> scheduleReplication(int index) {
         CompletableFuture<Integer> future = new CompletableFuture<Integer>();
         replicationCompletableFutures.put(index, future);
-        // TODO: schedule
+
+        for (MemberId memberId : memberConnector.getRegisteredMemberIds()) {
+            int nextIndex = nextIndexes.get(memberId).get();
+            if (nextIndex < log.getLastIndex()) {
+                scheduleAppendEntries(memberId);
+            }
+        }
+
         return future;
     }
 
-    private void scheduleReplicatationRetry(MemberId member) {
-        // TODO: implement
+    private void scheduleAppendEntries(MemberId memberId) {
+        Member member = memberConnector.getActiveMembers().get(memberId);
+        if (member != null) {
+            scheduleSendMessageToMember(member, getAppendEntries(memberId));
+        } else {
+            try {
+                // TODO: configurable retry
+                eventLoop.get().schedule(() -> this.scheduleAppendEntries(memberId), 100, TimeUnit.MILLISECONDS);
+            } catch (RejectedExecutionException e) {
+                logger.error("Member: {}, Term: {}, scheduling replication check failed.", member, currentTerm, e);
+            }
+        }
     }
 
     private void scheduleCheckReplicationState(Member member) {
@@ -430,12 +454,13 @@ public class RaftImpl implements Raft {
         memberConnector.getActiveMembers().getAll().forEach(member -> scheduleSendMessageToMember(member, msg));
     }
 
-    private void scheduleSendMessageToMember(Member member, RaftMessage msg) {
+    private ScheduledFuture<?> scheduleSendMessageToMember(Member member, RaftMessage msg) {
         try {
-            member.getChannel().eventLoop().schedule(() -> RaftImpl.this.sendMessage(member, msg), 0, TimeUnit.MILLISECONDS);
+            return member.getChannel().eventLoop().schedule(() -> RaftImpl.this.sendMessage(member, msg), 0, TimeUnit.MILLISECONDS);
         } catch (RejectedExecutionException e) {
             logger.error("Member: {}, Term: {}, Message type: {}, message send failed.", member, currentTerm, msg.getType(), e);
         }
+        return null;
     }
 
     private void scheduleSendVoteRequests() {
@@ -444,6 +469,28 @@ public class RaftImpl implements Raft {
 
     private void scheduleSendHeartbeats() {
         scheduleSendMessageToEachMember(getHeartbeatMessage());
+    }
+
+    private RaftMessage getAppendEntries(MemberId memberId) {
+        int prevLogIndex = nextIndexes.get(memberId).get() - 1;
+        int prevLogTerm = log.get(prevLogIndex).getTerm();
+        int commitIndex = log.getCommitIndex();
+
+        AppendEntries req = AppendEntries.newBuilder()
+                .setTerm(getCurrentTerm())
+                .setPrevLogIndex(prevLogIndex)
+                .setPrevLogTerm(prevLogTerm)
+                .setLeaderCommitIndex(commitIndex)
+                .setLeaderId(leader.toString()).build();
+
+        // TODO: set log entries
+
+        RaftMessage requestVote = RaftMessage.newBuilder()
+                .setType(MessageType.AppendEntries)
+                .setAppendEntries(req)
+                .build();
+
+        return requestVote;
     }
 
     private RaftMessage getRequestVoteMessage() {

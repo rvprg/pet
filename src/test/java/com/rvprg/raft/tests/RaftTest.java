@@ -25,9 +25,9 @@ import org.mockito.stubbing.Answer;
 
 import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.protocol.Log;
-import com.rvprg.raft.protocol.LogEntry;
 import com.rvprg.raft.protocol.RaftObserver;
 import com.rvprg.raft.protocol.Role;
+import com.rvprg.raft.protocol.impl.LogEntry;
 import com.rvprg.raft.protocol.impl.RaftImpl;
 import com.rvprg.raft.protocol.messages.ProtocolMessages;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntries;
@@ -142,8 +142,7 @@ public class RaftTest {
         Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("test", 1234));
         RaftObserver raftObserver = mock(RaftObserver.class);
         Log log = mock(Log.class);
-        LogEntry logEntry = mock(LogEntry.class);
-        Mockito.when(logEntry.getTerm()).thenReturn(0);
+        LogEntry logEntry = new LogEntry(0, null);
         Mockito.when(log.getLast()).thenReturn(logEntry);
         Mockito.when(log.getLastIndex()).thenReturn(0);
 

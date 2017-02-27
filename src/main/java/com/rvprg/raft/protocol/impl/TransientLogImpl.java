@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import com.rvprg.raft.protocol.Log;
-import com.rvprg.raft.protocol.LogEntry;
 
 public class TransientLogImpl implements Log {
 
@@ -20,8 +19,9 @@ public class TransientLogImpl implements Log {
     }
 
     @Override
-    public void append(LogEntry logEntry) {
+    public int append(LogEntry logEntry) {
         log.add(logEntry);
+        return log.size() - 1;
     }
 
     @Override
