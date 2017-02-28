@@ -19,6 +19,7 @@ public class Configuration {
         private int electionMinTimeout = 150;
         private int electionMaxTimeout = 300;
         private int autoReconnectRetryInterval = 1000;
+        private int replicationRetryInterval = 500;
         private Set<MemberId> memberIds = new HashSet<MemberId>();
 
         public Builder memberId(MemberId memberId) {
@@ -56,8 +57,14 @@ public class Configuration {
             return this;
         }
 
+        public Builder setReplicationRetryInterval(int replicationRetryInterval) {
+            this.replicationRetryInterval = replicationRetryInterval;
+            return this;
+        }
+
         public Configuration build() {
             Verify.verify(autoReconnectRetryInterval > 0, "autoReconnectRetryInterval must be positive");
+            Verify.verify(replicationRetryInterval > 0, "replicationRetryInterval must be positive");
             Verify.verify(electionMinTimeout > 0, "electionMinTimeout must be positive");
             Verify.verify(electionMaxTimeout > 0, "electionMaxTimeout must be positive");
             Verify.verify(heartbeatPeriod > 0, "heartbeatPeriod must be positive");
@@ -77,6 +84,7 @@ public class Configuration {
     private final int electionMaxTimeout;
     private final int autoReconnectRetryInterval;
     private final Set<MemberId> memberIds;
+    private final int replicationRetryInterval;
 
     public Configuration(Builder builder) {
         memberId = builder.memberId;
@@ -85,6 +93,7 @@ public class Configuration {
         electionMinTimeout = builder.electionMinTimeout;
         electionMaxTimeout = builder.electionMaxTimeout;
         autoReconnectRetryInterval = builder.autoReconnectRetryInterval;
+        replicationRetryInterval = builder.replicationRetryInterval;
         memberIds = ImmutableSet.copyOf(builder.memberIds);
     }
 
@@ -118,6 +127,10 @@ public class Configuration {
 
     public int getAutoReconnectRetryInterval() {
         return autoReconnectRetryInterval;
+    }
+
+    public int getReplicationRetryInterval() {
+        return replicationRetryInterval;
     }
 
 }

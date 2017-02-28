@@ -56,7 +56,7 @@ public class RaftImpl implements Raft {
     private final ConcurrentHashMap<MemberId, AtomicInteger> nextIndexes = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<MemberId, AtomicInteger> matchIndexes = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Integer, CompletableFuture<Integer>> replicationCompletableFutures = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<MemberId, AtomicReference<ScheduledFuture<?>>> replicationResendTasks = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<MemberId, AtomicReference<ScheduledFuture<?>>> replicationRetryTasks = new ConcurrentHashMap<>();
 
     private final RaftObserver observer;
 
@@ -122,6 +122,8 @@ public class RaftImpl implements Raft {
             scheduleHeartbeatMonitorTask();
             started = true;
             observer.started();
+            memberConnector.getRegisteredMemberIds().forEach(
+                    memberId -> replicationRetryTasks.put(memberId, new AtomicReference<ScheduledFuture<?>>(null)));
         }
     }
 
@@ -232,7 +234,10 @@ public class RaftImpl implements Raft {
             votesReceived = 0;
             int lastLogIndex = log.getLastIndex();
             memberConnector.getRegisteredMemberIds().forEach(
-                    memberId -> nextIndexes.put(memberId, new AtomicInteger(lastLogIndex + 1)));
+                    memberId -> {
+                        nextIndexes.put(memberId, new AtomicInteger(lastLogIndex + 1));
+                        replicationRetryTasks.putIfAbsent(memberId, new AtomicReference<ScheduledFuture<?>>(null));
+                    });
         }
     }
 
@@ -245,6 +250,8 @@ public class RaftImpl implements Raft {
             votedFor = null;
             votesReceived = 0;
             nextIndexes.clear();
+            memberConnector.getRegisteredMemberIds().forEach(
+                    memberId -> cancelTask(replicationRetryTasks.get(memberId).getAndSet(null)));
         }
     }
 
@@ -293,11 +300,11 @@ public class RaftImpl implements Raft {
         boolean isAccepted = appendEntriesResponse.getSuccess();
 
         if (isAccepted) {
-            scheduleCheckReplicationState(member);
+            checkReplicationStatus();
         } else {
             MemberId senderMemberId = member.getMemberId();
             nextIndexes.get(senderMemberId).decrementAndGet();
-            // TODO: Retry
+            scheduleAppendEntries(senderMemberId);
         }
     }
 
@@ -347,6 +354,7 @@ public class RaftImpl implements Raft {
     }
 
     public CompletableFuture<Integer> applyCommand(Command command) {
+        // TODO: If not leader, re-direct.
         LogEntry logEntry = new LogEntry(getCurrentTerm(), command);
         return scheduleReplication(log.append(logEntry));
     }
@@ -365,29 +373,24 @@ public class RaftImpl implements Raft {
         return future;
     }
 
+    private void scheduleAppendEntriesRetry(MemberId memberId) {
+        try {
+            ScheduledFuture<?> future = eventLoop.get().schedule(() -> this.scheduleAppendEntries(memberId), configuration.getReplicationRetryInterval(), TimeUnit.MILLISECONDS);
+            cancelTask(replicationRetryTasks.get(memberId).getAndSet(future));
+        } catch (RejectedExecutionException e) {
+            logger.error("Member: {}, Term: {}, scheduling replication retry failed.", memberId, currentTerm, e);
+        }
+    }
+
     private void scheduleAppendEntries(MemberId memberId) {
+        scheduleAppendEntriesRetry(memberId);
         Member member = memberConnector.getActiveMembers().get(memberId);
         if (member != null) {
             scheduleSendMessageToMember(member, getAppendEntries(memberId));
-        } else {
-            try {
-                // TODO: configurable retry
-                eventLoop.get().schedule(() -> this.scheduleAppendEntries(memberId), 100, TimeUnit.MILLISECONDS);
-            } catch (RejectedExecutionException e) {
-                logger.error("Member: {}, Term: {}, scheduling replication check failed.", member, currentTerm, e);
-            }
         }
     }
 
-    private void scheduleCheckReplicationState(Member member) {
-        try {
-            member.getChannel().eventLoop().schedule(() -> checkReplicationState(), 0, TimeUnit.MILLISECONDS);
-        } catch (RejectedExecutionException e) {
-            logger.error("Member: {}, Term: {}, scheduling replication check failed.", member, currentTerm, e);
-        }
-    }
-
-    private void checkReplicationState() {
+    private void checkReplicationStatus() {
         Iterator<Entry<Integer, CompletableFuture<Integer>>> it = replicationCompletableFutures.entrySet().iterator();
         while (it.hasNext()) {
             Entry<Integer, CompletableFuture<Integer>> entry = it.next();
