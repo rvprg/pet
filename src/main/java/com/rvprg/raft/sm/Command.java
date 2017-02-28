@@ -1,5 +1,7 @@
 package com.rvprg.raft.sm;
 
-public interface Command {
+import java.io.Serializable;
+
+public interface Command extends Serializable {
 
 }
