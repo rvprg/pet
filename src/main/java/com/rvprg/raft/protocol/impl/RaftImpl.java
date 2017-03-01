@@ -1,6 +1,8 @@
 package com.rvprg.raft.protocol.impl;
 
+import java.nio.ByteBuffer;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map.Entry;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
@@ -9,6 +11,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -287,7 +290,22 @@ public class RaftImpl implements Raft {
 
         if (appendEntries.getLogEntriesCount() == 0) {
             processHeartbeat(appendEntries);
+        } else {
+            boolean success = processAppendEntries(appendEntries);
+            AppendEntriesResponse.Builder response = AppendEntriesResponse.newBuilder();
+            RaftMessage responseMessage = RaftMessage.newBuilder()
+                    .setType(MessageType.AppendEntriesResponse)
+                    .setAppendEntriesResponse(response.setSuccess(success).setTerm(getCurrentTerm()).build())
+                    .build();
+            member.getChannel().writeAndFlush(responseMessage);
         }
+    }
+
+    private boolean processAppendEntries(AppendEntries appendEntries) {
+        List<LogEntry> logEntries = appendEntries.getLogEntriesList()
+                .stream().map(x -> new LogEntry(x.getTerm(), x.getEntry().asReadOnlyByteBuffer()))
+                .collect(Collectors.toList());
+        return log.append(appendEntries.getPrevLogIndex(), appendEntries.getPrevLogTerm(), logEntries);
     }
 
     @Override
@@ -353,7 +371,7 @@ public class RaftImpl implements Raft {
         cancelTask(prevTask);
     }
 
-    public CompletableFuture<Integer> applyCommand(byte[] command) {
+    public CompletableFuture<Integer> applyCommand(ByteBuffer command) {
         // TODO: If not leader, re-direct.
         LogEntry logEntry = new LogEntry(getCurrentTerm(), command);
         return scheduleReplication(log.append(logEntry));

@@ -33,7 +33,8 @@ message RequestVoteResponse {
 }
 
 message LogEntry {
-    required bytes entry = 1;
+    required uint32 term = 1;
+    required bytes entry = 2;
 }
 
 message AppendEntries {

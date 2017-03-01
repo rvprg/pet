@@ -2,26 +2,26 @@ package com.rvprg.raft.protocol.impl;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 import com.rvprg.raft.protocol.Log;
 
 public class TransientLogImpl implements Log {
 
-    ArrayList<LogEntry> log = new ArrayList<LogEntry>();
+    private final ArrayList<LogEntry> log = new ArrayList<LogEntry>();
 
     @Override
-    public void close() throws IOException {
+    public synchronized void close() throws IOException {
     }
 
     @Override
-    public int getCommitIndex() {
+    public synchronized int getCommitIndex() {
         return 0;
     }
 
     @Override
-    public int append(LogEntry logEntry) {
-        log.add(logEntry);
-        return log.size() - 1;
+    public synchronized boolean append(int prevLogIndex, int prevLogTerm, List<LogEntry> logEntries) {
+        return true;
     }
 
     @Override
@@ -30,18 +30,24 @@ public class TransientLogImpl implements Log {
     }
 
     @Override
-    public LogEntry getLast() {
+    public synchronized LogEntry getLast() {
         return log.get(log.size() - 1);
     }
 
     @Override
-    public int getLastIndex() {
+    public synchronized int getLastIndex() {
+        return log.size() - 1;
+    }
+
+    @Override
+    public synchronized int getLastApplied() {
         return 0;
     }
 
     @Override
-    public int getLastApplied() {
-        return 0;
+    public synchronized int append(LogEntry logEntry) {
+        log.add(logEntry);
+        return log.size() - 1;
     }
 
 }

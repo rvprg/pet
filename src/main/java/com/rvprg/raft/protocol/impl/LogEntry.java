@@ -1,11 +1,13 @@
 package com.rvprg.raft.protocol.impl;
 
+import java.nio.ByteBuffer;
+
 public class LogEntry {
 
     private final int term;
-    private final byte[] command;
+    private final ByteBuffer command;
 
-    public LogEntry(int term, byte[] command) {
+    public LogEntry(int term, ByteBuffer command) {
         this.term = term;
         this.command = command;
     }
@@ -14,7 +16,7 @@ public class LogEntry {
         return term;
     }
 
-    public byte[] getCommand() {
+    public ByteBuffer getCommand() {
         return command;
     }
 
