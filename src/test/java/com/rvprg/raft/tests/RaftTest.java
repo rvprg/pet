@@ -36,7 +36,6 @@ import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage.MessageType
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVote;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse.Builder;
-import com.rvprg.raft.sm.CommandSerde;
 import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnector;
@@ -65,10 +64,9 @@ public class RaftTest {
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
         StateMachine stateMachine = mock(StateMachine.class);
         RaftObserver raftObserver = mock(RaftObserver.class);
-        CommandSerde commandSerde = mock(CommandSerde.class);
         Log log = mock(Log.class);
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, commandSerde, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
         final AtomicLong lastHeartbeatTime = new AtomicLong();
         final AtomicLong requestVotesInitiatedTime = new AtomicLong();
 
@@ -147,9 +145,8 @@ public class RaftTest {
         LogEntry logEntry = new LogEntry(0, null);
         Mockito.when(log.getLast()).thenReturn(logEntry);
         Mockito.when(log.getLastIndex()).thenReturn(0);
-        CommandSerde commandSerde = mock(CommandSerde.class);
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, commandSerde, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
         // Start as a follower with term set to 0.
         assertEquals(Role.Follower, raft.getRole());
         assertEquals(0, raft.getCurrentTerm());
@@ -189,9 +186,8 @@ public class RaftTest {
         Member member = mock(Member.class);
         Channel senderChannel = mock(Channel.class);
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
-        CommandSerde commandSerde = mock(CommandSerde.class);
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, commandSerde, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
 
         assertEquals(0, raft.getCurrentTerm());
         assertEquals(0, log.getCommitIndex());
@@ -249,9 +245,8 @@ public class RaftTest {
         Member member = mock(Member.class);
         Channel senderChannel = mock(Channel.class);
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
-        CommandSerde commandSerde = mock(CommandSerde.class);
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, commandSerde, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
 
         assertEquals(0, raft.getCurrentTerm());
         assertEquals(0, log.getCommitIndex());
@@ -297,9 +292,8 @@ public class RaftTest {
         Member member = mock(Member.class);
         Channel senderChannel = mock(Channel.class);
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
-        CommandSerde commandSerde = mock(CommandSerde.class);
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, commandSerde, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
 
         assertEquals(0, raft.getCurrentTerm());
         assertEquals(0, log.getCommitIndex());
@@ -362,9 +356,8 @@ public class RaftTest {
         Member member = mock(Member.class);
         Channel senderChannel = mock(Channel.class);
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
-        CommandSerde commandSerde = mock(CommandSerde.class);
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, commandSerde, 2, Role.Follower, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 2, Role.Follower, raftObserver);
 
         assertEquals(2, raft.getCurrentTerm());
 
@@ -436,9 +429,8 @@ public class RaftTest {
         Member member = mock(Member.class);
         Channel senderChannel = mock(Channel.class);
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
-        CommandSerde commandSerde = mock(CommandSerde.class);
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, commandSerde, 1, Role.Candidate, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 1, Role.Candidate, raftObserver);
 
         assertEquals(1, raft.getCurrentTerm());
 
@@ -498,9 +490,8 @@ public class RaftTest {
         Member member = mock(Member.class);
         Channel senderChannel = mock(Channel.class);
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
-        CommandSerde commandSerde = mock(CommandSerde.class);
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, commandSerde, 1, Role.Candidate, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 1, Role.Candidate, raftObserver);
 
         assertEquals(Role.Candidate, raft.getRole());
         assertEquals(1, raft.getCurrentTerm());

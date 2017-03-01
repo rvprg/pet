@@ -26,8 +26,6 @@ import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage.MessageType
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVote;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse.Builder;
-import com.rvprg.raft.sm.Command;
-import com.rvprg.raft.sm.CommandSerde;
 import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnector;
@@ -81,15 +79,12 @@ public class RaftImpl implements Raft {
 
     private final StateMachine stateMachine;
 
-    private final CommandSerde commandSerde;
-
     @Inject
-    public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine, CommandSerde commandSerde,
-            RaftObserver observer) {
-        this(configuration, memberConnector, messageReceiver, log, stateMachine, commandSerde, 0, Role.Follower, observer);
+    public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine, RaftObserver observer) {
+        this(configuration, memberConnector, messageReceiver, log, stateMachine, 0, Role.Follower, observer);
     }
 
-    public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine, CommandSerde commandSerde,
+    public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine,
             int initTerm, Role initRole,
             RaftObserver observer) {
         this.memberConnector = memberConnector;
@@ -103,7 +98,6 @@ public class RaftImpl implements Raft {
         this.random = new Random();
         this.observer = observer == null ? RaftObserver.getDefaultInstance() : observer;
         this.stateMachine = stateMachine;
-        this.commandSerde = commandSerde;
 
         // FIXME: double initialization
         initializeEventLoop();
@@ -359,7 +353,7 @@ public class RaftImpl implements Raft {
         cancelTask(prevTask);
     }
 
-    public CompletableFuture<Integer> applyCommand(Command command) {
+    public CompletableFuture<Integer> applyCommand(byte[] command) {
         // TODO: If not leader, re-direct.
         LogEntry logEntry = new LogEntry(getCurrentTerm(), command);
         return scheduleReplication(log.append(logEntry));

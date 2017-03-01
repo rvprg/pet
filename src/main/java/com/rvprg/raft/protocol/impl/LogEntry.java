@@ -1,13 +1,11 @@
 package com.rvprg.raft.protocol.impl;
 
-import com.rvprg.raft.sm.Command;
-
 public class LogEntry {
 
     private final int term;
-    private final Command command;
+    private final byte[] command;
 
-    public LogEntry(int term, Command command) {
+    public LogEntry(int term, byte[] command) {
         this.term = term;
         this.command = command;
     }
@@ -16,7 +14,7 @@ public class LogEntry {
         return term;
     }
 
-    public Command getCommand() {
+    public byte[] getCommand() {
         return command;
     }
 

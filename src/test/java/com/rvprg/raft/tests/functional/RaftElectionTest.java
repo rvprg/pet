@@ -25,7 +25,6 @@ import com.rvprg.raft.protocol.RaftObserver;
 import com.rvprg.raft.protocol.Role;
 import com.rvprg.raft.protocol.impl.LogEntry;
 import com.rvprg.raft.protocol.impl.RaftImpl;
-import com.rvprg.raft.sm.CommandSerde;
 import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.tests.helpers.NetworkUtils;
 import com.rvprg.raft.transport.MemberConnector;
@@ -45,7 +44,6 @@ public class RaftElectionTest {
         StateMachine stateMachine = injector.getInstance(StateMachine.class);
 
         MessageReceiver messageReceiver = injector.getInstance(MessageReceiver.class);
-        CommandSerde commandSerde = injector.getInstance(CommandSerde.class);
         // Fake log entries.
 
         Log log = mock(Log.class);
@@ -53,7 +51,7 @@ public class RaftElectionTest {
         Mockito.when(log.getLast()).thenReturn(logEntry);
         Mockito.when(log.getLastIndex()).thenReturn(0);
 
-        return new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, commandSerde, raftObserver);
+        return new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
     }
 
     @Test
