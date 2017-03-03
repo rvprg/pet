@@ -50,4 +50,12 @@ public class TransientLogImpl implements Log {
         return log.size() - 1;
     }
 
+    @Override
+    public synchronized List<LogEntry> get(int nextIndex, int maxNum) {
+        if (nextIndex + maxNum >= log.size() - 1) {
+            return log.subList(nextIndex, log.size() - 1);
+        }
+        return log.subList(nextIndex, nextIndex + maxNum);
+    }
+
 }

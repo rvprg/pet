@@ -20,6 +20,7 @@ public class Configuration {
         private int electionMaxTimeout = 300;
         private int autoReconnectRetryInterval = 1000;
         private int replicationRetryInterval = 500;
+        private int maxNumberOfLogEntriesPerRequest = 3;
         private Set<MemberId> memberIds = new HashSet<MemberId>();
 
         public Builder memberId(MemberId memberId) {
@@ -62,13 +63,19 @@ public class Configuration {
             return this;
         }
 
+        public Builder setMaxNumberOfLogEntriesPerRequest(int maxNumberOfLogEntriesPerRequest) {
+            this.maxNumberOfLogEntriesPerRequest = maxNumberOfLogEntriesPerRequest;
+            return this;
+        }
+
         public Configuration build() {
-            Verify.verify(autoReconnectRetryInterval > 0, "autoReconnectRetryInterval must be positive");
-            Verify.verify(replicationRetryInterval > 0, "replicationRetryInterval must be positive");
-            Verify.verify(electionMinTimeout > 0, "electionMinTimeout must be positive");
-            Verify.verify(electionMaxTimeout > 0, "electionMaxTimeout must be positive");
-            Verify.verify(heartbeatPeriod > 0, "heartbeatPeriod must be positive");
-            Verify.verify(heartbeatTimeout > 0, "heartbeatTimeout must be positive");
+            Verify.verify(autoReconnectRetryInterval > 0, "autoReconnectRetryInterval must be positive and nonzero");
+            Verify.verify(replicationRetryInterval > 0, "replicationRetryInterval must be positive and nonzero");
+            Verify.verify(electionMinTimeout > 0, "electionMinTimeout must be positive and nonzero");
+            Verify.verify(electionMaxTimeout > 0, "electionMaxTimeout must be positive and nonzero");
+            Verify.verify(maxNumberOfLogEntriesPerRequest > 0, "maxNumberOfLogEntriesPerRequest must be positive and nonzero");
+            Verify.verify(heartbeatPeriod > 0, "heartbeatPeriod must be positive and nonzero");
+            Verify.verify(heartbeatTimeout > 0, "heartbeatTimeout must be positive and nonzero");
             Verify.verify(electionMinTimeout < electionMaxTimeout, "electionMaxTimeout must not be smaller than election electionMinTimeout");
             Verify.verify(heartbeatTimeout > heartbeatPeriod, "heartbeatTimeout must not be smaller than heartbeatPeriod");
             Verify.verify(memberId != null, "memberId must not be null");
@@ -85,6 +92,11 @@ public class Configuration {
     private final int autoReconnectRetryInterval;
     private final Set<MemberId> memberIds;
     private final int replicationRetryInterval;
+    private final int maxNumberOfLogEntriesPerRequest;
+
+    public int getMaxNumberOfLogEntriesPerRequest() {
+        return maxNumberOfLogEntriesPerRequest;
+    }
 
     public Configuration(Builder builder) {
         memberId = builder.memberId;
@@ -94,6 +106,7 @@ public class Configuration {
         electionMaxTimeout = builder.electionMaxTimeout;
         autoReconnectRetryInterval = builder.autoReconnectRetryInterval;
         replicationRetryInterval = builder.replicationRetryInterval;
+        maxNumberOfLogEntriesPerRequest = builder.maxNumberOfLogEntriesPerRequest;
         memberIds = ImmutableSet.copyOf(builder.memberIds);
     }
 

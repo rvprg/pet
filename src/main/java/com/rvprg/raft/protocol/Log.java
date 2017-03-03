@@ -20,4 +20,6 @@ public interface Log extends Closeable {
 
     LogEntry get(int index);
 
+    List<LogEntry> get(int nextIndex, int maxNum);
+
 }
