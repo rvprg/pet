@@ -259,6 +259,7 @@ public class RaftImpl implements Raft {
                         nextIndexes.put(memberId, new AtomicInteger(lastLogIndex + 1));
                         replicationRetryTasks.putIfAbsent(memberId, new AtomicReference<ScheduledFuture<?>>(null));
                         appendEntriesRequestMetas.putIfAbsent(memberId, new ConcurrentHashMap<>());
+                        appendEntriesRequestMetas.get(memberId).clear();
                     });
         }
     }
@@ -273,7 +274,10 @@ public class RaftImpl implements Raft {
             votesReceived = 0;
             nextIndexes.clear();
             memberConnector.getRegisteredMemberIds().forEach(
-                    memberId -> cancelTask(replicationRetryTasks.get(memberId).getAndSet(null)));
+                    memberId -> {
+                        cancelTask(replicationRetryTasks.get(memberId).getAndSet(null));
+                    });
+            appendEntriesRequestMetas.forEach((member, metas) -> metas.clear());
         }
     }
 
