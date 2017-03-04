@@ -63,7 +63,7 @@ public class RaftImpl implements Raft {
     private final ConcurrentHashMap<Integer, CompletableFuture<Integer>> replicationCompletableFutures = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<MemberId, AtomicReference<ScheduledFuture<?>>> replicationRetryTasks = new ConcurrentHashMap<>();
 
-    private final ConcurrentHashMap<Long, AppendEntriesRequestMeta> appendEntriesRequestMetas = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<MemberId, ConcurrentHashMap<Long, AppendEntriesRequestMeta>> appendEntriesRequestMetas = new ConcurrentHashMap<MemberId, ConcurrentHashMap<Long, AppendEntriesRequestMeta>>();
 
     private static class AppendEntriesRequestMeta {
         public final int nextIndex;
@@ -258,6 +258,7 @@ public class RaftImpl implements Raft {
                     memberId -> {
                         nextIndexes.put(memberId, new AtomicInteger(lastLogIndex + 1));
                         replicationRetryTasks.putIfAbsent(memberId, new AtomicReference<ScheduledFuture<?>>(null));
+                        appendEntriesRequestMetas.putIfAbsent(memberId, new ConcurrentHashMap<>());
                     });
         }
     }
@@ -341,7 +342,7 @@ public class RaftImpl implements Raft {
 
         if (isAccepted) {
             checkReplicationStatus();
-            AppendEntriesRequestMeta meta = appendEntriesRequestMetas.remove(appendEntriesResponse.getSequenceNumber());
+            AppendEntriesRequestMeta meta = appendEntriesRequestMetas.get(member.getMemberId()).remove(appendEntriesResponse.getSequenceNumber());
             if (meta != null) {
                 // TODO: update nextIndex. Cancel replication retry task?
             } // TODO: log error
@@ -538,7 +539,7 @@ public class RaftImpl implements Raft {
                         .setTerm(logEntry.getTerm())
                         .setEntry(ByteString.copyFrom(logEntry.getCommand()))));
 
-        appendEntriesRequestMetas.put(
+        appendEntriesRequestMetas.get(memberId).put(
                 requestSequenceNumber,
                 new AppendEntriesRequestMeta(nextIndex, req.getLogEntriesCount()));
 
