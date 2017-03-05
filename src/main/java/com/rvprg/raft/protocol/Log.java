@@ -8,18 +8,22 @@ import com.rvprg.raft.protocol.impl.LogEntry;
 public interface Log extends Closeable {
     int getCommitIndex();
 
+    int incrementAndGetCommitIndex();
+
     int getLastApplied();
+
+    int incrementAndGetLastApplied();
 
     int getLastIndex();
 
     LogEntry getLast();
-
-    int append(LogEntry logEntry);
 
     boolean append(int prevLogIndex, int prevLogTerm, List<LogEntry> logEntries);
 
     LogEntry get(int index);
 
     List<LogEntry> get(int nextIndex, int maxNum);
+
+    int append(LogEntry logEntry);
 
 }
