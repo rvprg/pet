@@ -12,6 +12,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -58,10 +59,14 @@ public class RaftImpl implements Raft {
     private final AtomicReference<ScheduledFuture<?>> electionTimeoutMonitorTask = new AtomicReference<>();
     private final AtomicReference<ScheduledFuture<?>> periodicHeartbeatTask = new AtomicReference<>();
 
-    private final ConcurrentHashMap<MemberId, AtomicInteger> nextIndexes = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<MemberId, AtomicInteger> matchIndexes = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Integer, CompletableFuture<Integer>> replicationCompletableFutures = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<MemberId, AtomicReference<ScheduledFuture<?>>> replicationRetryTasks = new ConcurrentHashMap<>();
+
+    private final ReentrantReadWriteLock indexesLock = new ReentrantReadWriteLock();
+    @GuardedBy("indexesLock")
+    private final ConcurrentHashMap<MemberId, AtomicInteger> nextIndexes = new ConcurrentHashMap<>();
+    @GuardedBy("indexesLock")
+    private final ConcurrentHashMap<MemberId, AtomicInteger> matchIndexes = new ConcurrentHashMap<>();
 
     private final ConcurrentHashMap<MemberId, ConcurrentHashMap<Long, AppendEntriesRequestMeta>> appendEntriesRequestMetas = new ConcurrentHashMap<MemberId, ConcurrentHashMap<Long, AppendEntriesRequestMeta>>();
 
@@ -254,6 +259,7 @@ public class RaftImpl implements Raft {
             votesReceived = 0;
             int lastLogIndex = log.getLastIndex();
             nextRequestSequenceNumber.set(0);
+
             memberConnector.getRegisteredMemberIds().forEach(
                     memberId -> {
                         nextIndexes.put(memberId, new AtomicInteger(lastLogIndex + 1));
@@ -272,12 +278,22 @@ public class RaftImpl implements Raft {
             role = Role.Follower;
             votedFor = null;
             votesReceived = 0;
-            nextIndexes.clear();
             memberConnector.getRegisteredMemberIds().forEach(
                     memberId -> {
                         cancelTask(replicationRetryTasks.get(memberId).getAndSet(null));
                     });
             appendEntriesRequestMetas.forEach((member, metas) -> metas.clear());
+        }
+        clearIndexes();
+    }
+
+    private void clearIndexes() {
+        indexesLock.writeLock().lock();
+        try {
+            nextIndexes.clear();
+            matchIndexes.clear();
+        } finally {
+            indexesLock.writeLock().unlock();
         }
     }
 
@@ -348,11 +364,32 @@ public class RaftImpl implements Raft {
             checkReplicationStatus();
             AppendEntriesRequestMeta meta = appendEntriesRequestMetas.get(member.getMemberId()).remove(appendEntriesResponse.getSequenceNumber());
             if (meta != null) {
-                // TODO: update nextIndex. Cancel replication retry task?
-            } // TODO: log error
+                indexesLock.writeLock().lock();
+                try {
+                    if (nextIndexes.get(member.getMemberId()).get() != meta.nextIndex) {
+                        return;
+                    }
+
+                    int newNextIndex = meta.nextIndex + meta.logEntriesLength + 1;
+                    int newMatchIndex = meta.nextIndex + meta.logEntriesLength;
+
+                    nextIndexes.get(member.getMemberId()).set(newNextIndex);
+                    matchIndexes.get(member.getMemberId()).set(newMatchIndex);
+                    // TODO: Cancel replication retry task?
+                } finally {
+                    indexesLock.writeLock().unlock();
+                }
+            } else {
+                logger.error("Member: {}, Term: {}, got a response to a message we didn't send", member.getMemberId(), currentTerm);
+            }
         } else {
             MemberId senderMemberId = member.getMemberId();
-            nextIndexes.get(senderMemberId).decrementAndGet();
+            indexesLock.writeLock().lock();
+            try {
+                nextIndexes.get(senderMemberId).decrementAndGet();
+            } finally {
+                indexesLock.writeLock().unlock();
+            }
             scheduleAppendEntries(senderMemberId);
         }
     }
@@ -413,7 +450,13 @@ public class RaftImpl implements Raft {
         replicationCompletableFutures.put(index, future);
 
         for (MemberId memberId : memberConnector.getRegisteredMemberIds()) {
-            int nextIndex = nextIndexes.get(memberId).get();
+            int nextIndex = 0;
+            indexesLock.readLock().lock();
+            try {
+                nextIndex = nextIndexes.get(memberId).get();
+            } finally {
+                indexesLock.readLock().unlock();
+            }
             if (nextIndex < log.getLastIndex()) {
                 scheduleAppendEntries(memberId);
             }
@@ -447,8 +490,13 @@ public class RaftImpl implements Raft {
 
             int replicationCount = 0;
             for (AtomicInteger matchIndex : matchIndexes.values()) {
-                if (matchIndex.get() >= currIndex) {
-                    replicationCount++;
+                indexesLock.readLock().lock();
+                try {
+                    if (matchIndex.get() >= currIndex) {
+                        replicationCount++;
+                    }
+                } finally {
+                    indexesLock.readLock().unlock();
                 }
             }
 
@@ -524,7 +572,13 @@ public class RaftImpl implements Raft {
     }
 
     private RaftMessage getAppendEntries(MemberId memberId) {
-        int nextIndex = nextIndexes.get(memberId).get();
+        int nextIndex = 0;
+        indexesLock.readLock().lock();
+        try {
+            nextIndex = nextIndexes.get(memberId).get();
+        } finally {
+            indexesLock.readLock().unlock();
+        }
         int prevLogIndex = nextIndex - 1;
         int prevLogTerm = log.get(prevLogIndex).getTerm();
         int commitIndex = log.getCommitIndex();
