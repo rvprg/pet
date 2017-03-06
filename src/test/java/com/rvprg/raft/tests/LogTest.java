@@ -156,7 +156,12 @@ public class LogTest {
     @Test
     public void testComplexAppend_ShouldFail2() throws IOException {
         assertEquals(false, log.append(3, 1, null));
-        assertEquals(false, log.append(3, 1, new ArrayList<LogEntry>()));
-        assertEquals(false, log.append(-1, 1, new ArrayList<LogEntry>()));
+
+        List<LogEntry> logEntries = new ArrayList<LogEntry>();
+        logEntries.add(new LogEntry(2, ByteBuffer.allocate(0)));
+        logEntries.add(new LogEntry(2, ByteBuffer.allocate(0)));
+
+        assertEquals(false, log.append(3, 1, logEntries));
+        assertEquals(false, log.append(-1, 1, logEntries));
     }
 }
