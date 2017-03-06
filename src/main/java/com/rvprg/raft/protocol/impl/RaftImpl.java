@@ -362,7 +362,6 @@ public class RaftImpl implements Raft {
         boolean isAccepted = appendEntriesResponse.getSuccess();
 
         if (isAccepted) {
-            checkReplicationStatus();
             AppendEntriesRequestMeta meta = appendEntriesRequestMetas.get(member.getMemberId()).remove(appendEntriesResponse.getSequenceNumber());
             if (meta != null) {
                 indexesLock.writeLock().lock();
@@ -380,6 +379,7 @@ public class RaftImpl implements Raft {
                 } finally {
                     indexesLock.writeLock().unlock();
                 }
+                checkReplicationStatus();
             } else {
                 logger.error("Member: {}, Term: {}, got a response to a message we didn't send", member.getMemberId(), currentTerm);
             }
