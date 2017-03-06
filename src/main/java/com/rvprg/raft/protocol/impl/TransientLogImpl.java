@@ -54,16 +54,27 @@ public class TransientLogImpl implements Log {
 
         LogEntry newNextEntry = logEntries.get(0);
 
-        LogEntry nextEntry = get(prevLogIndex + 1);
+        int nextEntryIndex = prevLogIndex + 1;
+        LogEntry nextEntry = get(nextEntryIndex);
         if (nextEntry != null && nextEntry.getTerm() != newNextEntry.getTerm()) {
-            List<LogEntry> newLog = new ArrayList<LogEntry>(log.subList(0, prevLogIndex + 1));
+            List<LogEntry> newLog = new ArrayList<LogEntry>(log.subList(0, nextEntryIndex));
             log.clear();
             log.addAll(newLog);
         }
 
-        logEntries.forEach(entry -> log.add(entry));
+        for (int i = nextEntryIndex, j = 0; j < logEntries.size(); ++i, ++j) {
+            insert(i, logEntries.get(j));
+        }
 
         return true;
+    }
+
+    private void insert(int index, LogEntry logEntry) {
+        if (index > log.size() - 1) {
+            log.add(logEntry);
+        } else {
+            log.set(index, logEntry);
+        }
     }
 
     @Override
@@ -101,6 +112,18 @@ public class TransientLogImpl implements Log {
     public int append(LogEntry logEntry) {
         log.add(logEntry);
         return log.size() - 1;
+    }
+
+    @Override
+    public synchronized void clear() {
+        log.clear();
+        commitIndex.set(0);
+        lastApplied.set(0);
+    }
+
+    @Override
+    public String toString() {
+        return "Transient log implementation";
     }
 
 }

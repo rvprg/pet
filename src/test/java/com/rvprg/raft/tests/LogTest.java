@@ -6,21 +6,35 @@ import static org.junit.Assert.assertNull;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
+import com.rvprg.raft.protocol.Log;
 import com.rvprg.raft.protocol.impl.LogEntry;
 import com.rvprg.raft.protocol.impl.TransientLogImpl;
 
-public class TransientLogTest {
-    private TransientLogImpl log;
+@RunWith(Parameterized.class)
+public class LogTest {
+    private Log log;
+
+    public LogTest(Log log) {
+        this.log = log;
+    }
+
+    @Parameterized.Parameters(name = "{0}")
+    public static Iterable<? extends Object> data() {
+        return Arrays.asList(new TransientLogImpl());
+    }
 
     @Before
     public void init() {
-        log = new TransientLogImpl();
+        log.clear();
     }
 
     @After
@@ -57,6 +71,17 @@ public class TransientLogTest {
         assertEquals(2, l2.size());
         assertEquals(logEntry2, l2.get(0));
         assertEquals(logEntry3, l2.get(1));
+
+        List<LogEntry> l3 = log.get(1, 10);
+        assertEquals(2, l3.size());
+        assertEquals(logEntry2, l3.get(0));
+        assertEquals(logEntry3, l3.get(1));
+
+        List<LogEntry> l4 = log.get(1, -1);
+        assertEquals(0, l4.size());
+
+        List<LogEntry> l5 = log.get(-1, -1);
+        assertEquals(0, l4.size());
     }
 
     @Test
