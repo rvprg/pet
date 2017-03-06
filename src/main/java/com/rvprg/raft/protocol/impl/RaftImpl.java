@@ -263,6 +263,7 @@ public class RaftImpl implements Raft {
             memberConnector.getRegisteredMemberIds().forEach(
                     memberId -> {
                         nextIndexes.put(memberId, new AtomicInteger(lastLogIndex + 1));
+                        matchIndexes.put(memberId, new AtomicInteger(0));
                         replicationRetryTasks.putIfAbsent(memberId, new AtomicReference<ScheduledFuture<?>>(null));
                         appendEntriesRequestMetas.putIfAbsent(memberId, new ConcurrentHashMap<>());
                         appendEntriesRequestMetas.get(memberId).clear();
