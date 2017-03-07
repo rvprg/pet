@@ -129,6 +129,11 @@ public class RaftImpl implements Raft {
 
         MemberConnectorObserverImpl memberConnectorObserver = new MemberConnectorObserverImpl(this, messageReceiver.getChannelPipelineInitializer());
         configuration.getMemberIds().forEach(memberId -> memberConnector.register(memberId, memberConnectorObserver));
+
+        if (initRole == Role.Leader) {
+            this.role = Role.Candidate;
+            becomeLeader();
+        }
     }
 
     private void initializeEventLoop() {
@@ -463,7 +468,7 @@ public class RaftImpl implements Raft {
             } finally {
                 indexesLock.readLock().unlock();
             }
-            if (nextIndex < log.getLastIndex()) {
+            if (nextIndex <= log.getLastIndex()) {
                 scheduleAppendEntries(memberId);
             }
         }
@@ -477,6 +482,7 @@ public class RaftImpl implements Raft {
 
     private void scheduleAppendEntriesRetry(MemberId memberId) {
         try {
+            observer.appendEntriesRetryScheduled(memberId);
             ScheduledFuture<?> future = eventLoop.get().schedule(() -> this.scheduleAppendEntries(memberId), configuration.getReplicationRetryInterval(), TimeUnit.MILLISECONDS);
             cancelTask(replicationRetryTasks.get(memberId).getAndSet(future));
         } catch (RejectedExecutionException e) {

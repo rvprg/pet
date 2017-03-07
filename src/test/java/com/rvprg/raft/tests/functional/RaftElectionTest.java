@@ -25,6 +25,7 @@ import com.rvprg.raft.protocol.RaftObserver;
 import com.rvprg.raft.protocol.Role;
 import com.rvprg.raft.protocol.impl.LogEntry;
 import com.rvprg.raft.protocol.impl.RaftImpl;
+import com.rvprg.raft.protocol.impl.RaftObserverImpl;
 import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.tests.helpers.NetworkUtils;
 import com.rvprg.raft.transport.MemberConnector;
@@ -82,28 +83,7 @@ public class RaftElectionTest {
         CountDownLatch startLatch = new CountDownLatch(members.size());
         LinkedHashMap<Integer, Integer> termsAndLeaders = new LinkedHashMap<>();
 
-        RaftObserver observer = new RaftObserver() {
-
-            @Override
-            public void voteRejected() {
-            }
-
-            @Override
-            public void voteReceived() {
-            }
-
-            @Override
-            public void nextElectionScheduled() {
-            }
-
-            @Override
-            public void heartbeatTimedout() {
-            }
-
-            @Override
-            public void heartbeatReceived() {
-            }
-
+        RaftObserver observer = new RaftObserverImpl() {
             @Override
             public synchronized void electionWon(int term) {
                 if (termsAndLeaders.containsKey(term)) {
@@ -115,16 +95,8 @@ public class RaftElectionTest {
             }
 
             @Override
-            public void electionTimedout() {
-            }
-
-            @Override
             public void started() {
                 startLatch.countDown();
-            }
-
-            @Override
-            public void shutdown() {
             }
         };
 

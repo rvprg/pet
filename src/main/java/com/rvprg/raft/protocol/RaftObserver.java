@@ -1,5 +1,8 @@
 package com.rvprg.raft.protocol;
 
+import com.rvprg.raft.protocol.impl.RaftObserverImpl;
+import com.rvprg.raft.transport.MemberId;
+
 public interface RaftObserver {
     void heartbeatTimedout();
 
@@ -19,54 +22,9 @@ public interface RaftObserver {
 
     void shutdown();
 
+    void appendEntriesRetryScheduled(MemberId memberId);
+
     static RaftObserver getDefaultInstance() {
-        return new RaftObserver() {
-
-            @Override
-            public void heartbeatTimedout() {
-                // nop
-            }
-
-            @Override
-            public void nextElectionScheduled() {
-                // nop
-            }
-
-            @Override
-            public void heartbeatReceived() {
-                // nop
-            }
-
-            @Override
-            public void voteReceived() {
-                // nop
-            }
-
-            @Override
-            public void voteRejected() {
-                // nop
-            }
-
-            @Override
-            public void electionWon(int term) {
-                // nop
-            }
-
-            @Override
-            public void electionTimedout() {
-                // nop
-            }
-
-            @Override
-            public void started() {
-                // nop
-            }
-
-            @Override
-            public void shutdown() {
-                // nop
-            }
-
-        };
+        return new RaftObserverImpl();
     }
 }

@@ -11,8 +11,11 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import java.nio.ByteBuffer;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -23,12 +26,17 @@ import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import com.rvprg.raft.Module;
 import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.protocol.Log;
 import com.rvprg.raft.protocol.RaftObserver;
 import com.rvprg.raft.protocol.Role;
 import com.rvprg.raft.protocol.impl.LogEntry;
 import com.rvprg.raft.protocol.impl.RaftImpl;
+import com.rvprg.raft.protocol.impl.RaftObserverImpl;
+import com.rvprg.raft.protocol.impl.TransientLogImpl;
 import com.rvprg.raft.protocol.messages.ProtocolMessages;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntries;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage;
@@ -37,6 +45,7 @@ import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVote;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse.Builder;
 import com.rvprg.raft.sm.StateMachine;
+import com.rvprg.raft.tests.helpers.NetworkUtils;
 import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberId;
@@ -58,7 +67,7 @@ public class RaftTest {
 
     @Test
     public void checkHeartbeatTimeout() throws InterruptedException {
-        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", 1234)).build();
+        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -130,7 +139,8 @@ public class RaftTest {
 
     @Test
     public void testElectionTimeout() throws InterruptedException {
-        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", 1234)).build();
+        int port = NetworkUtils.getRandomFreePort();
+        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", port)).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MembersRegistry memberRegistry = mock(MembersRegistry.class);
@@ -139,7 +149,7 @@ public class RaftTest {
         Mockito.when(memberRegistry.getAll()).thenReturn(members);
         Mockito.when(memberConnector.getActiveMembers()).thenReturn(memberRegistry);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
-        Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("test", 1234));
+        Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("test", port));
         RaftObserver raftObserver = mock(RaftObserver.class);
         Log log = mock(Log.class);
         LogEntry logEntry = new LogEntry(0, null);
@@ -176,7 +186,7 @@ public class RaftTest {
 
     @Test
     public void testConsumeVoteRequest_GiveVoteOnce() {
-        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", 1234)).build();
+        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -235,7 +245,7 @@ public class RaftTest {
 
     @Test
     public void testConsumeVoteRequest_GiveVoteSameCandidate() {
-        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", 1234)).build();
+        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -282,7 +292,7 @@ public class RaftTest {
 
     @Test
     public void testConsumeVoteRequest_GiveVoteIfLogIsAsUpToDateAsReceivers() {
-        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", 1234)).build();
+        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -346,7 +356,7 @@ public class RaftTest {
 
     @Test
     public void testConsumeVoteRequest_DontGiveVoteIfTermIsOutdated() {
-        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", 1234)).build();
+        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -375,7 +385,7 @@ public class RaftTest {
 
     @Test
     public void testConsumeVoteRequestResponse_CheckMajorityRule() {
-        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", 1234)).build();
+        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -383,23 +393,11 @@ public class RaftTest {
         AtomicInteger votesReceived = new AtomicInteger(0);
         AtomicInteger votesRejected = new AtomicInteger(0);
         AtomicBoolean electionWon = new AtomicBoolean();
-        RaftObserver raftObserver = new RaftObserver() {
+        RaftObserver raftObserver = new RaftObserverImpl() {
 
             @Override
             public void voteReceived() {
                 votesReceived.incrementAndGet();
-            }
-
-            @Override
-            public void nextElectionScheduled() {
-            }
-
-            @Override
-            public void heartbeatTimedout() {
-            }
-
-            @Override
-            public void heartbeatReceived() {
             }
 
             @Override
@@ -408,20 +406,8 @@ public class RaftTest {
             }
 
             @Override
-            public void electionTimedout() {
-            }
-
-            @Override
             public void voteRejected() {
                 votesRejected.incrementAndGet();
-            }
-
-            @Override
-            public void started() {
-            }
-
-            @Override
-            public void shutdown() {
             }
         };
 
@@ -480,7 +466,7 @@ public class RaftTest {
 
     @Test
     public void testConsumeVoteRequestResponse_CheckSateTerm() {
-        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", 1234)).build();
+        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -505,4 +491,51 @@ public class RaftTest {
         assertEquals(Role.Follower, raft.getRole());
     }
 
+    @Test(timeout = 30000)
+    public void testCheckReplicationRetryTask() throws InterruptedException {
+        // Creates 3 members. Sends a command. Waits until a retry has been sent
+        // to each of the three members three times.
+        ConcurrentHashMap<MemberId, CountDownLatch> latches = new ConcurrentHashMap<>();
+
+        int waitUntilRetryCount = 3;
+        int membersCount = 3;
+
+        Set<MemberId> memberIds = new HashSet<MemberId>();
+        // One port is left for the leader.
+        Iterator<Integer> it = NetworkUtils.getRandomFreePorts(membersCount).iterator();
+        for (int i = 0; i < membersCount - 1; ++i) {
+            Integer port = it.next();
+            MemberId memberId = new MemberId("localhost", port);
+            latches.put(memberId, new CountDownLatch(waitUntilRetryCount));
+            memberIds.add(memberId);
+            it.remove();
+        }
+
+        // For the leader last it.next().
+        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", it.next())).addMemberIds(memberIds).build();
+        Injector injector = Guice.createInjector(new Module(configuration));
+
+        MemberConnector memberConnector = injector.getInstance(MemberConnector.class);
+        Log log = new TransientLogImpl();
+
+        MessageReceiver messageReceiver = mock(MessageReceiver.class);
+        StateMachine stateMachine = mock(StateMachine.class);
+        RaftObserver raftObserver = new RaftObserverImpl() {
+            @Override
+            public void appendEntriesRetryScheduled(MemberId memberId) {
+                latches.get(memberId).countDown();
+            }
+        };
+
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 0, Role.Leader, raftObserver);
+        raft.start();
+
+        raft.applyCommand(ByteBuffer.allocate(0));
+
+        for (CountDownLatch latch : latches.values()) {
+            latch.await();
+        }
+
+        raft.shutdown();
+    }
 }

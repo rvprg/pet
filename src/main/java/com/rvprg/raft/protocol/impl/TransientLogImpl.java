@@ -1,6 +1,7 @@
 package com.rvprg.raft.protocol.impl;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -11,6 +12,10 @@ public class TransientLogImpl implements Log {
     private final ArrayList<LogEntry> log = new ArrayList<LogEntry>();
     private final AtomicInteger commitIndex = new AtomicInteger();
     private final AtomicInteger lastApplied = new AtomicInteger();
+
+    public TransientLogImpl() {
+        log.add(new LogEntry(0, ByteBuffer.allocate(0)));
+    }
 
     @Override
     public synchronized void close() throws IOException {
