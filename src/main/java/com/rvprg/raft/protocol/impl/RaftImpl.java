@@ -375,7 +375,12 @@ public class RaftImpl implements Raft {
 
                     nextIndexes.get(member.getMemberId()).set(newNextIndex);
                     matchIndexes.get(member.getMemberId()).set(newMatchIndex);
-                    // TODO: Cancel replication retry task?
+
+                    if (newNextIndex < log.getLastIndex() + 1) {
+                        scheduleAppendEntries(member.getMemberId());
+                    } else {
+                        cancelAppendEntriesRetry(member.getMemberId());
+                    }
                 } finally {
                     indexesLock.writeLock().unlock();
                 }
@@ -464,6 +469,10 @@ public class RaftImpl implements Raft {
         }
 
         return future;
+    }
+
+    private void cancelAppendEntriesRetry(MemberId memberId) {
+        cancelTask(replicationRetryTasks.get(memberId).get());
     }
 
     private void scheduleAppendEntriesRetry(MemberId memberId) {
