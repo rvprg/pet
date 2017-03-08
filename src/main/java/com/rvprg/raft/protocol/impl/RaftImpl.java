@@ -63,9 +63,7 @@ public class RaftImpl implements Raft {
     private final ConcurrentHashMap<MemberId, AtomicReference<ScheduledFuture<?>>> replicationRetryTasks = new ConcurrentHashMap<>();
 
     private final ReentrantReadWriteLock indexesLock = new ReentrantReadWriteLock();
-    @GuardedBy("indexesLock")
     private final ConcurrentHashMap<MemberId, AtomicInteger> nextIndexes = new ConcurrentHashMap<>();
-    @GuardedBy("indexesLock")
     private final ConcurrentHashMap<MemberId, AtomicInteger> matchIndexes = new ConcurrentHashMap<>();
 
     private final ConcurrentHashMap<MemberId, ConcurrentHashMap<Long, AppendEntriesRequestMeta>> appendEntriesRequestMetas = new ConcurrentHashMap<MemberId, ConcurrentHashMap<Long, AppendEntriesRequestMeta>>();
@@ -354,7 +352,13 @@ public class RaftImpl implements Raft {
         List<LogEntry> logEntries = appendEntries.getLogEntriesList()
                 .stream().map(x -> new LogEntry(x.getTerm(), x.getEntry().asReadOnlyByteBuffer()))
                 .collect(Collectors.toList());
-        return log.append(appendEntries.getPrevLogIndex(), appendEntries.getPrevLogTerm(), logEntries);
+        boolean successFlag = log.append(appendEntries.getPrevLogIndex(), appendEntries.getPrevLogTerm(), logEntries);
+        if (successFlag) {
+            int indexOfLastNewEntry = appendEntries.getPrevLogIndex() + appendEntries.getLogEntriesCount() + 1;
+            log.updateCommitIndex(Math.min(appendEntries.getLeaderCommitIndex(), indexOfLastNewEntry));
+            // TODO: trigger application to the State Machine
+        }
+        return successFlag;
     }
 
     @Override
@@ -364,35 +368,37 @@ public class RaftImpl implements Raft {
             return;
         }
 
+        AppendEntriesRequestMeta meta = appendEntriesRequestMetas.get(member.getMemberId()).remove(appendEntriesResponse.getSequenceNumber());
+        if (meta == null) {
+            logger.error("Member: {}, Term: {}, got a response to a message we didn't send. Ignoring.", member.getMemberId(), currentTerm);
+            return;
+        }
+
         boolean isAccepted = appendEntriesResponse.getSuccess();
-
         if (isAccepted) {
-            AppendEntriesRequestMeta meta = appendEntriesRequestMetas.get(member.getMemberId()).remove(appendEntriesResponse.getSequenceNumber());
-            if (meta != null) {
-                indexesLock.writeLock().lock();
-                try {
-                    if (nextIndexes.get(member.getMemberId()).get() != meta.nextIndex) {
-                        return;
-                    }
-
-                    int newNextIndex = meta.nextIndex + meta.logEntriesLength + 1;
-                    int newMatchIndex = meta.nextIndex + meta.logEntriesLength;
-
-                    nextIndexes.get(member.getMemberId()).set(newNextIndex);
-                    matchIndexes.get(member.getMemberId()).set(newMatchIndex);
-
-                    if (newNextIndex < log.getLastIndex() + 1) {
-                        scheduleAppendEntries(member.getMemberId());
-                    } else {
-                        cancelAppendEntriesRetry(member.getMemberId());
-                    }
-                } finally {
-                    indexesLock.writeLock().unlock();
+            indexesLock.writeLock().lock();
+            try {
+                if (nextIndexes.get(member.getMemberId()).get() != meta.nextIndex) {
+                    return;
                 }
-                checkReplicationStatus();
-            } else {
-                logger.error("Member: {}, Term: {}, got a response to a message we didn't send", member.getMemberId(), currentTerm);
+
+                int newNextIndex = meta.nextIndex + meta.logEntriesLength + 1;
+                int newMatchIndex = meta.nextIndex + meta.logEntriesLength;
+
+                nextIndexes.get(member.getMemberId()).set(newNextIndex);
+                matchIndexes.get(member.getMemberId()).set(newMatchIndex);
+
+                if (newNextIndex < log.getLastIndex() + 1) {
+                    scheduleAppendEntries(member.getMemberId());
+                } else {
+                    cancelAppendEntriesRetry(member.getMemberId());
+                }
+
+            } finally {
+                indexesLock.writeLock().unlock();
             }
+            checkReplicationStatus();
+            removeOldAppendEntriesRequestMetas(member.getMemberId(), appendEntriesResponse.getSequenceNumber());
         } else {
             MemberId senderMemberId = member.getMemberId();
             indexesLock.writeLock().lock();
@@ -402,6 +408,15 @@ public class RaftImpl implements Raft {
                 indexesLock.writeLock().unlock();
             }
             scheduleAppendEntries(senderMemberId);
+        }
+    }
+
+    private void removeOldAppendEntriesRequestMetas(MemberId memberId, long sequenceNumber) {
+        Iterator<Entry<Long, AppendEntriesRequestMeta>> it = appendEntriesRequestMetas.get(memberId).entrySet().iterator();
+        while (it.hasNext()) {
+            if (it.next().getKey() < sequenceNumber) {
+                it.remove();
+            }
         }
     }
 

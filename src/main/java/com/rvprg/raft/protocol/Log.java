@@ -10,6 +10,8 @@ public interface Log extends Closeable {
 
     int incrementAndGetCommitIndex();
 
+    int updateCommitIndex(int commitIndex);
+
     int getLastApplied();
 
     int incrementAndGetLastApplied();
