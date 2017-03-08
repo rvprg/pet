@@ -368,6 +368,10 @@ public class RaftImpl implements Raft {
             return;
         }
 
+        if (!isLeader()) {
+            return;
+        }
+
         AppendEntriesRequestMeta meta = appendEntriesRequestMetas.get(member.getMemberId()).remove(appendEntriesResponse.getSequenceNumber());
         if (meta == null) {
             logger.error("Member: {}, Term: {}, got a response to a message we didn't send. Ignoring.", member.getMemberId(), currentTerm);
@@ -532,6 +536,9 @@ public class RaftImpl implements Raft {
             }
 
             if (replicationCount >= getMajority()) {
+                if (log.get(entry.getKey()).getTerm() == getCurrentTerm()) {
+                    log.updateCommitIndex(entry.getKey());
+                }
                 entry.getValue().complete(replicationCount);
                 it.remove();
             }
@@ -712,6 +719,10 @@ public class RaftImpl implements Raft {
     @Override
     public MemberId getMemberId() {
         return selfId;
+    }
+
+    private boolean isLeader() {
+        return getRole() == Role.Leader;
     }
 
 }
