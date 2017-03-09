@@ -390,13 +390,13 @@ public class RaftImpl implements Raft {
                     return;
                 }
 
-                int newNextIndex = meta.nextIndex + meta.logEntriesLength + 1;
-                int newMatchIndex = meta.nextIndex + meta.logEntriesLength;
+                int newNextIndex = meta.nextIndex + meta.logEntriesLength;
+                int newMatchIndex = meta.nextIndex + meta.logEntriesLength - 1;
 
                 nextIndexes.get(member.getMemberId()).set(newNextIndex);
                 matchIndexes.get(member.getMemberId()).set(newMatchIndex);
 
-                if (newNextIndex < log.getLastIndex() + 1) {
+                if (newNextIndex <= log.getLastIndex()) {
                     scheduleAppendEntries(member.getMemberId());
                 } else {
                     cancelAppendEntriesRetry(member.getMemberId());
@@ -481,9 +481,7 @@ public class RaftImpl implements Raft {
         }
 
         LogEntry logEntry = new LogEntry(getCurrentTerm(), command);
-        return
-
-        scheduleReplication(log.append(logEntry));
+        return scheduleReplication(log.append(logEntry));
     }
 
     private CompletableFuture<Integer> scheduleReplication(int index) {
