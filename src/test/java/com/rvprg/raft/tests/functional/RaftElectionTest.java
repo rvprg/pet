@@ -2,77 +2,42 @@ package com.rvprg.raft.tests.functional;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.mock;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Phaser;
+import java.util.concurrent.SynchronousQueue;
 
 import org.junit.Test;
-import org.mockito.Mockito;
 
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import com.rvprg.raft.Module;
-import com.rvprg.raft.configuration.Configuration;
-import com.rvprg.raft.protocol.Log;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftObserver;
-import com.rvprg.raft.protocol.Role;
-import com.rvprg.raft.protocol.impl.LogEntry;
 import com.rvprg.raft.protocol.impl.RaftImpl;
 import com.rvprg.raft.protocol.impl.RaftObserverImpl;
-import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.tests.helpers.NetworkUtils;
-import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberId;
-import com.rvprg.raft.transport.MessageReceiver;
 
 public class RaftElectionTest {
     // TODO:
     // Test:Check that the candidate with the more up to date log should win the
     // election
 
-    private Raft getRaft(String host, int port, Set<MemberId> nodes, RaftObserver raftObserver) {
-        Configuration configuration = Configuration.newBuilder().memberId(new MemberId(host, port)).addMemberIds(nodes).build();
-
-        Injector injector = Guice.createInjector(new Module(configuration));
-        MemberConnector memberConnector = injector.getInstance(MemberConnector.class);
-        StateMachine stateMachine = injector.getInstance(StateMachine.class);
-
-        MessageReceiver messageReceiver = injector.getInstance(MessageReceiver.class);
-        // Fake log entries.
-
-        Log log = mock(Log.class);
-        LogEntry logEntry = new LogEntry(0, null);
-        Mockito.when(log.getLast()).thenReturn(logEntry);
-        Mockito.when(log.getLastIndex()).thenReturn(0);
-
-        return new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
-    }
-
-    @Test
-    public void testElectionSafetyProperty() throws InterruptedException {
+    @Test(timeout = 60000)
+    public void testElectionSafetyProperty()
+            throws InterruptedException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
         // This test creates a cluster containing clusterSize members. It then
         // starts all of them, and waits until a leader is elected. Then it
-        // kills the leader and restarts it. A new leader is elected. It
-        // then repeats this for a number of times specified by iteration. Then
-        // it checks if terms were growing monotonically and that in each
+        // kills the leader by stopping heartbeating. A new leader is elected.
+        // It then repeats this for a number of times specified by iteration.
+        // Then it checks if terms were growing monotonically and that in each
         // term there was no more than one leader elected.
         int clusterSize = 5;
         int iterations = 10;
-
-        // Used to phase election iterations.
-        Phaser phaser = new Phaser() {
-            @Override
-            protected boolean onAdvance(int phase, int parties) {
-                return false;
-            }
-        };
 
         List<Raft> rafts = new ArrayList<Raft>();
         Set<MemberId> members = new HashSet<MemberId>();
@@ -82,16 +47,21 @@ public class RaftElectionTest {
 
         CountDownLatch startLatch = new CountDownLatch(members.size());
         LinkedHashMap<Integer, Integer> termsAndLeaders = new LinkedHashMap<>();
+        final SynchronousQueue<Raft> leaderBlockingQueue = new SynchronousQueue<>();
 
         RaftObserver observer = new RaftObserverImpl() {
             @Override
-            public synchronized void electionWon(int term) {
+            public synchronized void electionWon(int term, Raft leader) {
                 if (termsAndLeaders.containsKey(term)) {
                     termsAndLeaders.put(term, termsAndLeaders.get(term) + 1);
                 } else {
                     termsAndLeaders.put(term, 1);
                 }
-                phaser.arrive();
+                try {
+                    leaderBlockingQueue.put(leader);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
 
             @Override
@@ -103,7 +73,7 @@ public class RaftElectionTest {
         for (MemberId member : members) {
             Set<MemberId> peers = (new HashSet<MemberId>(members));
             peers.remove(member);
-            rafts.add(getRaft(member.getHostName(), member.getPort(), peers, observer));
+            rafts.add(RaftTestUtils.getRaft(member.getHostName(), member.getPort(), peers, observer));
         }
 
         for (Raft raft : rafts) {
@@ -112,28 +82,12 @@ public class RaftElectionTest {
 
         startLatch.await();
 
-        phaser.register();
+        Method cancelHeartBeat = RaftImpl.class.getDeclaredMethod("cancelPeriodicHeartbeatTask", new Class[] {});
+        cancelHeartBeat.setAccessible(true);
+
         for (int i = 0; i < iterations; ++i) {
-            phaser.awaitAdvance(i);
-
-            Raft currentLeader = null;
-            for (Raft raft : rafts) {
-                if (raft.getRole() == Role.Leader) {
-                    raft.shutdown();
-                    currentLeader = raft;
-                    break;
-                }
-            }
-            if (currentLeader == null) {
-                continue;
-            }
-
-            rafts.remove(currentLeader);
-            Configuration c = currentLeader.getConfiguration();
-            MemberId member = currentLeader.getMemberId();
-            Raft newRaft = getRaft(member.getHostName(), member.getPort(), c.getMemberIds(), observer);
-            newRaft.start();
-            rafts.add(newRaft);
+            Raft currentLeader = leaderBlockingQueue.take();
+            cancelHeartBeat.invoke(currentLeader, new Object[] {});
         }
 
         for (Raft raft : rafts) {

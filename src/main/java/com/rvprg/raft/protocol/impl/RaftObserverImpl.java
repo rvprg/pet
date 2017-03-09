@@ -1,5 +1,6 @@
 package com.rvprg.raft.protocol.impl;
 
+import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftObserver;
 import com.rvprg.raft.transport.MemberId;
 
@@ -31,7 +32,7 @@ public class RaftObserverImpl implements RaftObserver {
     }
 
     @Override
-    public void electionWon(int term) {
+    public void electionWon(int term, Raft leader) {
         // nop
     }
 

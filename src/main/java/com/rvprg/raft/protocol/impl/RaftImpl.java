@@ -227,7 +227,6 @@ public class RaftImpl implements Raft {
 
             if (votesReceived >= getMajority()) {
                 becomeLeader();
-                observer.electionWon(currentTerm);
             }
         }
     }
@@ -275,6 +274,7 @@ public class RaftImpl implements Raft {
                         appendEntriesRequestMetas.get(memberId).clear();
                     });
         }
+        observer.electionWon(getCurrentTerm(), this);
     }
 
     private void becomeFollower() {
@@ -335,6 +335,7 @@ public class RaftImpl implements Raft {
         }
 
         if (appendEntries.getLogEntriesCount() == 0) {
+            log.updateCommitIndex(appendEntries.getLeaderCommitIndex());
             processHeartbeat(appendEntries);
         } else {
             boolean successFlag = processAppendEntries(appendEntries);
@@ -472,10 +473,17 @@ public class RaftImpl implements Raft {
         cancelTask(prevTask);
     }
 
+    @Override
     public CompletableFuture<Integer> applyCommand(ByteBuffer command) {
-        // TODO: If not leader, re-direct.
+        if (!isLeader()) {
+            // TODO: If not leader, re-direct.
+            throw new IllegalStateException("Not a leader");
+        }
+
         LogEntry logEntry = new LogEntry(getCurrentTerm(), command);
-        return scheduleReplication(log.append(logEntry));
+        return
+
+        scheduleReplication(log.append(logEntry));
     }
 
     private CompletableFuture<Integer> scheduleReplication(int index) {
@@ -486,7 +494,11 @@ public class RaftImpl implements Raft {
             int nextIndex = 0;
             indexesLock.readLock().lock();
             try {
-                nextIndex = nextIndexes.get(memberId).get();
+                AtomicInteger nextIndexInt = nextIndexes.get(memberId);
+                if (nextIndexInt == null) {
+                    throw new IllegalStateException("nextIndex is not initialized");
+                }
+                nextIndex = nextIndexInt.get();
             } finally {
                 indexesLock.readLock().unlock();
             }
@@ -677,7 +689,7 @@ public class RaftImpl implements Raft {
 
         RaftMessage requestVote = RaftMessage.newBuilder()
                 .setType(MessageType.AppendEntries)
-                .setAppendEntries(req.build())
+                .setAppendEntries(req.setLeaderCommitIndex(log.getCommitIndex()))
                 .build();
 
         return requestVote;
@@ -728,4 +740,8 @@ public class RaftImpl implements Raft {
         return getRole() == Role.Leader;
     }
 
+    @Override
+    public Log getLog() {
+        return log;
+    }
 }

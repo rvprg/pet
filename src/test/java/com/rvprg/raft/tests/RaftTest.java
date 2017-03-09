@@ -31,6 +31,7 @@ import com.google.inject.Injector;
 import com.rvprg.raft.Module;
 import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.protocol.Log;
+import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftObserver;
 import com.rvprg.raft.protocol.Role;
 import com.rvprg.raft.protocol.impl.LogEntry;
@@ -401,7 +402,7 @@ public class RaftTest {
             }
 
             @Override
-            public void electionWon(int term) {
+            public void electionWon(int term, Raft leader) {
                 electionWon.set(true);
             }
 

@@ -1,5 +1,8 @@
 package com.rvprg.raft.protocol;
 
+import java.nio.ByteBuffer;
+import java.util.concurrent.CompletableFuture;
+
 import com.rvprg.raft.configuration.Configuration;
 
 public interface Raft extends MessageConsumer {
@@ -15,4 +18,7 @@ public interface Raft extends MessageConsumer {
 
     public Configuration getConfiguration();
 
+    CompletableFuture<Integer> applyCommand(ByteBuffer command);
+
+    public Log getLog();
 }

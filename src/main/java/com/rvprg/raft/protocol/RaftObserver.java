@@ -14,7 +14,7 @@ public interface RaftObserver {
 
     void voteRejected();
 
-    void electionWon(int term);
+    void electionWon(int term, Raft leader);
 
     void electionTimedout();
 
