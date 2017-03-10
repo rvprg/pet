@@ -1,9 +1,9 @@
 package com.rvprg.raft.protocol;
 
 import java.nio.ByteBuffer;
-import java.util.concurrent.CompletableFuture;
 
 import com.rvprg.raft.configuration.Configuration;
+import com.rvprg.raft.protocol.impl.ApplyCommandResult;
 
 public interface Raft extends MessageConsumer {
     public void start() throws InterruptedException;
@@ -18,7 +18,7 @@ public interface Raft extends MessageConsumer {
 
     public Configuration getConfiguration();
 
-    CompletableFuture<Integer> applyCommand(ByteBuffer command);
+    ApplyCommandResult applyCommand(ByteBuffer command);
 
     public Log getLog();
 }

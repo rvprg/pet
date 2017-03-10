@@ -289,18 +289,8 @@ public class RaftImpl implements Raft {
                     memberId -> {
                         cancelTask(replicationRetryTasks.get(memberId).getAndSet(null));
                     });
-            appendEntriesRequestMetas.forEach((member, metas) -> metas.clear());
-        }
-        clearIndexes();
-    }
 
-    private void clearIndexes() {
-        indexesLock.writeLock().lock();
-        try {
-            nextIndexes.clear();
-            matchIndexes.clear();
-        } finally {
-            indexesLock.writeLock().unlock();
+            appendEntriesRequestMetas.forEach((member, metas) -> metas.clear());
         }
     }
 
@@ -358,7 +348,7 @@ public class RaftImpl implements Raft {
                 .collect(Collectors.toList());
         boolean successFlag = log.append(appendEntries.getPrevLogIndex(), appendEntries.getPrevLogTerm(), logEntries);
         if (successFlag) {
-            int indexOfLastNewEntry = appendEntries.getPrevLogIndex() + appendEntries.getLogEntriesCount() + 1;
+            int indexOfLastNewEntry = appendEntries.getPrevLogIndex() + appendEntries.getLogEntriesCount();
             log.updateCommitIndex(Math.min(appendEntries.getLeaderCommitIndex(), indexOfLastNewEntry));
             // TODO: trigger application to the State Machine
         }
@@ -378,7 +368,6 @@ public class RaftImpl implements Raft {
 
         AppendEntriesRequestMeta meta = appendEntriesRequestMetas.get(member.getMemberId()).remove(appendEntriesResponse.getSequenceNumber());
         if (meta == null) {
-            logger.error("Member: {}, Term: {}, got a response to a message we didn't send. Ignoring.", member.getMemberId(), currentTerm);
             return;
         }
 
@@ -411,7 +400,9 @@ public class RaftImpl implements Raft {
             MemberId senderMemberId = member.getMemberId();
             indexesLock.writeLock().lock();
             try {
-                nextIndexes.get(senderMemberId).decrementAndGet();
+                if (nextIndexes.get(member.getMemberId()).get() == meta.nextIndex) {
+                    nextIndexes.get(senderMemberId).decrementAndGet();
+                }
             } finally {
                 indexesLock.writeLock().unlock();
             }
@@ -474,14 +465,17 @@ public class RaftImpl implements Raft {
     }
 
     @Override
-    public CompletableFuture<Integer> applyCommand(ByteBuffer command) {
+    public ApplyCommandResult applyCommand(ByteBuffer command) {
         if (!isLeader()) {
-            // TODO: If not leader, re-direct.
-            throw new IllegalStateException("Not a leader");
+            return new ApplyCommandResult(null, leader);
         }
 
         LogEntry logEntry = new LogEntry(getCurrentTerm(), command);
-        return scheduleReplication(log.append(logEntry));
+        CompletableFuture<Integer> f = scheduleReplication(log.append(logEntry));
+
+        synchronized (stateLock) {
+            return new ApplyCommandResult(f, leader);
+        }
     }
 
     private CompletableFuture<Integer> scheduleReplication(int index) {

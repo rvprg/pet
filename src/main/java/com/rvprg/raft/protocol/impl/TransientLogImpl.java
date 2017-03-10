@@ -134,7 +134,7 @@ public class TransientLogImpl implements Log {
     @Override
     public synchronized int updateCommitIndex(int commitIndex) {
         if (commitIndex > getCommitIndex()) {
-            this.commitIndex.set(commitIndex);
+            this.commitIndex.set(Math.min(commitIndex, getLastIndex()));
         }
         return this.commitIndex.get();
     }
