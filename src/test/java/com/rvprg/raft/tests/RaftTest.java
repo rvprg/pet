@@ -135,7 +135,7 @@ public class RaftTest {
 
         verify(raftObserver, atLeast(1)).heartbeatReceived();
         verify(raftObserver, atLeast(1)).heartbeatTimedout();
-        assertTrue(requestVotesInitiatedTime.get() - lastHeartbeatTime.get() >= configuration.getHeartbeatTimeout());
+        assertTrue(requestVotesInitiatedTime.get() - lastHeartbeatTime.get() >= configuration.getElectionMinTimeout());
     }
 
     @Test

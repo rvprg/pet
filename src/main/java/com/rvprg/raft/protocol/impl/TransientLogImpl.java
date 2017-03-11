@@ -12,6 +12,7 @@ public class TransientLogImpl implements Log {
     private final ArrayList<LogEntry> log = new ArrayList<LogEntry>();
     private final AtomicInteger commitIndex = new AtomicInteger();
     private final AtomicInteger lastApplied = new AtomicInteger();
+    private final AtomicInteger firstIndex = new AtomicInteger(0);
 
     public TransientLogImpl() {
         log.add(new LogEntry(0, ByteBuffer.allocate(0)));
@@ -92,7 +93,7 @@ public class TransientLogImpl implements Log {
 
     @Override
     public synchronized LogEntry getLast() {
-        return log.get(log.size() - 1);
+        return log.get(getLastIndex());
     }
 
     @Override
@@ -123,6 +124,7 @@ public class TransientLogImpl implements Log {
     public synchronized void clear() {
         log.clear();
         commitIndex.set(0);
+        firstIndex.set(0);
         lastApplied.set(0);
     }
 
@@ -137,6 +139,11 @@ public class TransientLogImpl implements Log {
             this.commitIndex.set(Math.min(commitIndex, getLastIndex()));
         }
         return this.commitIndex.get();
+    }
+
+    @Override
+    public synchronized int getFirstIndex() {
+        return firstIndex.get();
     }
 
 }

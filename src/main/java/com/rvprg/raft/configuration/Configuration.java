@@ -14,8 +14,7 @@ public class Configuration {
 
     public static class Builder {
         private MemberId memberId;
-        private int heartbeatTimeout = 200;
-        private int heartbeatPeriod = 50;
+        private int heartbeatInterval = 50;
         private int electionMinTimeout = 150;
         private int electionMaxTimeout = 300;
         private int autoReconnectRetryInterval = 1000;
@@ -28,13 +27,8 @@ public class Configuration {
             return this;
         }
 
-        public Builder heartbeatTimeout(int heartbeatTimeout) {
-            this.heartbeatTimeout = heartbeatTimeout;
-            return this;
-        }
-
-        public Builder heartbeatPeriod(int heartbeatPeriod) {
-            this.heartbeatPeriod = heartbeatPeriod;
+        public Builder heartbeatInterval(int heartbeatInterval) {
+            this.heartbeatInterval = heartbeatInterval;
             return this;
         }
 
@@ -74,10 +68,8 @@ public class Configuration {
             Verify.verify(electionMinTimeout > 0, "electionMinTimeout must be positive and nonzero");
             Verify.verify(electionMaxTimeout > 0, "electionMaxTimeout must be positive and nonzero");
             Verify.verify(maxNumberOfLogEntriesPerRequest > 0, "maxNumberOfLogEntriesPerRequest must be positive and nonzero");
-            Verify.verify(heartbeatPeriod > 0, "heartbeatPeriod must be positive and nonzero");
-            Verify.verify(heartbeatTimeout > 0, "heartbeatTimeout must be positive and nonzero");
+            Verify.verify(heartbeatInterval > 0, "heartbeatInterval must be positive and nonzero");
             Verify.verify(electionMinTimeout < electionMaxTimeout, "electionMaxTimeout must not be smaller than election electionMinTimeout");
-            Verify.verify(heartbeatTimeout > heartbeatPeriod, "heartbeatTimeout must not be smaller than heartbeatPeriod");
             Verify.verify(memberId != null, "memberId must not be null");
             return new Configuration(this);
         }
@@ -85,8 +77,7 @@ public class Configuration {
     }
 
     private final MemberId memberId;
-    private final int heartbeatTimeout;
-    private final int heartbeatPeriod;
+    private final int heartbeatInterval;
     private final int electionMinTimeout;
     private final int electionMaxTimeout;
     private final int autoReconnectRetryInterval;
@@ -100,8 +91,7 @@ public class Configuration {
 
     public Configuration(Builder builder) {
         memberId = builder.memberId;
-        heartbeatTimeout = builder.heartbeatTimeout;
-        heartbeatPeriod = builder.heartbeatPeriod;
+        heartbeatInterval = builder.heartbeatInterval;
         electionMinTimeout = builder.electionMinTimeout;
         electionMaxTimeout = builder.electionMaxTimeout;
         autoReconnectRetryInterval = builder.autoReconnectRetryInterval;
@@ -114,12 +104,8 @@ public class Configuration {
         return memberId;
     }
 
-    public int getHeartbeatTimeout() {
-        return heartbeatTimeout;
-    }
-
-    public int getHeartbeatPeriod() {
-        return heartbeatPeriod;
+    public int getHeartbeatInterval() {
+        return heartbeatInterval;
     }
 
     public int getElectionMinTimeout() {

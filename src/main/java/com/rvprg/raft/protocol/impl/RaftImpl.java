@@ -5,7 +5,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Random;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -59,7 +58,7 @@ public class RaftImpl implements Raft {
     private final AtomicReference<ScheduledFuture<?>> electionTimeoutMonitorTask = new AtomicReference<>();
     private final AtomicReference<ScheduledFuture<?>> periodicHeartbeatTask = new AtomicReference<>();
 
-    private final ConcurrentHashMap<Integer, CompletableFuture<Integer>> replicationCompletableFutures = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Integer, ApplyCommandFuture> replicationCompletableFutures = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<MemberId, AtomicReference<ScheduledFuture<?>>> replicationRetryTasks = new ConcurrentHashMap<>();
 
     private final ReentrantReadWriteLock indexesLock = new ReentrantReadWriteLock();
@@ -184,9 +183,7 @@ public class RaftImpl implements Raft {
             response.setTerm(getCurrentTerm());
             MemberId candidateId = MemberId.fromString(requestVote.getCandidateId());
             if (votedFor == null || votedFor.equals(candidateId)) {
-                if (requestVote.getTerm() == getCurrentTerm()) {
-                    grantVote = checkCandidatesLogIsUpToDate(requestVote);
-                }
+                grantVote = checkCandidatesLogIsUpToDate(requestVote);
             }
 
             if (grantVote) {
@@ -263,6 +260,8 @@ public class RaftImpl implements Raft {
             leader = selfId;
             votesReceived = 0;
             int lastLogIndex = log.getLastIndex();
+            // TODO: apply to state machine
+            log.updateCommitIndex(log.getLastIndex());
             nextRequestSequenceNumber.set(0);
 
             memberConnector.getRegisteredMemberIds().forEach(
@@ -272,6 +271,7 @@ public class RaftImpl implements Raft {
                         replicationRetryTasks.putIfAbsent(memberId, new AtomicReference<ScheduledFuture<?>>(null));
                         appendEntriesRequestMetas.putIfAbsent(memberId, new ConcurrentHashMap<>());
                         appendEntriesRequestMetas.get(memberId).clear();
+                        scheduleAppendEntries(memberId);
                     });
         }
         observer.electionWon(getCurrentTerm(), this);
@@ -291,6 +291,8 @@ public class RaftImpl implements Raft {
                     });
 
             appendEntriesRequestMetas.forEach((member, metas) -> metas.clear());
+            replicationCompletableFutures.values().forEach(future -> future.complete(false));
+            replicationCompletableFutures.clear();
         }
     }
 
@@ -324,11 +326,19 @@ public class RaftImpl implements Raft {
             }
         }
 
+        // TODO: refactor
         if (appendEntries.getLogEntriesCount() == 0) {
-            log.updateCommitIndex(appendEntries.getLeaderCommitIndex());
             processHeartbeat(appendEntries);
+            log.updateCommitIndex(appendEntries.getLeaderCommitIndex());
         } else {
             boolean successFlag = processAppendEntries(appendEntries);
+            if (successFlag) {
+                int indexOfLastNewEntry = appendEntries.getPrevLogIndex() + appendEntries.getLogEntriesCount();
+                log.updateCommitIndex(Math.min(appendEntries.getLeaderCommitIndex(), indexOfLastNewEntry));
+                // TODO: trigger application to the State Machine
+            } else {
+                log.updateCommitIndex(appendEntries.getLeaderCommitIndex());
+            }
             sendAppendEntriesResponse(member, appendEntries.getSequenceNumber(), successFlag);
         }
     }
@@ -346,13 +356,7 @@ public class RaftImpl implements Raft {
         List<LogEntry> logEntries = appendEntries.getLogEntriesList()
                 .stream().map(x -> new LogEntry(x.getTerm(), x.getEntry().asReadOnlyByteBuffer()))
                 .collect(Collectors.toList());
-        boolean successFlag = log.append(appendEntries.getPrevLogIndex(), appendEntries.getPrevLogTerm(), logEntries);
-        if (successFlag) {
-            int indexOfLastNewEntry = appendEntries.getPrevLogIndex() + appendEntries.getLogEntriesCount();
-            log.updateCommitIndex(Math.min(appendEntries.getLeaderCommitIndex(), indexOfLastNewEntry));
-            // TODO: trigger application to the State Machine
-        }
-        return successFlag;
+        return log.append(appendEntries.getPrevLogIndex(), appendEntries.getPrevLogTerm(), logEntries);
     }
 
     @Override
@@ -448,7 +452,8 @@ public class RaftImpl implements Raft {
 
     private ScheduledFuture<?> scheduleNextElectionTask() {
         observer.nextElectionScheduled();
-        return eventLoop.get().schedule(() -> RaftImpl.this.heartbeatTimedout(), configuration.getHeartbeatTimeout(), TimeUnit.MILLISECONDS);
+        final int timeout = random.nextInt(configuration.getElectionMaxTimeout() - configuration.getElectionMinTimeout()) + configuration.getElectionMinTimeout();
+        return eventLoop.get().schedule(() -> RaftImpl.this.heartbeatTimedout(), timeout, TimeUnit.MILLISECONDS);
     }
 
     private void scheduleElectionTimeoutTask() {
@@ -460,7 +465,7 @@ public class RaftImpl implements Raft {
 
     private void schedulePeriodicHeartbeatTask() {
         ScheduledFuture<?> prevTask = periodicHeartbeatTask.getAndSet(
-                eventLoop.get().scheduleAtFixedRate(() -> RaftImpl.this.scheduleSendHeartbeats(), 0, configuration.getHeartbeatPeriod(), TimeUnit.MILLISECONDS));
+                eventLoop.get().scheduleAtFixedRate(() -> RaftImpl.this.scheduleSendHeartbeats(), 0, configuration.getHeartbeatInterval(), TimeUnit.MILLISECONDS));
         cancelTask(prevTask);
     }
 
@@ -471,15 +476,15 @@ public class RaftImpl implements Raft {
         }
 
         LogEntry logEntry = new LogEntry(getCurrentTerm(), command);
-        CompletableFuture<Integer> f = scheduleReplication(log.append(logEntry));
+        ApplyCommandFuture f = scheduleReplication(log.append(logEntry));
 
         synchronized (stateLock) {
             return new ApplyCommandResult(f, leader);
         }
     }
 
-    private CompletableFuture<Integer> scheduleReplication(int index) {
-        CompletableFuture<Integer> future = new CompletableFuture<Integer>();
+    private ApplyCommandFuture scheduleReplication(int index) {
+        ApplyCommandFuture future = new ApplyCommandFuture();
         replicationCompletableFutures.put(index, future);
 
         for (MemberId memberId : memberConnector.getRegisteredMemberIds()) {
@@ -525,9 +530,9 @@ public class RaftImpl implements Raft {
     }
 
     private void checkReplicationStatus() {
-        Iterator<Entry<Integer, CompletableFuture<Integer>>> it = replicationCompletableFutures.entrySet().iterator();
+        Iterator<Entry<Integer, ApplyCommandFuture>> it = replicationCompletableFutures.entrySet().iterator();
         while (it.hasNext()) {
-            Entry<Integer, CompletableFuture<Integer>> entry = it.next();
+            Entry<Integer, ApplyCommandFuture> entry = it.next();
             int currIndex = entry.getKey();
 
             int replicationCount = 0;
@@ -544,9 +549,10 @@ public class RaftImpl implements Raft {
 
             if (replicationCount >= getMajority()) {
                 if (log.get(entry.getKey()).getTerm() == getCurrentTerm()) {
+                    // TODO: update state machine
                     log.updateCommitIndex(entry.getKey());
                 }
-                entry.getValue().complete(replicationCount);
+                entry.getValue().complete(true);
                 it.remove();
             }
         }

@@ -18,6 +18,8 @@ public interface Log extends Closeable {
 
     int getLastIndex();
 
+    int getFirstIndex();
+
     LogEntry getLast();
 
     boolean append(int prevLogIndex, int prevLogTerm, List<LogEntry> logEntries);

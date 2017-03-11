@@ -17,11 +17,6 @@ public class ConfigurationTest {
         Configuration.newBuilder().memberId(new MemberId("localhost", 1234)).electionMaxTimeout(10).electionMinTimeout(20).build();
     }
 
-    @Test(expected = VerifyException.class)
-    public void testConditions_ShouldFail_WrongHeartbeatTimeout() {
-        Configuration.newBuilder().memberId(new MemberId("localhost", 1234)).heartbeatTimeout(10).heartbeatPeriod(20).build();
-    }
-
     @Test
     public void testConditions_ShouldSucceed_Defaults() {
         Configuration.newBuilder().memberId(new MemberId("localhost", 1234)).build();

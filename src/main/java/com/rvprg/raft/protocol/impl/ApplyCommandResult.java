@@ -1,27 +1,21 @@
 package com.rvprg.raft.protocol.impl;
 
-import java.util.concurrent.CompletableFuture;
-
 import com.rvprg.raft.transport.MemberId;
 
 public class ApplyCommandResult {
-    private final CompletableFuture<Integer> result;
+    private final ApplyCommandFuture result;
     private final MemberId leaderId;
 
     public MemberId getLeaderId() {
         return leaderId;
     }
 
-    public CompletableFuture<Integer> getResult() {
+    public ApplyCommandFuture getResult() {
         return result;
     }
 
-    public boolean isAccepted() {
-        return result != null;
-    }
-
-    public ApplyCommandResult(CompletableFuture<Integer> f, MemberId leaderId) {
-        this.result = f;
+    public ApplyCommandResult(ApplyCommandFuture result, MemberId leaderId) {
+        this.result = result;
         this.leaderId = leaderId;
     }
 
