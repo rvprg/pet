@@ -11,6 +11,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -292,7 +294,8 @@ public class RaftTest {
     }
 
     @Test
-    public void testConsumeVoteRequest_GiveVoteIfLogIsAsUpToDateAsReceivers() {
+    public void testConsumeVoteRequest_GiveVoteIfLogIsAsUpToDateAsReceivers()
+            throws NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
         Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
@@ -305,6 +308,9 @@ public class RaftTest {
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
 
         final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
+        Method initializeEventLoop = RaftImpl.class.getDeclaredMethod("initializeEventLoop", new Class[] {});
+        initializeEventLoop.setAccessible(true);
+        initializeEventLoop.invoke(raft, new Object[] {});
 
         assertEquals(0, raft.getCurrentTerm());
         assertEquals(0, log.getCommitIndex());
@@ -385,7 +391,8 @@ public class RaftTest {
     }
 
     @Test
-    public void testConsumeVoteRequestResponse_CheckMajorityRule() {
+    public void testConsumeVoteRequestResponse_CheckMajorityRule()
+            throws NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
         Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
@@ -418,6 +425,10 @@ public class RaftTest {
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
 
         final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 1, Role.Candidate, raftObserver);
+
+        Method initializeEventLoop = RaftImpl.class.getDeclaredMethod("initializeEventLoop", new Class[] {});
+        initializeEventLoop.setAccessible(true);
+        initializeEventLoop.invoke(raft, new Object[] {});
 
         assertEquals(1, raft.getCurrentTerm());
 
@@ -466,7 +477,8 @@ public class RaftTest {
     }
 
     @Test
-    public void testConsumeVoteRequestResponse_CheckSateTerm() {
+    public void testConsumeVoteRequestResponse_CheckSateTerm()
+            throws NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
         Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
@@ -479,6 +491,10 @@ public class RaftTest {
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
 
         final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 1, Role.Candidate, raftObserver);
+
+        Method initializeEventLoop = RaftImpl.class.getDeclaredMethod("initializeEventLoop", new Class[] {});
+        initializeEventLoop.setAccessible(true);
+        initializeEventLoop.invoke(raft, new Object[] {});
 
         assertEquals(Role.Candidate, raft.getRole());
         assertEquals(1, raft.getCurrentTerm());
@@ -493,7 +509,8 @@ public class RaftTest {
     }
 
     @Test(timeout = 30000)
-    public void testCheckReplicationRetryTask() throws InterruptedException {
+    public void testCheckReplicationRetryTask()
+            throws InterruptedException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
         // Creates 3 members. Sends a command. Waits until a retry has been sent
         // to each of the three members three times.
         ConcurrentHashMap<MemberId, CountDownLatch> latches = new ConcurrentHashMap<>();
@@ -528,7 +545,13 @@ public class RaftTest {
             }
         };
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 0, Role.Leader, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 0, Role.Candidate, raftObserver);
+        Method initializeEventLoop = RaftImpl.class.getDeclaredMethod("initializeEventLoop", new Class[] {});
+        initializeEventLoop.setAccessible(true);
+        initializeEventLoop.invoke(raft, new Object[] {});
+        Method becomeLeader = RaftImpl.class.getDeclaredMethod("becomeLeader", new Class[] {});
+        becomeLeader.setAccessible(true);
+        becomeLeader.invoke(raft, new Object[] {});
         raft.start();
 
         raft.applyCommand(ByteBuffer.allocate(0));

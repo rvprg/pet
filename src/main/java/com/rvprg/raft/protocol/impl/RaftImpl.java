@@ -124,16 +124,8 @@ public class RaftImpl implements Raft {
         this.observer = observer == null ? RaftObserver.getDefaultInstance() : observer;
         this.stateMachine = stateMachine;
 
-        // FIXME: double initialization
-        initializeEventLoop();
-
         MemberConnectorObserverImpl memberConnectorObserver = new MemberConnectorObserverImpl(this, messageReceiver.getChannelPipelineInitializer());
         configuration.getMemberIds().forEach(memberId -> memberConnector.register(memberId, memberConnectorObserver));
-
-        if (initRole == Role.Leader) {
-            this.role = Role.Candidate;
-            becomeLeader();
-        }
     }
 
     private void initializeEventLoop() {
