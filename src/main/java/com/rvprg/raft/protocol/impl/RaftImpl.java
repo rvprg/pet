@@ -439,10 +439,10 @@ public class RaftImpl implements Raft {
     }
 
     private void scheduleHeartbeatMonitorTask() {
-        cancelTask(newElectionInitiatorTask.getAndSet(scheduleNextElectionTask()));
+        cancelTask(newElectionInitiatorTask.getAndSet(getNextElectionTask()));
     }
 
-    private ScheduledFuture<?> scheduleNextElectionTask() {
+    private ScheduledFuture<?> getNextElectionTask() {
         observer.nextElectionScheduled();
         final int timeout = random.nextInt(configuration.getElectionMaxTimeout() - configuration.getElectionMinTimeout()) + configuration.getElectionMinTimeout();
         return eventLoop.get().schedule(() -> RaftImpl.this.heartbeatTimedout(), timeout, TimeUnit.MILLISECONDS);
