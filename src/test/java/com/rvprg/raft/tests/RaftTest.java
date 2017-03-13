@@ -419,7 +419,7 @@ public class RaftTest {
             }
         };
 
-        Log log = mock(Log.class);
+        Log log = new TransientLogImpl();
         Member member = mock(Member.class);
         Channel senderChannel = mock(Channel.class);
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
@@ -442,8 +442,11 @@ public class RaftTest {
                 .build();
 
         @SuppressWarnings("unchecked")
-        Set<MemberId> membersSet = mock(Set.class);
-        Mockito.when(membersSet.size()).thenReturn(5);
+        Set<MemberId> membersSet = new HashSet<MemberId>();
+        for (int i = 0; i < 5; i++) {
+            membersSet.add(new MemberId("localhost", i));
+        }
+
         Mockito.when(memberConnector.getRegisteredMemberIds()).thenReturn(membersSet);
         MembersRegistry members = mock(MembersRegistry.class);
         Mockito.when(memberConnector.getActiveMembers()).thenReturn(members);

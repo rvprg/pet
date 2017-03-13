@@ -252,8 +252,6 @@ public class RaftImpl implements Raft {
             leader = selfId;
             votesReceived = 0;
             int lastLogIndex = log.getLastIndex();
-            // TODO: apply to state machine
-            log.updateCommitIndex(log.getLastIndex());
             nextRequestSequenceNumber.set(0);
 
             memberConnector.getRegisteredMemberIds().forEach(
@@ -262,10 +260,10 @@ public class RaftImpl implements Raft {
                         matchIndexes.put(memberId, new AtomicInteger(0));
                         replicationRetryTasks.putIfAbsent(memberId, new AtomicReference<ScheduledFuture<?>>(null));
                         appendEntriesRequestMetas.putIfAbsent(memberId, new ConcurrentHashMap<>());
-                        appendEntriesRequestMetas.get(memberId).clear();
                         scheduleAppendEntries(memberId);
                     });
         }
+        applyCommand(ByteBuffer.allocate(0));
         observer.electionWon(getCurrentTerm(), this);
     }
 
