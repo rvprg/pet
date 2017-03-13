@@ -30,6 +30,6 @@ public interface Log extends Closeable {
 
     int append(LogEntry logEntry);
 
-    void clear();
+    void init();
 
 }

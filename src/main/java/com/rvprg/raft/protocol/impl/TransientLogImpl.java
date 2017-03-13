@@ -15,7 +15,7 @@ public class TransientLogImpl implements Log {
     private final AtomicInteger firstIndex = new AtomicInteger(0);
 
     public TransientLogImpl() {
-        log.add(new LogEntry(0, ByteBuffer.allocate(0)));
+        init();
     }
 
     @Override
@@ -63,9 +63,10 @@ public class TransientLogImpl implements Log {
         int nextEntryIndex = prevLogIndex + 1;
         LogEntry nextEntry = get(nextEntryIndex);
         if (nextEntry != null && nextEntry.getTerm() != newNextEntry.getTerm()) {
-            List<LogEntry> newLog = new ArrayList<LogEntry>(log.subList(0, nextEntryIndex));
-            log.clear();
-            log.addAll(newLog);
+            List<LogEntry> newLog = new ArrayList<LogEntry>(nextEntryIndex + 1);
+            for (int i = 0; i < nextEntryIndex + 1; ++i) {
+                newLog.add(log.get(i));
+            }
         }
 
         for (int i = nextEntryIndex, j = 0; j < logEntries.size(); ++i, ++j) {
@@ -121,11 +122,12 @@ public class TransientLogImpl implements Log {
     }
 
     @Override
-    public synchronized void clear() {
+    public synchronized void init() {
         log.clear();
-        commitIndex.set(0);
+        commitIndex.set(1);
         firstIndex.set(0);
-        lastApplied.set(0);
+        lastApplied.set(1);
+        log.add(new LogEntry(0, ByteBuffer.allocate(0)));
     }
 
     @Override
