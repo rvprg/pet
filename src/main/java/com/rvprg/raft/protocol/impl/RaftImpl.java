@@ -53,7 +53,6 @@ public class RaftImpl implements Raft {
     private final MessageReceiver messageReceiver;
     private final Log log;
 
-    // TODO: Make debug messages consistent format.
     private final AtomicReference<ScheduledFuture<?>> newElectionInitiatorTask = new AtomicReference<>();
     private final AtomicReference<ScheduledFuture<?>> electionTimeoutMonitorTask = new AtomicReference<>();
     private final AtomicReference<ScheduledFuture<?>> periodicHeartbeatTask = new AtomicReference<>();
@@ -507,7 +506,7 @@ public class RaftImpl implements Raft {
             ScheduledFuture<?> future = eventLoop.get().schedule(() -> this.scheduleAppendEntries(memberId), configuration.getReplicationRetryInterval(), TimeUnit.MILLISECONDS);
             cancelTask(replicationRetryTasks.get(memberId).getAndSet(future));
         } catch (RejectedExecutionException e) {
-            logger.error("Member: {}, Term: {}, scheduling replication retry failed.", memberId, currentTerm, e);
+            logger.error("Member: {}. Term: {}. Scheduling replication retry failed.", memberId, currentTerm, e);
         }
     }
 
@@ -555,7 +554,7 @@ public class RaftImpl implements Raft {
     private void electionTimedout() {
         observer.electionTimedout();
         synchronized (stateLock) {
-            logger.debug("Member: {}, Term: {}, Election timedout.", selfId, currentTerm);
+            logger.debug("Member: {}. Term: {}. Election timedout.", selfId, currentTerm);
         }
         initiateElection();
     }
@@ -575,14 +574,14 @@ public class RaftImpl implements Raft {
             votedFor = null;
             leader = null;
             votesReceived = 0;
-            logger.debug("Member: {}, Term: {}, New election.", selfId, currentTerm);
+            logger.debug("Member: {}. Term: {}. New election.", selfId, currentTerm);
         }
 
         synchronized (stateLock) {
             if (votedFor == null) {
                 ++votesReceived;
                 votedFor = selfId;
-                logger.debug("Member: {}, Term: {}, Votes Received: {}. Voted for itself.", selfId, currentTerm, votesReceived);
+                logger.debug("Member: {}. Term: {}. Votes Received: {}. Voted for itself.", selfId, currentTerm, votesReceived);
             } else {
                 return;
             }
@@ -599,7 +598,7 @@ public class RaftImpl implements Raft {
         try {
             return member.getChannel().eventLoop().schedule(() -> RaftImpl.this.sendMessage(member, msg), 0, TimeUnit.MILLISECONDS);
         } catch (RejectedExecutionException e) {
-            logger.error("Member: {}, Term: {}, Message type: {}, message send failed.", member, currentTerm, msg.getType(), e);
+            logger.error("Member: {}. Term: {}. Message type: {}. Message sending failed.", member, currentTerm, msg.getType(), e);
         }
         return null;
     }
@@ -687,7 +686,7 @@ public class RaftImpl implements Raft {
         Channel memberChannel = member.getChannel();
         if (memberChannel.isActive()) {
             if (req.getType() == RaftMessage.MessageType.RequestVote) {
-                logger.debug("Member: {}, Term: {}. Vote request sent to {}.", selfId, getCurrentTerm(), member.getMemberId());
+                logger.debug("Member: {}. Term: {}. Vote request sent to: {}.", selfId, getCurrentTerm(), member.getMemberId());
             }
             memberChannel.writeAndFlush(req);
         }
