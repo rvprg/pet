@@ -307,22 +307,25 @@ public class RaftImpl implements Raft {
             } else {
                 log.updateCommitIndex(appendEntries.getLeaderCommitIndex());
             }
-            sendAppendEntriesResponse(member, indexOfFirstNewEntry, indexOfLastNewEntry, successFlag);
+            sendAppendEntriesResponse(member, getAppendEntriesResponse(indexOfFirstNewEntry, indexOfLastNewEntry, successFlag));
         }
     }
 
-    private void sendAppendEntriesResponse(Member member, int indexOfFirstNewEntry, int indexOfLastNewEntry, boolean successFlag) {
-        AppendEntriesResponse.Builder response = AppendEntriesResponse.newBuilder();
+    private void sendAppendEntriesResponse(Member member, AppendEntriesResponse appendEntriesResponse) {
         RaftMessage responseMessage = RaftMessage.newBuilder()
                 .setType(MessageType.AppendEntriesResponse)
-                .setAppendEntriesResponse(
-                        response
-                                .setSuccess(successFlag)
-                                .setTerm(getCurrentTerm())
-                                .setStartIndex(indexOfFirstNewEntry)
-                                .setEndIndex(indexOfLastNewEntry))
-                .build();
+                .setAppendEntriesResponse(appendEntriesResponse).build();
         member.getChannel().writeAndFlush(responseMessage);
+    }
+
+    private AppendEntriesResponse getAppendEntriesResponse(int indexOfFirstNewEntry, int indexOfLastNewEntry, boolean successFlag) {
+        AppendEntriesResponse.Builder appendEntriesResponse = AppendEntriesResponse.newBuilder();
+        return appendEntriesResponse
+                .setSuccess(successFlag)
+                .setTerm(getCurrentTerm())
+                .setStartIndex(indexOfFirstNewEntry)
+                .setEndIndex(indexOfLastNewEntry)
+                .build();
     }
 
     private boolean processAppendEntries(AppendEntries appendEntries) {
@@ -345,43 +348,50 @@ public class RaftImpl implements Raft {
 
         boolean isAccepted = appendEntriesResponse.getSuccess();
         if (isAccepted) {
-            indexesLock.writeLock().lock();
-            try {
-                AtomicInteger nextIndexRef = nextIndexes.get(member.getMemberId());
-                AtomicInteger matchIndexRef = matchIndexes.get(member.getMemberId());
-
-                if (nextIndexRef.get() != appendEntriesResponse.getStartIndex()) {
-                    return;
-                }
-
-                int newMatchIndex = appendEntriesResponse.getEndIndex();
-                int newNextIndex = appendEntriesResponse.getEndIndex() + 1;
-
-                nextIndexRef.set(newNextIndex);
-                matchIndexRef.set(newMatchIndex);
-
-                if (newNextIndex <= log.getLastIndex()) {
-                    scheduleAppendEntries(member.getMemberId());
-                } else {
-                    cancelAppendEntriesRetry(member.getMemberId());
-                }
-
-            } finally {
-                indexesLock.writeLock().unlock();
-            }
-            checkReplicationStatus();
+            processSuccessfulAppendEntriesResponse(member, appendEntriesResponse);
         } else {
-            indexesLock.writeLock().lock();
-            try {
-                AtomicInteger nextIndexRef = nextIndexes.get(member.getMemberId());
-                if (nextIndexRef.get() == appendEntriesResponse.getStartIndex()) {
-                    nextIndexRef.decrementAndGet();
-                }
-            } finally {
-                indexesLock.writeLock().unlock();
-            }
-            scheduleAppendEntries(member.getMemberId());
+            processFailedAppendEntriesResponse(member, appendEntriesResponse);
         }
+    }
+
+    private void processSuccessfulAppendEntriesResponse(Member member, AppendEntriesResponse appendEntriesResponse) {
+        indexesLock.writeLock().lock();
+        try {
+            AtomicInteger nextIndexRef = nextIndexes.get(member.getMemberId());
+            AtomicInteger matchIndexRef = matchIndexes.get(member.getMemberId());
+
+            if (nextIndexRef.get() != appendEntriesResponse.getStartIndex()) {
+                return;
+            }
+
+            int newMatchIndex = appendEntriesResponse.getEndIndex();
+            int newNextIndex = appendEntriesResponse.getEndIndex() + 1;
+
+            nextIndexRef.set(newNextIndex);
+            matchIndexRef.set(newMatchIndex);
+
+            if (newNextIndex <= log.getLastIndex()) {
+                scheduleAppendEntries(member.getMemberId());
+            } else {
+                cancelAppendEntriesRetry(member.getMemberId());
+            }
+        } finally {
+            indexesLock.writeLock().unlock();
+        }
+        checkReplicationStatus();
+    }
+
+    private void processFailedAppendEntriesResponse(Member member, AppendEntriesResponse appendEntriesResponse) {
+        indexesLock.writeLock().lock();
+        try {
+            AtomicInteger nextIndexRef = nextIndexes.get(member.getMemberId());
+            if (nextIndexRef.get() == appendEntriesResponse.getStartIndex()) {
+                nextIndexRef.decrementAndGet();
+            }
+        } finally {
+            indexesLock.writeLock().unlock();
+        }
+        scheduleAppendEntries(member.getMemberId());
     }
 
     private void processHeartbeat(AppendEntries heartbeat) {
@@ -437,16 +447,16 @@ public class RaftImpl implements Raft {
         }
 
         LogEntry logEntry = new LogEntry(getCurrentTerm(), command);
-        ApplyCommandFuture f = scheduleReplication(log.append(logEntry));
+        ApplyCommandFuture applyCommandFuture = scheduleReplication(log.append(logEntry));
 
         synchronized (stateLock) {
-            return new ApplyCommandResult(f, leader);
+            return new ApplyCommandResult(applyCommandFuture, leader);
         }
     }
 
     private ApplyCommandFuture scheduleReplication(int index) {
-        ApplyCommandFuture future = new ApplyCommandFuture();
-        replicationCompletableFutures.put(index, future);
+        ApplyCommandFuture applyCommandFuture = new ApplyCommandFuture();
+        replicationCompletableFutures.put(index, applyCommandFuture);
 
         for (MemberId memberId : memberConnector.getRegisteredMemberIds()) {
             int nextIndex = 0;
@@ -465,7 +475,7 @@ public class RaftImpl implements Raft {
             }
         }
 
-        return future;
+        return applyCommandFuture;
     }
 
     private void cancelAppendEntriesRetry(MemberId memberId) {
