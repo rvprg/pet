@@ -44,12 +44,12 @@ message AppendEntries {
     optional uint32 prevLogTerm = 4;
     optional uint32 leaderCommitIndex = 5;
     repeated LogEntry logEntries = 6;
-    optional int64 sequenceNumber = 7;
 }
 
 message AppendEntriesResponse {
     required uint32 term = 1;
     required bool success = 2;
-    optional int64 sequenceNumber = 3;
+    optional uint32 startIndex = 3;
+    optional uint32 endIndex = 4;
 }
 
