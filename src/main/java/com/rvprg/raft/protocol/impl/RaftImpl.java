@@ -1,6 +1,5 @@
 package com.rvprg.raft.protocol.impl;
 
-import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
@@ -242,7 +241,7 @@ public class RaftImpl implements Raft {
                         scheduleAppendEntries(memberId);
                     });
         }
-        applyCommand(ByteBuffer.allocate(0));
+        applyNoopCommand();
         observer.electionWon(getCurrentTerm(), this);
     }
 
@@ -330,7 +329,7 @@ public class RaftImpl implements Raft {
 
     private boolean processAppendEntries(AppendEntries appendEntries) {
         List<LogEntry> logEntries = appendEntries.getLogEntriesList()
-                .stream().map(x -> new LogEntry(x.getTerm(), x.getEntry().asReadOnlyByteBuffer()))
+                .stream().map(x -> new LogEntry(x.getTerm(), x.getEntry().toByteArray()))
                 .collect(Collectors.toList());
         return log.append(appendEntries.getPrevLogIndex(), appendEntries.getPrevLogTerm(), logEntries);
     }
@@ -440,8 +439,12 @@ public class RaftImpl implements Raft {
         cancelTask(prevTask);
     }
 
+    private ApplyCommandResult applyNoopCommand() {
+        return applyCommand(new byte[0]);
+    }
+
     @Override
-    public ApplyCommandResult applyCommand(ByteBuffer command) {
+    public ApplyCommandResult applyCommand(byte[] command) {
         if (!isLeader()) {
             return new ApplyCommandResult(null, leader);
         }

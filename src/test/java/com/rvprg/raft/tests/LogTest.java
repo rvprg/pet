@@ -4,7 +4,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -44,9 +43,9 @@ public class LogTest {
 
     @Test
     public void testSimpleAppendAndGet() throws IOException {
-        LogEntry logEntry1 = new LogEntry(1, ByteBuffer.allocate(0));
-        LogEntry logEntry2 = new LogEntry(1, ByteBuffer.allocate(0));
-        LogEntry logEntry3 = new LogEntry(2, ByteBuffer.allocate(0));
+        LogEntry logEntry1 = new LogEntry(1, new byte[0]);
+        LogEntry logEntry2 = new LogEntry(1, new byte[0]);
+        LogEntry logEntry3 = new LogEntry(2, new byte[0]);
 
         int index1 = log.append(logEntry1);
         int index2 = log.append(logEntry2);
@@ -89,16 +88,16 @@ public class LogTest {
 
     @Test
     public void testComplexAppend_ShouldSucceed1() throws IOException {
-        log.append(new LogEntry(1, ByteBuffer.allocate(0))); // 1
-        log.append(new LogEntry(1, ByteBuffer.allocate(0))); // 2
-        log.append(new LogEntry(1, ByteBuffer.allocate(0))); // 3
-        log.append(new LogEntry(2, ByteBuffer.allocate(0))); // 4
-        log.append(new LogEntry(3, ByteBuffer.allocate(0))); // 5
+        log.append(new LogEntry(1, new byte[0])); // 1
+        log.append(new LogEntry(1, new byte[0])); // 2
+        log.append(new LogEntry(1, new byte[0])); // 3
+        log.append(new LogEntry(2, new byte[0])); // 4
+        log.append(new LogEntry(3, new byte[0])); // 5
 
         assertEquals(5, log.getLastIndex());
 
-        LogEntry logEntry1 = new LogEntry(2, ByteBuffer.allocate(0));
-        LogEntry logEntry2 = new LogEntry(2, ByteBuffer.allocate(0));
+        LogEntry logEntry1 = new LogEntry(2, new byte[0]);
+        LogEntry logEntry2 = new LogEntry(2, new byte[0]);
 
         List<LogEntry> logEntries = new ArrayList<LogEntry>();
         logEntries.add(logEntry1);
@@ -114,16 +113,16 @@ public class LogTest {
 
     @Test
     public void testComplexAppend_ShouldSucceed2() throws IOException {
-        log.append(new LogEntry(1, ByteBuffer.allocate(0))); // 1
-        log.append(new LogEntry(1, ByteBuffer.allocate(0))); // 2
-        log.append(new LogEntry(1, ByteBuffer.allocate(0))); // 3
-        log.append(new LogEntry(2, ByteBuffer.allocate(0))); // 4
-        log.append(new LogEntry(3, ByteBuffer.allocate(0))); // 5
+        log.append(new LogEntry(1, new byte[0])); // 1
+        log.append(new LogEntry(1, new byte[0])); // 2
+        log.append(new LogEntry(1, new byte[0])); // 3
+        log.append(new LogEntry(2, new byte[0])); // 4
+        log.append(new LogEntry(3, new byte[0])); // 5
 
         assertEquals(5, log.getLastIndex());
 
-        LogEntry logEntry1 = new LogEntry(2, ByteBuffer.allocate(0));
-        LogEntry logEntry2 = new LogEntry(2, ByteBuffer.allocate(0));
+        LogEntry logEntry1 = new LogEntry(2, new byte[0]);
+        LogEntry logEntry2 = new LogEntry(2, new byte[0]);
 
         List<LogEntry> logEntries = new ArrayList<LogEntry>();
         logEntries.add(logEntry1);
@@ -137,11 +136,11 @@ public class LogTest {
     @Test
     public void testComplexAppend_ShouldSucceed3() throws IOException {
         LogEntry[] logEntriesArr = new LogEntry[] {
-                new LogEntry(1, ByteBuffer.allocate(0)), // 1
-                new LogEntry(1, ByteBuffer.allocate(0)), // 2
-                new LogEntry(1, ByteBuffer.allocate(0)), // 3
-                new LogEntry(2, ByteBuffer.allocate(0)), // 4
-                new LogEntry(3, ByteBuffer.allocate(0)) // 5
+                new LogEntry(1, new byte[0]), // 1
+                new LogEntry(1, new byte[0]), // 2
+                new LogEntry(1, new byte[0]), // 3
+                new LogEntry(2, new byte[0]), // 4
+                new LogEntry(3, new byte[0]) // 5
         };
 
         for (LogEntry le : logEntriesArr) {
@@ -166,16 +165,16 @@ public class LogTest {
 
     @Test
     public void testComplexAppend_ShouldFail1() throws IOException {
-        log.append(new LogEntry(1, ByteBuffer.allocate(0))); // 1
-        log.append(new LogEntry(1, ByteBuffer.allocate(0))); // 2
-        log.append(new LogEntry(1, ByteBuffer.allocate(0))); // 3
-        log.append(new LogEntry(2, ByteBuffer.allocate(0))); // 4
-        log.append(new LogEntry(3, ByteBuffer.allocate(0))); // 5
+        log.append(new LogEntry(1, new byte[0])); // 1
+        log.append(new LogEntry(1, new byte[0])); // 2
+        log.append(new LogEntry(1, new byte[0])); // 3
+        log.append(new LogEntry(2, new byte[0])); // 4
+        log.append(new LogEntry(3, new byte[0])); // 5
 
         assertEquals(5, log.getLastIndex());
 
-        LogEntry logEntry1 = new LogEntry(2, ByteBuffer.allocate(0));
-        LogEntry logEntry2 = new LogEntry(2, ByteBuffer.allocate(0));
+        LogEntry logEntry1 = new LogEntry(2, new byte[0]);
+        LogEntry logEntry2 = new LogEntry(2, new byte[0]);
 
         List<LogEntry> logEntries = new ArrayList<LogEntry>();
         logEntries.add(logEntry1);
@@ -191,8 +190,8 @@ public class LogTest {
         assertEquals(false, log.append(3, 1, null));
 
         List<LogEntry> logEntries = new ArrayList<LogEntry>();
-        logEntries.add(new LogEntry(2, ByteBuffer.allocate(0)));
-        logEntries.add(new LogEntry(2, ByteBuffer.allocate(0)));
+        logEntries.add(new LogEntry(2, new byte[0]));
+        logEntries.add(new LogEntry(2, new byte[0]));
 
         assertEquals(false, log.append(3, 1, logEntries));
         assertEquals(false, log.append(-1, 1, logEntries));

@@ -13,7 +13,6 @@ import static org.mockito.Mockito.verify;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -557,7 +556,7 @@ public class RaftTest {
         becomeLeader.invoke(raft, new Object[] {});
         raft.start();
 
-        raft.applyCommand(ByteBuffer.allocate(0));
+        raft.applyCommand(new byte[0]);
 
         for (CountDownLatch latch : latches.values()) {
             latch.await();
