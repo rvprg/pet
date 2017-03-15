@@ -3,15 +3,14 @@ package com.rvprg.raft.protocol.impl;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import com.rvprg.raft.protocol.Log;
+import com.rvprg.raft.sm.StateMachine;
 
 public class TransientLogImpl implements Log {
     private final ArrayList<LogEntry> log = new ArrayList<LogEntry>();
-    private final AtomicInteger commitIndex = new AtomicInteger();
-    private final AtomicInteger lastApplied = new AtomicInteger();
-    private final AtomicInteger firstIndex = new AtomicInteger(0);
+    private int commitIndex = 0;
+    private int firstIndex = 0;
 
     public TransientLogImpl() {
         init();
@@ -24,22 +23,7 @@ public class TransientLogImpl implements Log {
 
     @Override
     public synchronized int getCommitIndex() {
-        return commitIndex.get();
-    }
-
-    @Override
-    public int incrementAndGetCommitIndex() {
-        return commitIndex.incrementAndGet();
-    }
-
-    @Override
-    public int getLastApplied() {
-        return lastApplied.get();
-    }
-
-    @Override
-    public int incrementAndGetLastApplied() {
-        return lastApplied.incrementAndGet();
+        return commitIndex;
     }
 
     @Override
@@ -123,9 +107,8 @@ public class TransientLogImpl implements Log {
     @Override
     public synchronized void init() {
         log.clear();
-        commitIndex.set(1);
-        firstIndex.set(0);
-        lastApplied.set(1);
+        commitIndex = 1;
+        firstIndex = 0;
         log.add(new LogEntry(0, new byte[0]));
     }
 
@@ -135,16 +118,25 @@ public class TransientLogImpl implements Log {
     }
 
     @Override
-    public synchronized int updateCommitIndex(int commitIndex) {
-        if (commitIndex > getCommitIndex()) {
-            this.commitIndex.set(Math.min(commitIndex, getLastIndex()));
+    public synchronized int commit(int commitUpToIndex, StateMachine stateMachine) {
+        if (commitUpToIndex > getCommitIndex()) {
+            int newIndex = Math.min(commitUpToIndex, getLastIndex());
+
+            for (int i = getCommitIndex(); i <= newIndex; ++i) {
+                LogEntry logEntry = get(i);
+                if (!logEntry.isNoop()) {
+                    stateMachine.apply(logEntry.getCommand());
+                }
+            }
+
+            this.commitIndex = newIndex;
         }
-        return this.commitIndex.get();
+        return this.commitIndex;
     }
 
     @Override
     public synchronized int getFirstIndex() {
-        return firstIndex.get();
+        return firstIndex;
     }
 
 }

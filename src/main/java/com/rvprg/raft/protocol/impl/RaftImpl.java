@@ -295,16 +295,15 @@ public class RaftImpl implements Raft {
 
         if (appendEntries.getLogEntriesCount() == 0) {
             processHeartbeat(appendEntries);
-            log.updateCommitIndex(appendEntries.getLeaderCommitIndex());
+            log.commit(appendEntries.getLeaderCommitIndex(), stateMachine);
         } else {
             boolean successFlag = processAppendEntries(appendEntries);
             int indexOfFirstNewEntry = appendEntries.getPrevLogIndex() + 1;
             int indexOfLastNewEntry = appendEntries.getPrevLogIndex() + appendEntries.getLogEntriesCount();
             if (successFlag) {
-                log.updateCommitIndex(Math.min(appendEntries.getLeaderCommitIndex(), indexOfLastNewEntry));
-                // TODO: trigger application to the State Machine
+                log.commit(Math.min(appendEntries.getLeaderCommitIndex(), indexOfLastNewEntry), stateMachine);
             } else {
-                log.updateCommitIndex(appendEntries.getLeaderCommitIndex());
+                log.commit(appendEntries.getLeaderCommitIndex(), stateMachine);
             }
             sendAppendEntriesResponse(member, getAppendEntriesResponse(indexOfFirstNewEntry, indexOfLastNewEntry, successFlag));
         }
@@ -523,8 +522,7 @@ public class RaftImpl implements Raft {
 
             if (replicationCount >= getMajority()) {
                 if (log.get(entry.getKey()).getTerm() == getCurrentTerm()) {
-                    // TODO: update state machine
-                    log.updateCommitIndex(entry.getKey());
+                    log.commit(entry.getKey(), stateMachine);
                 }
                 entry.getValue().complete(true);
                 it.remove();

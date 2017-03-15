@@ -4,17 +4,12 @@ import java.io.Closeable;
 import java.util.List;
 
 import com.rvprg.raft.protocol.impl.LogEntry;
+import com.rvprg.raft.sm.StateMachine;
 
 public interface Log extends Closeable {
     int getCommitIndex();
 
-    int incrementAndGetCommitIndex();
-
-    int updateCommitIndex(int commitIndex);
-
-    int getLastApplied();
-
-    int incrementAndGetLastApplied();
+    int commit(int commitUpToIndex, StateMachine stateMachine);
 
     int getLastIndex();
 

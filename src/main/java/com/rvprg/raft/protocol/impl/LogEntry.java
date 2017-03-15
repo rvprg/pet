@@ -18,4 +18,8 @@ public class LogEntry {
         return command;
     }
 
+    public boolean isNoop() {
+        return command == null || command.length == 0;
+    }
+
 }
