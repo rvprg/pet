@@ -3,6 +3,7 @@ package com.rvprg.raft.transport.impl;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,12 +32,14 @@ public class MemberConnectorImpl implements MemberConnector {
     private final static Logger logger = LoggerFactory.getLogger(MemberConnectorImpl.class);
 
     private final ConcurrentHashMap<MemberId, MemberConnectorObserver> registered = new ConcurrentHashMap<MemberId, MemberConnectorObserver>();
+    private ImmutableSet<MemberId> immutableMemberIdSet = ImmutableSet.of();
     private final Bootstrap clientBootstrap;
 
     private final EventLoopGroup workerGroup;
     private final MembersRegistry membersRegistry;
 
     private final Configuration configuration;
+    private final ReentrantReadWriteLock stateLock = new ReentrantReadWriteLock();
 
     @Override
     public MembersRegistry getActiveMembers() {
@@ -72,17 +75,34 @@ public class MemberConnectorImpl implements MemberConnector {
 
     @Override
     public void register(final MemberId member, final MemberConnectorObserver observer) {
-        registered.putIfAbsent(member, observer == null ? MemberConnectorObserver.getDefaultInstance() : observer);
+        stateLock.writeLock().lock();
+        try {
+            registered.putIfAbsent(member, observer == null ? MemberConnectorObserver.getDefaultInstance() : observer);
+            immutableMemberIdSet = ImmutableSet.copyOf(registered.keySet());
+        } finally {
+            stateLock.writeLock().unlock();
+        }
     }
 
     @Override
     public void unregister(MemberId member) {
-        registered.remove(member);
+        stateLock.writeLock().lock();
+        try {
+            registered.remove(member);
+            immutableMemberIdSet = ImmutableSet.copyOf(registered.keySet());
+        } finally {
+            stateLock.writeLock().unlock();
+        }
     }
 
     @Override
     public Set<MemberId> getRegisteredMemberIds() {
-        return ImmutableSet.copyOf(registered.keySet());
+        stateLock.readLock().lock();
+        try {
+            return immutableMemberIdSet;
+        } finally {
+            stateLock.readLock().unlock();
+        }
     }
 
     @Override
