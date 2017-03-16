@@ -122,7 +122,7 @@ public class TransientLogImpl implements Log {
         if (commitUpToIndex > getCommitIndex()) {
             int newIndex = Math.min(commitUpToIndex, getLastIndex());
 
-            for (int i = getCommitIndex(); i <= newIndex; ++i) {
+            for (int i = getCommitIndex() + 1; i <= newIndex; ++i) {
                 LogEntry logEntry = get(i);
                 if (logEntry.isNoop()) {
                     continue;

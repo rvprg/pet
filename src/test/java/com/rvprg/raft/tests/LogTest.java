@@ -17,6 +17,7 @@ import org.junit.runners.Parameterized;
 import com.rvprg.raft.protocol.Log;
 import com.rvprg.raft.protocol.impl.LogEntry;
 import com.rvprg.raft.protocol.impl.TransientLogImpl;
+import com.rvprg.raft.sm.StateMachine;
 
 @RunWith(Parameterized.class)
 public class LogTest {
@@ -195,5 +196,55 @@ public class LogTest {
 
         assertEquals(false, log.append(3, 1, logEntries));
         assertEquals(false, log.append(-1, 1, logEntries));
+    }
+
+    @Test
+    public void testCommit() {
+        LogEntry[] logEntries = new LogEntry[] {
+                new LogEntry(1, new byte[0]),
+                new LogEntry(1, new byte[] { 1 }),
+                new LogEntry(1, new byte[] { 2 }),
+                new LogEntry(1, new byte[0]),
+                new LogEntry(1, new byte[] { 3 })
+        };
+
+        for (LogEntry le : logEntries) {
+            log.append(le);
+        }
+
+        final List<byte[]> commands = new ArrayList<>();
+        StateMachine stateMachine = new StateMachine() {
+            @Override
+            public void apply(byte[] command) {
+                commands.add(command);
+            }
+        };
+
+        assertEquals(1, log.getCommitIndex());
+
+        log.commit(3, stateMachine);
+
+        assertEquals(3, log.getCommitIndex());
+        assertEquals(2, commands.size());
+
+        assertEquals(logEntries[1].getCommand(), commands.get(0));
+        assertEquals(logEntries[2].getCommand(), commands.get(1));
+
+        log.commit(3, stateMachine);
+
+        assertEquals(3, log.getCommitIndex());
+        assertEquals(2, commands.size());
+
+        assertEquals(logEntries[1].getCommand(), commands.get(0));
+        assertEquals(logEntries[2].getCommand(), commands.get(1));
+
+        log.commit(10, stateMachine);
+
+        assertEquals(5, log.getCommitIndex());
+        assertEquals(3, commands.size());
+
+        assertEquals(logEntries[1].getCommand(), commands.get(0));
+        assertEquals(logEntries[2].getCommand(), commands.get(1));
+        assertEquals(logEntries[4].getCommand(), commands.get(2));
     }
 }
