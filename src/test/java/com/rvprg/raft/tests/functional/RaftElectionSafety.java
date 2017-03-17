@@ -22,7 +22,7 @@ import com.rvprg.raft.protocol.impl.RaftObserverImpl;
 import com.rvprg.raft.tests.helpers.NetworkUtils;
 import com.rvprg.raft.transport.MemberId;
 
-public class RaftElectionTest {
+public class RaftElectionSafety {
     // TODO:
     // Test:Check that the candidate with the more up to date log should win the
     // election
