@@ -1,5 +1,6 @@
 package com.rvprg.raft.tests;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
@@ -227,24 +228,24 @@ public class LogTest {
         assertEquals(3, log.getCommitIndex());
         assertEquals(2, commands.size());
 
-        assertEquals(logEntries[1].getCommand(), commands.get(0));
-        assertEquals(logEntries[2].getCommand(), commands.get(1));
+        assertArrayEquals(logEntries[1].getCommand(), commands.get(0));
+        assertArrayEquals(logEntries[2].getCommand(), commands.get(1));
 
         log.commit(3, stateMachine);
 
         assertEquals(3, log.getCommitIndex());
         assertEquals(2, commands.size());
 
-        assertEquals(logEntries[1].getCommand(), commands.get(0));
-        assertEquals(logEntries[2].getCommand(), commands.get(1));
+        assertArrayEquals(logEntries[1].getCommand(), commands.get(0));
+        assertArrayEquals(logEntries[2].getCommand(), commands.get(1));
 
         log.commit(10, stateMachine);
 
         assertEquals(5, log.getCommitIndex());
         assertEquals(3, commands.size());
 
-        assertEquals(logEntries[1].getCommand(), commands.get(0));
-        assertEquals(logEntries[2].getCommand(), commands.get(1));
-        assertEquals(logEntries[4].getCommand(), commands.get(2));
+        assertArrayEquals(logEntries[1].getCommand(), commands.get(0));
+        assertArrayEquals(logEntries[2].getCommand(), commands.get(1));
+        assertArrayEquals(logEntries[4].getCommand(), commands.get(2));
     }
 }
