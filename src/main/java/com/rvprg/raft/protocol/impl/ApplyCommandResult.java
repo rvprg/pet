@@ -1,22 +1,24 @@
 package com.rvprg.raft.protocol.impl;
 
+import java.util.Optional;
+
 import com.rvprg.raft.transport.MemberId;
 
 public class ApplyCommandResult {
-    private final ApplyCommandFuture result;
-    private final MemberId leaderId;
+    private final Optional<ApplyCommandFuture> result;
+    private final Optional<MemberId> leaderId;
 
-    public MemberId getLeaderId() {
+    public Optional<MemberId> getLeaderId() {
         return leaderId;
     }
 
-    public ApplyCommandFuture getResult() {
+    public Optional<ApplyCommandFuture> getResult() {
         return result;
     }
 
     public ApplyCommandResult(ApplyCommandFuture result, MemberId leaderId) {
-        this.result = result;
-        this.leaderId = leaderId;
+        this.result = Optional.ofNullable(result);
+        this.leaderId = Optional.ofNullable(leaderId);
     }
 
 }

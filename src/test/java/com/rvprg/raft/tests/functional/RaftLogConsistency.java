@@ -31,7 +31,7 @@ public class RaftLogConsistency {
 
     @Test
     public void testLogConsistencyProperty()
-            throws InterruptedException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, ExecutionException {
+            throws InterruptedException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
         // This test creates a cluster of clusterSize members. Then it applies
         // applyCount different commands. After that it elects a new leader and
         // starts everything again. It repeats the cycle iterations times.
@@ -84,13 +84,13 @@ public class RaftLogConsistency {
                 byte[] buff = ByteBuffer.allocate(4).putInt(commandNumber).array();
                 ApplyCommandResult applyCommandResult = currentLeader.applyCommand(buff);
 
-                try {
-                    if (applyCommandResult.getResult() != null) {
-                        applyCommandResult.getResult().get(3000, TimeUnit.MILLISECONDS);
+                applyCommandResult.getResult().ifPresent(x -> {
+                    try {
+                        x.get(3000, TimeUnit.MILLISECONDS);
+                    } catch (TimeoutException | InterruptedException | ExecutionException e) {
+                        // fine
                     }
-                } catch (TimeoutException e) {
-                    // fine
-                }
+                });
             }
 
             if (i < iterations - 1) {
