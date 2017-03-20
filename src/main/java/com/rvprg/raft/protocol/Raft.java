@@ -4,19 +4,19 @@ import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.protocol.impl.ApplyCommandResult;
 
 public interface Raft extends MessageConsumer {
-    public void start() throws InterruptedException;
+    void start() throws InterruptedException;
 
-    public void shutdown() throws InterruptedException;
+    void shutdown() throws InterruptedException;
 
     boolean isStarted();
 
-    public int getCurrentTerm();
+    int getCurrentTerm();
 
-    public Role getRole();
+    Role getRole();
 
-    public Configuration getConfiguration();
+    Configuration getConfiguration();
 
-    public Log getLog();
+    Log getLog();
 
     ApplyCommandResult applyCommand(byte[] command);
 }

@@ -1,13 +1,13 @@
 package com.rvprg.raft.transport;
 
 public interface MemberConnectorObserver {
-    public void connected(Member member);
+    void connected(Member member);
 
-    public void scheduledReconnect(MemberId member);
+    void scheduledReconnect(MemberId member);
 
-    public void disconnected(MemberId memberId);
+    void disconnected(MemberId memberId);
 
-    public void exceptionCaught(MemberId memberId, Throwable cause);
+    void exceptionCaught(MemberId memberId, Throwable cause);
 
     static MemberConnectorObserver getDefaultInstance() {
         return new MemberConnectorObserver() {
