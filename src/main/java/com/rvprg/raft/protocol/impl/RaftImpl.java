@@ -25,6 +25,7 @@ import com.rvprg.raft.protocol.Role;
 import com.rvprg.raft.protocol.messages.ProtocolMessages;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntries;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntriesResponse;
+import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage.MessageType;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVote;
@@ -241,7 +242,7 @@ public class RaftImpl implements Raft {
                         scheduleAppendEntries(memberId);
                     });
         }
-        applyNoopCommand();
+        applyNoOperationCommand();
         observer.electionWon(getCurrentTerm(), this);
     }
 
@@ -328,7 +329,7 @@ public class RaftImpl implements Raft {
 
     private boolean processAppendEntries(AppendEntries appendEntries) {
         List<LogEntry> logEntries = appendEntries.getLogEntriesList()
-                .stream().map(x -> new LogEntry(x.getTerm(), x.getEntry().toByteArray()))
+                .stream().map(x -> new LogEntry(x.getTerm(), x.getType(), x.getEntry().toByteArray()))
                 .collect(Collectors.toList());
         return log.append(appendEntries.getPrevLogIndex(), appendEntries.getPrevLogTerm(), logEntries);
     }
@@ -438,22 +439,26 @@ public class RaftImpl implements Raft {
         cancelTask(prevTask);
     }
 
-    private ApplyCommandResult applyNoopCommand() {
-        return applyCommand(new byte[0]);
+    private ApplyCommandResult applyNoOperationCommand() {
+        return applyCommand(LogEntryType.NoOperationCommand, new byte[0]);
     }
 
-    @Override
-    public ApplyCommandResult applyCommand(byte[] command) {
+    private ApplyCommandResult applyCommand(LogEntryType type, byte[] command) {
         if (!isLeader()) {
             return new ApplyCommandResult(null, leader);
         }
 
-        LogEntry logEntry = new LogEntry(getCurrentTerm(), command);
+        LogEntry logEntry = new LogEntry(getCurrentTerm(), type, command);
         ApplyCommandFuture applyCommandFuture = scheduleReplication(log.append(logEntry));
 
         synchronized (stateLock) {
             return new ApplyCommandResult(applyCommandFuture, leader);
         }
+    }
+
+    @Override
+    public ApplyCommandResult applyCommand(byte[] command) {
+        return applyCommand(LogEntryType.StateMachineCommand, command);
     }
 
     private ApplyCommandFuture scheduleReplication(int index) {
@@ -620,9 +625,12 @@ public class RaftImpl implements Raft {
                 .setLeaderId(leader.toString());
 
         log.get(nextIndex, configuration.getMaxNumberOfLogEntriesPerRequest())
-                .forEach(logEntry -> req.addLogEntries(ProtocolMessages.LogEntry.newBuilder()
-                        .setTerm(logEntry.getTerm())
-                        .setEntry(ByteString.copyFrom(logEntry.getCommand()))));
+                .forEach(logEntry -> {
+                    req.addLogEntries(ProtocolMessages.LogEntry.newBuilder()
+                            .setTerm(logEntry.getTerm())
+                            .setType(logEntry.getType())
+                            .setEntry(ByteString.copyFrom(logEntry.getCommand())));
+                });
 
         RaftMessage requestVote = RaftMessage.newBuilder()
                 .setType(MessageType.AppendEntries)
@@ -713,5 +721,17 @@ public class RaftImpl implements Raft {
     @Override
     public Log getLog() {
         return log;
+    }
+
+    @Override
+    public ApplyCommandResult addMemberDynamically(MemberId member) {
+        // TODO: implement
+        return null;
+    }
+
+    @Override
+    public ApplyCommandResult removeMemberDynamically(MemberId member) {
+        // TODO: implement
+        return null;
     }
 }

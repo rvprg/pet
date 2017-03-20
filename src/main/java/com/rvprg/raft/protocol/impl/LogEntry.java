@@ -2,14 +2,25 @@ package com.rvprg.raft.protocol.impl;
 
 import java.util.Arrays;
 
-public class LogEntry {
+import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
 
+public class LogEntry {
     private final int term;
     private final byte[] command;
+    private final LogEntryType type;
+
+    public LogEntry(int term) {
+        this(term, LogEntryType.NoOperationCommand, new byte[0]);
+    }
 
     public LogEntry(int term, byte[] command) {
+        this(term, LogEntryType.StateMachineCommand, command);
+    }
+
+    public LogEntry(int term, LogEntryType type, byte[] command) {
         this.term = term;
         this.command = command;
+        this.type = type;
     }
 
     public int getTerm() {
@@ -20,8 +31,20 @@ public class LogEntry {
         return command;
     }
 
-    public boolean isNoop() {
-        return command == null || command.length == 0;
+    public LogEntryType getType() {
+        return type;
+    }
+
+    public boolean isNoOperationCommand() {
+        return type == LogEntryType.NoOperationCommand;
+    }
+
+    public boolean isRaftProtocolCommand() {
+        return type == LogEntryType.RaftProtocolCommand;
+    }
+
+    public boolean isStateMachineCommand() {
+        return type == LogEntryType.StateMachineCommand;
     }
 
     @Override
@@ -30,6 +53,7 @@ public class LogEntry {
         int result = 1;
         result = prime * result + Arrays.hashCode(command);
         result = prime * result + term;
+        result = prime * result + ((type == null) ? 0 : type.hashCode());
         return result;
     }
 
@@ -45,6 +69,8 @@ public class LogEntry {
         if (!Arrays.equals(command, other.command))
             return false;
         if (term != other.term)
+            return false;
+        if (type != other.type)
             return false;
         return true;
     }

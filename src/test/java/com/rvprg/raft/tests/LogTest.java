@@ -202,10 +202,10 @@ public class LogTest {
     @Test
     public void testCommit() {
         LogEntry[] logEntries = new LogEntry[] {
-                new LogEntry(1, new byte[0]),
+                new LogEntry(1),
                 new LogEntry(1, new byte[] { 1 }),
                 new LogEntry(1, new byte[] { 2 }),
-                new LogEntry(1, new byte[0]),
+                new LogEntry(1),
                 new LogEntry(1, new byte[] { 3 })
         };
 

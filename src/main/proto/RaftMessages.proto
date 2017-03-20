@@ -33,8 +33,14 @@ message RequestVoteResponse {
 }
 
 message LogEntry {
+    enum LogEntryType {
+        StateMachineCommand = 1;
+        NoOperationCommand = 2;
+        RaftProtocolCommand = 3;
+    }
     required uint32 term = 1;
     required bytes entry = 2;
+    required LogEntryType type = 3;
 }
 
 message AppendEntries {

@@ -124,15 +124,15 @@ public class TransientLogImpl implements Log {
 
             for (int i = getCommitIndex() + 1; i <= newIndex; ++i) {
                 LogEntry logEntry = get(i);
-                if (logEntry.isNoop()) {
-                    continue;
+                if (logEntry.isStateMachineCommand()) {
+                    stateMachine.apply(logEntry.getCommand());
                 }
-                stateMachine.apply(logEntry.getCommand());
             }
 
             this.commitIndex = newIndex;
         }
         return this.commitIndex;
+
     }
 
     @Override
