@@ -57,5 +57,6 @@ message AppendEntriesResponse {
     required bool success = 2;
     optional uint32 startIndex = 3;
     optional uint32 endIndex = 4;
+    optional uint32 logLength = 5;
 }
 

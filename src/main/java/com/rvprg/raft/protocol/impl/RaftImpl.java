@@ -324,6 +324,7 @@ public class RaftImpl implements Raft {
                 .setTerm(getCurrentTerm())
                 .setStartIndex(indexOfFirstNewEntry)
                 .setEndIndex(indexOfLastNewEntry)
+                .setLogLength(log.getLastIndex())
                 .build();
     }
 
@@ -385,7 +386,7 @@ public class RaftImpl implements Raft {
         try {
             AtomicInteger nextIndexRef = nextIndexes.get(member.getMemberId());
             if (nextIndexRef.get() == appendEntriesResponse.getStartIndex()) {
-                nextIndexRef.decrementAndGet();
+                nextIndexRef.set(appendEntriesResponse.getLogLength() + 1);
             }
         } finally {
             indexesLock.writeLock().unlock();
