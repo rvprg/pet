@@ -46,9 +46,8 @@ public class TransientLogImpl implements Log {
         int nextEntryIndex = prevLogIndex + 1;
         LogEntry nextEntry = get(nextEntryIndex);
         if (nextEntry != null && nextEntry.getTerm() != newNextEntry.getTerm()) {
-            List<LogEntry> newLog = new ArrayList<LogEntry>(nextEntryIndex + 1);
-            for (int i = 0; i < nextEntryIndex + 1; ++i) {
-                newLog.add(log.get(i));
+            while (log.size() > nextEntryIndex) {
+                log.remove(log.size() - 1);
             }
         }
 

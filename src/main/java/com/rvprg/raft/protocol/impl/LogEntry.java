@@ -4,8 +4,11 @@ import java.util.Arrays;
 
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 public class LogEntry {
     private final int term;
+    @SuppressFBWarnings(justification = "Exposes internal buffer intentionally")
     private final byte[] command;
     private final LogEntryType type;
 

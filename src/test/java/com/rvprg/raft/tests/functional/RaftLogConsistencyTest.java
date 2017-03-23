@@ -27,7 +27,7 @@ import com.rvprg.raft.protocol.impl.RaftObserverImpl;
 import com.rvprg.raft.tests.helpers.NetworkUtils;
 import com.rvprg.raft.transport.MemberId;
 
-public class RaftLogConsistency {
+public class RaftLogConsistencyTest {
 
     @Test
     public void testLogConsistencyProperty()

@@ -23,7 +23,7 @@ import com.rvprg.raft.protocol.impl.RaftObserverImpl;
 import com.rvprg.raft.tests.helpers.NetworkUtils;
 import com.rvprg.raft.transport.MemberId;
 
-public class RaftElectionSafety {
+public class RaftElectionSafetyTest {
     @Test(timeout = 60000)
     public void testElectionSafetyProperty_OneLeaderPerTerm()
             throws InterruptedException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {

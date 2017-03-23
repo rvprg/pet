@@ -7,6 +7,7 @@ import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -48,7 +49,7 @@ public class RaftImpl implements Raft {
 
     private final MemberId selfId;
     private final Configuration configuration;
-    private final MemberConnector memberConnector;
+    private final RaftMemberConnector memberConnector;
     private final MessageReceiver messageReceiver;
     private final Log log;
 
@@ -85,6 +86,8 @@ public class RaftImpl implements Raft {
 
     private final StateMachine stateMachine;
 
+    private final AtomicBoolean catchingUpMember = new AtomicBoolean(false);
+
     @Inject
     public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine, RaftObserver observer) {
         this(configuration, memberConnector, messageReceiver, log, stateMachine, 0, Role.Follower, observer);
@@ -93,7 +96,7 @@ public class RaftImpl implements Raft {
     public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine,
             int initTerm, Role initRole,
             RaftObserver observer) {
-        this.memberConnector = memberConnector;
+        this.memberConnector = new RaftMemberConnector(memberConnector);
         this.messageReceiver = messageReceiver;
         this.selfId = messageReceiver.getMemberId();
         this.log = log;
@@ -122,7 +125,9 @@ public class RaftImpl implements Raft {
             initializeEventLoop();
             messageReceiver.start(this);
             memberConnector.connectAllRegistered();
-            scheduleHeartbeatMonitorTask();
+            if (isVotingMember()) {
+                scheduleHeartbeatMonitorTask();
+            }
             started = true;
             observer.started();
             memberConnector.getRegisteredMemberIds().forEach(
@@ -145,7 +150,7 @@ public class RaftImpl implements Raft {
     @Override
     public void consumeRequestVote(Member member, RequestVote requestVote) {
         boolean ignoreMessage = checkTermRecency(requestVote.getTerm());
-        if (ignoreMessage) {
+        if (ignoreMessage || isCatchingUpMember()) {
             return;
         }
         Builder response = RequestVoteResponse.newBuilder();
@@ -502,7 +507,7 @@ public class RaftImpl implements Raft {
 
     private void scheduleAppendEntries(MemberId memberId) {
         scheduleAppendEntriesRetry(memberId);
-        Member member = memberConnector.getActiveMembers().get(memberId);
+        Member member = memberConnector.getActiveMember(memberId);
         if (member != null) {
             scheduleSendMessageToMember(member, getAppendEntries(memberId));
         }
@@ -537,7 +542,7 @@ public class RaftImpl implements Raft {
     }
 
     private int getMajority() {
-        return (memberConnector.getRegisteredMemberIds().size() + 1) / 2 + 1;
+        return (memberConnector.getVotingMembersCount() + 1) / 2 + 1;
     }
 
     private void electionTimedout() {
@@ -580,7 +585,11 @@ public class RaftImpl implements Raft {
     }
 
     private void scheduleSendMessageToEachMember(RaftMessage msg) {
-        memberConnector.getActiveMembers().getAll().forEach(member -> scheduleSendMessageToMember(member, msg));
+        memberConnector.getAllActiveMembers().forEach(member -> scheduleSendMessageToMember(member, msg));
+    }
+
+    private void scheduleSendMessageToEachVotingMember(RaftMessage msg) {
+        memberConnector.getAllActiveVotingMembers().forEach(member -> scheduleSendMessageToMember(member, msg));
     }
 
     private ScheduledFuture<?> scheduleSendMessageToMember(Member member, RaftMessage msg) {
@@ -593,7 +602,7 @@ public class RaftImpl implements Raft {
     }
 
     private void scheduleSendVoteRequests() {
-        scheduleSendMessageToEachMember(getRequestVoteMessage());
+        scheduleSendMessageToEachVotingMember(getRequestVoteMessage());
     }
 
     private void scheduleSendHeartbeats() {
@@ -734,5 +743,23 @@ public class RaftImpl implements Raft {
     public ApplyCommandResult removeMemberDynamically(MemberId member) {
         // TODO: implement
         return null;
+    }
+
+    public boolean isVotingMember() {
+        return !catchingUpMember.get();
+    }
+
+    public boolean isCatchingUpMember() {
+        return catchingUpMember.get();
+    }
+
+    public void becomeCatchingUpMember() {
+        cancelHeartbeatMonitorTask();
+        catchingUpMember.set(true);
+    }
+
+    public void becomeVotingMember() {
+        scheduleHeartbeatMonitorTask();
+        catchingUpMember.set(true);
     }
 }
