@@ -23,9 +23,9 @@ public interface Raft extends MessageConsumer {
 
     ApplyCommandResult applyCommand(byte[] command);
 
-    ApplyCommandResult addMemberDynamically(MemberId member);
+    ApplyCommandResult addMemberDynamically(MemberId memberId);
 
-    ApplyCommandResult removeMemberDynamically(MemberId member);
+    ApplyCommandResult removeMemberDynamically(MemberId memberId);
 
     AddCatchingUpMemberResult addCatchingUpMember(MemberId memberId);
 
