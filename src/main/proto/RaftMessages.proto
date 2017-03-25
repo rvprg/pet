@@ -60,3 +60,11 @@ message AppendEntriesResponse {
     optional uint32 logLength = 5;
 }
 
+message DynamicMembershipChangeCommand {
+    enum CommandType {
+        AddMember = 1;
+        RemoveMember = 2;
+    }
+    required CommandType type = 1;
+    required bytes memberId = 2;
+}

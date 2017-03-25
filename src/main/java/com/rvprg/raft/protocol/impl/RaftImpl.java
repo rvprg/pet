@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.inject.Inject;
 import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.protocol.Log;
 import com.rvprg.raft.protocol.Raft;
@@ -26,6 +27,8 @@ import com.rvprg.raft.protocol.Role;
 import com.rvprg.raft.protocol.messages.ProtocolMessages;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntries;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntriesResponse;
+import com.rvprg.raft.protocol.messages.ProtocolMessages.DynamicMembershipChangeCommand;
+import com.rvprg.raft.protocol.messages.ProtocolMessages.DynamicMembershipChangeCommand.CommandType;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage.MessageType;
@@ -82,6 +85,8 @@ public class RaftImpl implements Raft {
     @GuardedBy("stateLock")
     private AtomicReference<EventLoopGroup> eventLoop = new AtomicReference<EventLoopGroup>(null);
 
+    private final MemberConnectorObserverImpl memberConnectorObserver;
+
     private final Random random;
 
     private final StateMachine stateMachine;
@@ -108,7 +113,7 @@ public class RaftImpl implements Raft {
         this.observer = observer == null ? RaftObserver.getDefaultInstance() : observer;
         this.stateMachine = stateMachine;
 
-        MemberConnectorObserverImpl memberConnectorObserver = new MemberConnectorObserverImpl(this, messageReceiver.getChannelPipelineInitializer());
+        memberConnectorObserver = new MemberConnectorObserverImpl(this, messageReceiver.getChannelPipelineInitializer());
         configuration.getMemberIds().forEach(memberId -> memberConnector.register(memberId, memberConnectorObserver));
     }
 
@@ -333,10 +338,31 @@ public class RaftImpl implements Raft {
                 .build();
     }
 
+    private void processRaftCommands(List<LogEntry> logEntries) {
+        List<LogEntry> raftCommands = logEntries.stream().filter(x -> x.getType() == LogEntryType.RaftProtocolCommand)
+                .collect(Collectors.toList());
+
+        for (LogEntry le : raftCommands) {
+            try {
+                DynamicMembershipChangeCommand command = DynamicMembershipChangeCommand.parseFrom(le.getCommand());
+                MemberId memberId = MemberId.fromString(command.getMemberId().toString());
+                if (command.getType() == CommandType.AddMember) {
+                    memberConnector.register(memberId, memberConnectorObserver);
+                    memberConnector.connect(memberId);
+                } else {
+                    memberConnector.unregister(memberId);
+                }
+            } catch (InvalidProtocolBufferException e) {
+                logger.error("Error on processing raft command.", e);
+            }
+        }
+    }
+
     private boolean processAppendEntries(AppendEntries appendEntries) {
         List<LogEntry> logEntries = appendEntries.getLogEntriesList()
                 .stream().map(x -> new LogEntry(x.getTerm(), x.getType(), x.getEntry().toByteArray()))
                 .collect(Collectors.toList());
+        processRaftCommands(logEntries);
         return log.append(appendEntries.getPrevLogIndex(), appendEntries.getPrevLogTerm(), logEntries);
     }
 
@@ -451,14 +477,14 @@ public class RaftImpl implements Raft {
 
     private ApplyCommandResult applyCommand(LogEntryType type, byte[] command) {
         if (!isLeader()) {
-            return new ApplyCommandResult(null, leader);
+            return new ApplyCommandResult(null, getLeaderMemberId());
         }
 
         LogEntry logEntry = new LogEntry(getCurrentTerm(), type, command);
         ApplyCommandFuture applyCommandFuture = scheduleReplication(log.append(logEntry));
 
         synchronized (stateLock) {
-            return new ApplyCommandResult(applyCommandFuture, leader);
+            return new ApplyCommandResult(applyCommandFuture, getLeaderMemberId());
         }
     }
 
@@ -627,12 +653,14 @@ public class RaftImpl implements Raft {
         int prevLogTerm = log.get(prevLogIndex).getTerm();
         int commitIndex = log.getCommitIndex();
 
+        MemberId leaderMemberId = getLeaderMemberId();
+
         AppendEntries.Builder req = AppendEntries.newBuilder()
                 .setTerm(getCurrentTerm())
                 .setPrevLogIndex(prevLogIndex)
                 .setPrevLogTerm(prevLogTerm)
                 .setLeaderCommitIndex(commitIndex)
-                .setLeaderId(leader.toString());
+                .setLeaderId(leaderMemberId != null ? getLeaderMemberId().toString() : null);
 
         log.get(nextIndex, configuration.getMaxNumberOfLogEntriesPerRequest())
                 .forEach(logEntry -> {
@@ -734,15 +762,62 @@ public class RaftImpl implements Raft {
     }
 
     @Override
-    public ApplyCommandResult addMemberDynamically(MemberId member) {
-        // TODO: implement
-        return null;
+    public AddCatchingUpMemberResult addCatchingUpMember(MemberId memberId) {
+        if (!isLeader()) {
+            return new AddCatchingUpMemberResult(false, getLeaderMemberId());
+        }
+
+        memberConnector.registerAsCatchingUpMember(memberId, memberConnectorObserver);
+        memberConnector.connect(memberId);
+
+        scheduleAppendEntries(memberId);
+
+        return new AddCatchingUpMemberResult(true, getLeaderMemberId());
     }
 
     @Override
-    public ApplyCommandResult removeMemberDynamically(MemberId member) {
-        // TODO: implement
-        return null;
+    public RemoveCatchingUpMemberResult removeCatchingUpMember(MemberId memberId) {
+        if (!memberConnector.isCatchingUpMember(memberId)) {
+            return new RemoveCatchingUpMemberResult(false, getLeaderMemberId());
+        }
+
+        memberConnector.unregister(memberId);
+        cancelAppendEntriesRetry(memberId);
+        replicationRetryTasks.remove(memberId);
+
+        indexesLock.writeLock().lock();
+        try {
+            nextIndexes.remove(memberId);
+            matchIndexes.remove(memberId);
+        } finally {
+            indexesLock.writeLock().unlock();
+        }
+
+        return new RemoveCatchingUpMemberResult(true, getLeaderMemberId());
+    }
+
+    private ApplyCommandResult addRemoveMemberDynamically(CommandType type, MemberId memberId) {
+        return applyCommand(LogEntryType.RaftProtocolCommand,
+                DynamicMembershipChangeCommand.newBuilder()
+                        .setType(type)
+                        .setMemberId(ByteString.copyFrom(memberId.toString().getBytes()))
+                        .build().toByteArray());
+    }
+
+    @Override
+    public ApplyCommandResult addMemberDynamically(MemberId memberId) {
+        if (!isLeader()) {
+            return new ApplyCommandResult(null, getLeaderMemberId());
+        }
+        return addRemoveMemberDynamically(CommandType.AddMember, memberId);
+    }
+
+    @Override
+    public ApplyCommandResult removeMemberDynamically(MemberId memberId) {
+        if (!isLeader()) {
+            return new ApplyCommandResult(null, getLeaderMemberId());
+        }
+        return addRemoveMemberDynamically(CommandType.RemoveMember, memberId);
     }
 
     public boolean isVotingMember() {
@@ -762,4 +837,11 @@ public class RaftImpl implements Raft {
         scheduleHeartbeatMonitorTask();
         catchingUpMember.set(true);
     }
+
+    public MemberId getLeaderMemberId() {
+        synchronized (stateLock) {
+            return leader;
+        }
+    }
+
 }
