@@ -3,8 +3,14 @@ package com.rvprg.raft.tests;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.nio.charset.Charset;
+
 import org.junit.Test;
 
+import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.rvprg.raft.protocol.messages.ProtocolMessages.DynamicMembershipChangeCommand;
+import com.rvprg.raft.protocol.messages.ProtocolMessages.DynamicMembershipChangeCommand.CommandType;
 import com.rvprg.raft.transport.MemberId;
 
 public class MemberIdTest {
@@ -62,5 +68,17 @@ public class MemberIdTest {
     @Test(expected = IllegalArgumentException.class)
     public void testMemberIdParsingFromString_ShouldFail_NoPort() {
         MemberId.fromString("localhost:");
+    }
+
+    @Test
+    public void testCodecProtoBuf() throws InvalidProtocolBufferException {
+        MemberId memberId0 = new MemberId("localhost", 12345);
+        byte[] serializedData = DynamicMembershipChangeCommand.newBuilder()
+                .setType(CommandType.AddMember)
+                .setMemberId(ByteString.copyFrom(memberId0.toString().getBytes(Charset.forName("UTF-8"))))
+                .build().toByteArray();
+        DynamicMembershipChangeCommand deserializedData = DynamicMembershipChangeCommand.parseFrom(serializedData);
+        MemberId memberId1 = MemberId.fromString(deserializedData.getMemberId().toString(Charset.forName("UTF-8")));
+        assertEquals(memberId0, memberId1);
     }
 }

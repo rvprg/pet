@@ -30,4 +30,12 @@ public interface Raft extends MessageConsumer {
     AddCatchingUpMemberResult addCatchingUpMember(MemberId memberId);
 
     RemoveCatchingUpMemberResult removeCatchingUpMember(MemberId memberId);
+
+    boolean isVotingMember();
+
+    boolean isCatchingUpMember();
+
+    void becomeCatchingUpMember();
+
+    void becomeVotingMember();
 }

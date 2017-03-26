@@ -19,7 +19,6 @@ import org.junit.Test;
 import com.rvprg.raft.protocol.Log;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftObserver;
-import com.rvprg.raft.protocol.Role;
 import com.rvprg.raft.protocol.impl.ApplyCommandResult;
 import com.rvprg.raft.protocol.impl.LogEntry;
 import com.rvprg.raft.protocol.impl.RaftImpl;
@@ -78,7 +77,7 @@ public class RaftLogConsistencyTest {
         int commandNumber = 0;
         Raft currentLeader = null;
         for (int i = 0; i < iterations; ++i) {
-            currentLeader = getLeader(rafts);
+            currentLeader = RaftTestUtils.getLeader(rafts);
             for (int j = 0; j < applyCount; ++j) {
                 commandNumber++;
                 byte[] buff = ByteBuffer.allocate(4).putInt(commandNumber).array();
@@ -142,16 +141,6 @@ public class RaftLogConsistencyTest {
     private void checkLastIndexes(List<Raft> rafts) {
         int lastIndex = rafts.get(0).getLog().getLastIndex();
         assertTrue(rafts.stream().map(x -> x.getLog().getLastIndex()).allMatch((x) -> lastIndex == x));
-    }
-
-    private Raft getLeader(List<Raft> rafts) {
-        do {
-            for (Raft raft : rafts) {
-                if (raft.getRole() == Role.Leader) {
-                    return raft;
-                }
-            }
-        } while (true);
     }
 
 }
