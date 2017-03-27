@@ -1,7 +1,9 @@
 package com.rvprg.raft.tests.functional;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Set;
@@ -17,6 +19,8 @@ import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftObserver;
 import com.rvprg.raft.protocol.impl.AddCatchingUpMemberResult;
 import com.rvprg.raft.protocol.impl.ApplyCommandResult;
+import com.rvprg.raft.protocol.impl.RaftImpl;
+import com.rvprg.raft.protocol.impl.RaftMemberConnector;
 import com.rvprg.raft.protocol.impl.RaftObserverImpl;
 import com.rvprg.raft.tests.helpers.NetworkUtils;
 import com.rvprg.raft.transport.MemberId;
@@ -27,7 +31,7 @@ public class RaftDynamicMembershipChangeTest extends RaftFunctionalTestBase {
         int clusterSize = 5;
         int logSize = 5;
 
-        RaftCluster cluster = new RaftCluster(clusterSize, 9000, 10000);
+        RaftCluster cluster = new RaftCluster(clusterSize, clusterSize, clusterSize, 9000, 10000);
         cluster.start();
 
         Raft currentLeader = cluster.getLeader();
@@ -110,5 +114,39 @@ public class RaftDynamicMembershipChangeTest extends RaftFunctionalTestBase {
 
         cluster.checkLastIndexes();
         cluster.checkLogConsistency();
+    }
+
+    @Test(timeout = 60000)
+    public void testRemoveMemberDynamically()
+            throws NoSuchMethodException, SecurityException, InterruptedException, ExecutionException, NoSuchFieldException, IllegalArgumentException, IllegalAccessException {
+        int clusterSize = 5;
+
+        RaftCluster cluster = new RaftCluster(clusterSize, clusterSize, clusterSize - 1, 300, 500);
+        cluster.start();
+        Raft currentLeader = cluster.getLeader();
+
+        // Remove a member.
+        ApplyCommandResult removeCatchingUpMemberResult = currentLeader.removeMemberDynamically(currentLeader.getMemberId());
+        assertTrue(removeCatchingUpMemberResult.getResult().isPresent());
+        assertTrue(removeCatchingUpMemberResult.getResult().get().get());
+
+        cluster.waitUntilCommitAdvances();
+        cluster.waitUntilFollowersAdvance();
+
+        currentLeader.becomeCatchingUpMember();
+
+        cluster.getRafts().remove(currentLeader);
+
+        Field memberConnectorField = RaftImpl.class.getDeclaredField("memberConnector");
+        memberConnectorField.setAccessible(true);
+
+        for (Raft raft : cluster.getRafts()) {
+            RaftMemberConnector raftMemberConnector = (RaftMemberConnector) memberConnectorField.get(raft);
+            // Additional -1 because raftMemberConnector excludes itself.
+            assertEquals(clusterSize - 1 - 1, raftMemberConnector.getVotingMembersCount());
+        }
+
+        currentLeader.shutdown();
+        cluster.shutdown();
     }
 }

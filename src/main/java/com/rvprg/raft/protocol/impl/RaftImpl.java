@@ -291,6 +291,8 @@ public class RaftImpl implements Raft {
                         cancelTask(replicationRetryTasks.get(memberId).getAndSet(null));
                     });
 
+            memberConnector.unregisterAllCatchingUpServers();
+
             replicationCompletableFutures.values().forEach(future -> future.complete(false));
             replicationCompletableFutures.clear();
         }
@@ -791,6 +793,10 @@ public class RaftImpl implements Raft {
             return new AddCatchingUpMemberResult(false, getLeaderMemberId());
         }
 
+        if (memberConnector.getRegisteredMemberIds().contains(memberId)) {
+            throw new IllegalArgumentException("Member has already been added");
+        }
+
         memberConnector.registerAsCatchingUpMember(memberId, memberConnectorObserver);
         memberConnector.connect(memberId);
 
@@ -802,7 +808,7 @@ public class RaftImpl implements Raft {
     @Override
     public RemoveCatchingUpMemberResult removeCatchingUpMember(MemberId memberId) {
         if (!memberConnector.isCatchingUpMember(memberId)) {
-            return new RemoveCatchingUpMemberResult(false, getLeaderMemberId());
+            throw new IllegalArgumentException("Unknown member");
         }
 
         memberConnector.unregister(memberId);
@@ -825,6 +831,10 @@ public class RaftImpl implements Raft {
             return new ApplyCommandResult(null, getLeaderMemberId());
         }
 
+        if (!memberConnector.getRegisteredMemberIds().contains(memberId)) {
+            throw new IllegalArgumentException("Member must be added as a catching up member first.");
+        }
+
         synchronized (dynamicMembershipChangeLock) {
             if (dynamicMembershipChangeInProgress != null &&
                     !dynamicMembershipChangeInProgress.getResult().get().isDone()) {
@@ -843,10 +853,14 @@ public class RaftImpl implements Raft {
         }
 
         synchronized (dynamicMembershipChangeLock) {
-            dynamicMembershipChangeInProgress = null;
-        }
+            if (dynamicMembershipChangeInProgress != null &&
+                    !dynamicMembershipChangeInProgress.getResult().get().isDone()) {
+                throw new IllegalStateException("Member removing is in progress.");
+            }
 
-        return addRemoveMemberDynamically(CommandType.RemoveMember, memberId);
+            dynamicMembershipChangeInProgress = addRemoveMemberDynamically(CommandType.RemoveMember, memberId);
+            return dynamicMembershipChangeInProgress;
+        }
     }
 
     @Override

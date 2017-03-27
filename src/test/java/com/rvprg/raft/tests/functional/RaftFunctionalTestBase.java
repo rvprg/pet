@@ -62,12 +62,13 @@ public class RaftFunctionalTestBase {
         }
 
         public RaftCluster(int clusterSize) throws NoSuchMethodException, SecurityException {
-            this(clusterSize, 250, 300);
+            this(clusterSize, clusterSize, clusterSize, 250, 300);
         }
 
-        public RaftCluster(int clusterSize, int electionMinTimeout, int electionMaxTimeout) throws NoSuchMethodException, SecurityException {
-            startLatch = new CountDownLatch(clusterSize);
-            shutdownLatch = new CountDownLatch(clusterSize);
+        public RaftCluster(int clusterSize, int startCountDownLatchCount, int shutdownCountDownLatchCount, int electionMinTimeout, int electionMaxTimeout)
+                throws NoSuchMethodException, SecurityException {
+            startLatch = new CountDownLatch(startCountDownLatchCount);
+            shutdownLatch = new CountDownLatch(shutdownCountDownLatchCount);
 
             observer = new RaftObserverImpl() {
                 @Override
@@ -93,8 +94,13 @@ public class RaftFunctionalTestBase {
         }
 
         public RaftCluster(int clusterSize, int electionMinTimeout, int electionMaxTimeout, final RaftObserver observer) throws NoSuchMethodException, SecurityException {
-            startLatch = new CountDownLatch(clusterSize);
-            shutdownLatch = new CountDownLatch(clusterSize);
+            this(clusterSize, clusterSize, clusterSize, electionMinTimeout, electionMaxTimeout, observer);
+        }
+
+        public RaftCluster(int clusterSize, int startCountDownLatchCount, int shutdownCountDownLatchCount, int electionMinTimeout, int electionMaxTimeout,
+                final RaftObserver observer) throws NoSuchMethodException, SecurityException {
+            startLatch = new CountDownLatch(startCountDownLatchCount);
+            shutdownLatch = new CountDownLatch(shutdownCountDownLatchCount);
 
             cancelHeartBeat = RaftImpl.class.getDeclaredMethod("cancelPeriodicHeartbeatTask", new Class[] {});
             cancelHeartBeat.setAccessible(true);

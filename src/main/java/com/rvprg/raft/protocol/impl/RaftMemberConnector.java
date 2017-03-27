@@ -144,4 +144,16 @@ public class RaftMemberConnector implements MemberConnector {
         }
     }
 
+    public void unregisterAllCatchingUpServers() {
+        stateLock.writeLock().lock();
+        try {
+            for (MemberId memberId : new HashSet<MemberId>(catchingUpMembers)) {
+                unregister(memberId);
+            }
+        } finally {
+            stateLock.writeLock().unlock();
+        }
+
+    }
+
 }

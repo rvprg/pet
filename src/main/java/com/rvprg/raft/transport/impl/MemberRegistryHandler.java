@@ -12,6 +12,7 @@ import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberId;
 
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
@@ -20,7 +21,7 @@ public class MemberRegistryHandler extends ChannelInboundHandlerAdapter {
 
     private final EditableMembersRegistry registry;
     private final MemberConnector memberConnector;
-    private final Consumer<Member> activateNotifier;
+    private final BiConsumer<Member, Channel> activateNotifier;
     private final Consumer<MemberId> deactivateNotifier;
     private final BiConsumer<MemberId, Throwable> exceptionNotifier;
 
@@ -28,7 +29,7 @@ public class MemberRegistryHandler extends ChannelInboundHandlerAdapter {
     public MemberRegistryHandler(
             EditableMembersRegistry members,
             MemberConnector memberConnector,
-            Consumer<Member> activateNotifier,
+            BiConsumer<Member, Channel> activateNotifier,
             Consumer<MemberId> deactivateNotifier,
             BiConsumer<MemberId, Throwable> exceptionNotifier) {
         this.registry = members;
@@ -42,7 +43,7 @@ public class MemberRegistryHandler extends ChannelInboundHandlerAdapter {
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         Member member = new Member(ctx.channel());
         registry.addMember(member);
-        activateNotifier.accept(member);
+        activateNotifier.accept(member, ctx.channel());
         ctx.fireChannelActive();
     }
 

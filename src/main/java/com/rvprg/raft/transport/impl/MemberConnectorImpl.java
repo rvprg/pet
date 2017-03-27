@@ -19,6 +19,7 @@ import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.MembersRegistry;
 
 import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelInitializer;
@@ -32,6 +33,8 @@ public class MemberConnectorImpl implements MemberConnector {
     private final static Logger logger = LoggerFactory.getLogger(MemberConnectorImpl.class);
 
     private final ConcurrentHashMap<MemberId, MemberConnectorObserver> registered = new ConcurrentHashMap<MemberId, MemberConnectorObserver>();
+    private final ConcurrentHashMap<MemberId, Channel> registeredChannels = new ConcurrentHashMap<MemberId, Channel>();
+
     private ImmutableSet<MemberId> immutableMemberIdSet = ImmutableSet.of();
     private final Bootstrap clientBootstrap;
 
@@ -61,7 +64,7 @@ public class MemberConnectorImpl implements MemberConnector {
                 ch.pipeline().addLast(new MemberRegistryHandler(
                         members,
                         MemberConnectorImpl.this,
-                        member -> MemberConnectorImpl.this.memberActivated(member),
+                        (member, channel) -> MemberConnectorImpl.this.memberActivated(member, channel),
                         member -> MemberConnectorImpl.this.memberDeactivated(member),
                         (member, cause) -> MemberConnectorImpl.this.memberExceptionCaught(member, cause)));
             }
@@ -89,6 +92,10 @@ public class MemberConnectorImpl implements MemberConnector {
         stateLock.writeLock().lock();
         try {
             registered.remove(member);
+            Channel channel = registeredChannels.get(member);
+            if (channel != null && channel.isActive()) {
+                channel.disconnect();
+            }
             immutableMemberIdSet = ImmutableSet.copyOf(registered.keySet());
         } finally {
             stateLock.writeLock().unlock();
@@ -134,8 +141,9 @@ public class MemberConnectorImpl implements MemberConnector {
         });
     }
 
-    private void memberActivated(Member member) {
+    private void memberActivated(Member member, Channel channel) {
         MemberConnectorObserver observer = registered.get(member.getMemberId());
+        registeredChannels.put(member.getMemberId(), channel);
         if (observer != null) {
             observer.connected(member);
         }
@@ -143,6 +151,7 @@ public class MemberConnectorImpl implements MemberConnector {
 
     private void memberScheduledReconnect(MemberId memberId) {
         MemberConnectorObserver observer = registered.get(memberId);
+        registeredChannels.remove(memberId);
         if (observer != null) {
             observer.scheduledReconnect(memberId);
         }
@@ -150,6 +159,7 @@ public class MemberConnectorImpl implements MemberConnector {
 
     private void memberDeactivated(MemberId memberId) {
         MemberConnectorObserver observer = registered.get(memberId);
+        registeredChannels.remove(memberId);
         if (observer != null) {
             observer.disconnected(memberId);
         }
@@ -157,6 +167,7 @@ public class MemberConnectorImpl implements MemberConnector {
 
     private void memberExceptionCaught(MemberId memberId, Throwable cause) {
         MemberConnectorObserver observer = registered.get(memberId);
+        registeredChannels.remove(memberId);
         if (observer != null) {
             observer.exceptionCaught(memberId, cause);
         }
