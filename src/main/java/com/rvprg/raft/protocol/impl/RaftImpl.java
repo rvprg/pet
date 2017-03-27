@@ -69,6 +69,10 @@ public class RaftImpl implements Raft {
     private final ConcurrentHashMap<MemberId, AtomicInteger> nextIndexes = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<MemberId, AtomicInteger> matchIndexes = new ConcurrentHashMap<>();
 
+    private final Object dynamicMembershipChangeLock = new Object();
+    @GuardedBy("dynamicMembershipChangeLock")
+    private ApplyCommandResult dynamicMembershipChangeInProgress = null;
+
     private final RaftObserver observer;
 
     private final Object stateLock = new Object();
@@ -820,7 +824,16 @@ public class RaftImpl implements Raft {
         if (!isLeader()) {
             return new ApplyCommandResult(null, getLeaderMemberId());
         }
-        return addRemoveMemberDynamically(CommandType.AddMember, memberId);
+
+        synchronized (dynamicMembershipChangeLock) {
+            if (dynamicMembershipChangeInProgress != null &&
+                    !dynamicMembershipChangeInProgress.getResult().get().isDone()) {
+                throw new IllegalStateException("Member adding is in progress.");
+            }
+
+            dynamicMembershipChangeInProgress = addRemoveMemberDynamically(CommandType.AddMember, memberId);
+            return dynamicMembershipChangeInProgress;
+        }
     }
 
     @Override
@@ -828,6 +841,11 @@ public class RaftImpl implements Raft {
         if (!isLeader()) {
             return new ApplyCommandResult(null, getLeaderMemberId());
         }
+
+        synchronized (dynamicMembershipChangeLock) {
+            dynamicMembershipChangeInProgress = null;
+        }
+
         return addRemoveMemberDynamically(CommandType.RemoveMember, memberId);
     }
 

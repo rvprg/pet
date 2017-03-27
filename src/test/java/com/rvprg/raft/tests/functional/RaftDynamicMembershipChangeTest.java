@@ -3,9 +3,7 @@ package com.rvprg.raft.tests.functional;
 import static org.junit.Assert.assertTrue;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -23,47 +21,16 @@ import com.rvprg.raft.protocol.impl.RaftObserverImpl;
 import com.rvprg.raft.tests.helpers.NetworkUtils;
 import com.rvprg.raft.transport.MemberId;
 
-public class RaftDynamicMembershipChangeTest {
+public class RaftDynamicMembershipChangeTest extends RaftFunctionalTestBase {
     @Test(timeout = 60000)
     public void testAddMemberDynamically() throws NoSuchMethodException, SecurityException, InterruptedException, ExecutionException {
-        // TODO: check/prevent spontaneous leadership changes?
-        // Check logs.
         int clusterSize = 5;
         int logSize = 5;
 
-        List<Raft> rafts = new ArrayList<Raft>();
-        Set<MemberId> members = new HashSet<MemberId>();
-        for (Integer port : NetworkUtils.getRandomFreePorts(clusterSize)) {
-            members.add(new MemberId("localhost", port));
-        }
+        RaftCluster cluster = new RaftCluster(clusterSize, 9000, 10000);
+        cluster.start();
 
-        CountDownLatch startLatch = new CountDownLatch(members.size());
-        CountDownLatch shutdownLatch = new CountDownLatch(members.size());
-
-        RaftObserver observer = new RaftObserverImpl() {
-            @Override
-            public void started() {
-                startLatch.countDown();
-            }
-
-            @Override
-            public void shutdown() {
-                shutdownLatch.countDown();
-            }
-        };
-
-        for (MemberId member : members) {
-            Set<MemberId> peers = (new HashSet<MemberId>(members));
-            peers.remove(member);
-            rafts.add(RaftTestUtils.getRaft(member.getHostName(), member.getPort(), peers, 9000, 10000, observer));
-        }
-
-        for (Raft raft : rafts) {
-            raft.start();
-        }
-        startLatch.await();
-
-        Raft currentLeader = RaftTestUtils.getLeader(rafts);
+        Raft currentLeader = cluster.getLeader();
         for (int i = 0; i < logSize; ++i) {
             byte[] buff = ByteBuffer.allocate(4).putInt(i).array();
             ApplyCommandResult applyCommandResult = currentLeader.applyCommand(buff);
@@ -76,26 +43,11 @@ public class RaftDynamicMembershipChangeTest {
             });
         }
 
-        // Polling. Wait until commit index advances.
-        while (currentLeader.getLog().getCommitIndex() != currentLeader.getLog().getLastIndex()) {
-            Thread.sleep(100);
-        }
-
-        // Polling. Wait until all followers advance their commit indexes.
-        boolean finished = false;
-        while (!finished) {
-            finished = true;
-            for (Raft raft : rafts) {
-                if (raft.getLog().getCommitIndex() != currentLeader.getLog().getCommitIndex()) {
-                    finished = false;
-                    Thread.sleep(100);
-                    break;
-                }
-            }
-        }
+        cluster.waitUntilCommitAdvances();
+        cluster.waitUntilFollowersAdvance();
 
         MemberId newMemberId = new MemberId("localhost", NetworkUtils.getRandomFreePort());
-        Set<MemberId> peers = (new HashSet<MemberId>(members));
+        Set<MemberId> peers = (new HashSet<MemberId>(cluster.getMembers()));
         CountDownLatch newMemberStartLatch = new CountDownLatch(1);
         CountDownLatch newMemberShutdownLatch = new CountDownLatch(1);
 
@@ -111,18 +63,19 @@ public class RaftDynamicMembershipChangeTest {
             }
         };
 
-        Raft newRaftMember = RaftTestUtils.getRaft(newMemberId.getHostName(), newMemberId.getPort(), peers, 9000, 10000, newMemberObserver);
+        Raft newRaftMember = getRaft(newMemberId.getHostName(), newMemberId.getPort(), peers, 9000, 10000, newMemberObserver);
         newRaftMember.becomeCatchingUpMember();
         newRaftMember.start();
 
         newMemberStartLatch.await();
 
+        // Phase 1: Add as a catching up server.
         AddCatchingUpMemberResult addCatchingUpMemberResult = currentLeader.addCatchingUpMember(newMemberId);
         assertTrue(addCatchingUpMemberResult.getResult().isPresent());
         assertTrue(addCatchingUpMemberResult.getResult().get());
 
         // Polling.
-        finished = false;
+        boolean finished = false;
         while (!finished) {
             finished = true;
             if (newRaftMember.getLog().getCommitIndex() != currentLeader.getLog().getCommitIndex()) {
@@ -132,7 +85,9 @@ public class RaftDynamicMembershipChangeTest {
             }
         }
 
+        // Phase 2: Add as a normal member
         ApplyCommandResult addMemberDynamicallyResult = currentLeader.addMemberDynamically(newMemberId);
+        newRaftMember.becomeVotingMember();
         assertTrue(addMemberDynamicallyResult.getResult().isPresent());
         final AtomicBoolean addSuccess = new AtomicBoolean(false);
         addMemberDynamicallyResult.getResult().ifPresent(x -> {
@@ -143,13 +98,17 @@ public class RaftDynamicMembershipChangeTest {
             }
         });
 
-        for (Raft raft : rafts) {
-            raft.shutdown();
-        }
+        cluster.getRafts().add(newRaftMember);
+        cluster.waitUntilCommitAdvances();
+        cluster.waitUntilFollowersAdvance();
 
+        cluster.shutdown();
         newRaftMember.shutdown();
         newMemberShutdownLatch.await();
 
         assertTrue(addSuccess.get());
+
+        cluster.checkLastIndexes();
+        cluster.checkLogConsistency();
     }
 }
