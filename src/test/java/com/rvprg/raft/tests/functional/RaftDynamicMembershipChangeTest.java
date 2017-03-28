@@ -67,6 +67,13 @@ public class RaftDynamicMembershipChangeTest extends RaftFunctionalTestBase {
             }
         };
 
+        try {
+            currentLeader.addMemberDynamically(new MemberId("localhost", 12345));
+            assertTrue(false);
+        } catch (IllegalArgumentException e) {
+            // Expected
+        }
+
         Raft newRaftMember = getRaft(newMemberId.getHostName(), newMemberId.getPort(), peers, 9000, 10000, newMemberObserver);
         newRaftMember.becomeCatchingUpMember();
         newRaftMember.start();
