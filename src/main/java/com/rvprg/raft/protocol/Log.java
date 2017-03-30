@@ -1,6 +1,7 @@
 package com.rvprg.raft.protocol;
 
 import java.io.Closeable;
+import java.io.IOException;
 import java.util.List;
 
 import com.rvprg.raft.protocol.impl.LogEntry;
@@ -25,6 +26,6 @@ public interface Log extends Closeable {
 
     int append(LogEntry logEntry);
 
-    void init();
+    void init(String name) throws IOException;
 
 }

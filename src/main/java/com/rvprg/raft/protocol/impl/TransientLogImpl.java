@@ -13,7 +13,7 @@ public class TransientLogImpl implements Log {
     private int firstIndex = 0;
 
     public TransientLogImpl() {
-        init();
+        init("");
     }
 
     @Override
@@ -104,7 +104,7 @@ public class TransientLogImpl implements Log {
     }
 
     @Override
-    public synchronized void init() {
+    public synchronized void init(String name) {
         log.clear();
         commitIndex = 1;
         firstIndex = 0;

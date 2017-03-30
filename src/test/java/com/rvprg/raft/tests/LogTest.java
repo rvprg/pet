@@ -34,8 +34,8 @@ public class LogTest {
     }
 
     @Before
-    public void init() {
-        log.init();
+    public void init() throws IOException {
+        log.init("");
     }
 
     @After
