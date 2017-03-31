@@ -25,11 +25,11 @@ import com.rvprg.raft.protocol.Log;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftObserver;
 import com.rvprg.raft.protocol.Role;
-import com.rvprg.raft.protocol.messages.ProtocolMessages;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntries;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntriesResponse;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.DynamicMembershipChangeCommand;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.DynamicMembershipChangeCommand.CommandType;
+import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage.MessageType;
@@ -279,9 +279,12 @@ public class RaftImpl implements Raft {
     }
 
     private void becomeFollower() {
-        cancelElectionTimeoutTask();
-        cancelPeriodicHeartbeatTask();
-        scheduleHeartbeatMonitorTask();
+        if (isStarted()) {
+            cancelElectionTimeoutTask();
+            cancelPeriodicHeartbeatTask();
+            scheduleHeartbeatMonitorTask();
+        }
+
         synchronized (stateLock) {
             role = Role.Follower;
             votedFor = null;
@@ -368,7 +371,7 @@ public class RaftImpl implements Raft {
 
         for (LogEntry le : raftCommands) {
             try {
-                DynamicMembershipChangeCommand command = DynamicMembershipChangeCommand.parseFrom(le.getCommand());
+                DynamicMembershipChangeCommand command = DynamicMembershipChangeCommand.parseFrom(le.getEntry().toByteArray());
                 MemberId memberId = MemberId.fromString(command.getMemberId().toString(defaultCharsetForRaftCommands));
                 if (command.getType() == CommandType.AddMember) {
                     if (!memberId.equals(selfId)) {
@@ -385,9 +388,7 @@ public class RaftImpl implements Raft {
     }
 
     private boolean processAppendEntries(AppendEntries appendEntries) {
-        List<LogEntry> logEntries = appendEntries.getLogEntriesList()
-                .stream().map(x -> new LogEntry(x.getTerm(), x.getType(), x.getEntry().toByteArray()))
-                .collect(Collectors.toList());
+        List<LogEntry> logEntries = appendEntries.getLogEntriesList();
         processRaftCommands(logEntries);
         return log.append(appendEntries.getPrevLogIndex(), appendEntries.getPrevLogTerm(), logEntries);
     }
@@ -506,7 +507,7 @@ public class RaftImpl implements Raft {
             return new ApplyCommandResult(null, getLeaderMemberId());
         }
 
-        LogEntry logEntry = new LogEntry(getCurrentTerm(), type, command);
+        LogEntry logEntry = LogEntryFactory.create(getCurrentTerm(), type, command);
         ApplyCommandFuture applyCommandFuture = scheduleReplication(log.append(logEntry));
 
         synchronized (stateLock) {
@@ -688,13 +689,8 @@ public class RaftImpl implements Raft {
                 .setLeaderCommitIndex(commitIndex)
                 .setLeaderId(leaderMemberId != null ? getLeaderMemberId().toString() : null);
 
-        log.get(nextIndex, configuration.getMaxNumberOfLogEntriesPerRequest())
-                .forEach(logEntry -> {
-                    req.addLogEntries(ProtocolMessages.LogEntry.newBuilder()
-                            .setTerm(logEntry.getTerm())
-                            .setType(logEntry.getType())
-                            .setEntry(ByteString.copyFrom(logEntry.getCommand())));
-                });
+        List<LogEntry> entries = log.get(nextIndex, configuration.getMaxNumberOfLogEntriesPerRequest());
+        req.addAllLogEntries(entries);
 
         RaftMessage requestVote = RaftMessage.newBuilder()
                 .setType(MessageType.AppendEntries)

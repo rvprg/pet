@@ -16,8 +16,9 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import com.rvprg.raft.protocol.Log;
-import com.rvprg.raft.protocol.impl.LogEntry;
+import com.rvprg.raft.protocol.impl.LogEntryFactory;
 import com.rvprg.raft.protocol.impl.TransientLogImpl;
+import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.sm.StateMachine;
 
 @RunWith(Parameterized.class)
@@ -45,9 +46,9 @@ public class LogTest {
 
     @Test
     public void testSimpleAppendAndGet() throws IOException {
-        LogEntry logEntry1 = new LogEntry(1, new byte[0]);
-        LogEntry logEntry2 = new LogEntry(1, new byte[0]);
-        LogEntry logEntry3 = new LogEntry(2, new byte[0]);
+        LogEntry logEntry1 = LogEntryFactory.create(1, new byte[0]);
+        LogEntry logEntry2 = LogEntryFactory.create(1, new byte[0]);
+        LogEntry logEntry3 = LogEntryFactory.create(2, new byte[0]);
 
         int index1 = log.append(logEntry1);
         int index2 = log.append(logEntry2);
@@ -90,16 +91,16 @@ public class LogTest {
 
     @Test
     public void testComplexAppend_ShouldSucceed1() throws IOException {
-        log.append(new LogEntry(1, new byte[0])); // 1
-        log.append(new LogEntry(1, new byte[0])); // 2
-        log.append(new LogEntry(1, new byte[0])); // 3
-        log.append(new LogEntry(2, new byte[0])); // 4
-        log.append(new LogEntry(3, new byte[0])); // 5
+        log.append(LogEntryFactory.create(1, new byte[0])); // 1
+        log.append(LogEntryFactory.create(1, new byte[0])); // 2
+        log.append(LogEntryFactory.create(1, new byte[0])); // 3
+        log.append(LogEntryFactory.create(2, new byte[0])); // 4
+        log.append(LogEntryFactory.create(3, new byte[0])); // 5
 
         assertEquals(5, log.getLastIndex());
 
-        LogEntry logEntry1 = new LogEntry(2, new byte[0]);
-        LogEntry logEntry2 = new LogEntry(2, new byte[0]);
+        LogEntry logEntry1 = LogEntryFactory.create(2, new byte[0]);
+        LogEntry logEntry2 = LogEntryFactory.create(2, new byte[0]);
 
         List<LogEntry> logEntries = new ArrayList<LogEntry>();
         logEntries.add(logEntry1);
@@ -115,16 +116,16 @@ public class LogTest {
 
     @Test
     public void testComplexAppend_ShouldSucceed2() throws IOException {
-        log.append(new LogEntry(1, new byte[0])); // 1
-        log.append(new LogEntry(1, new byte[0])); // 2
-        log.append(new LogEntry(1, new byte[0])); // 3
-        log.append(new LogEntry(2, new byte[0])); // 4
-        log.append(new LogEntry(3, new byte[0])); // 5
+        log.append(LogEntryFactory.create(1, new byte[0])); // 1
+        log.append(LogEntryFactory.create(1, new byte[0])); // 2
+        log.append(LogEntryFactory.create(1, new byte[0])); // 3
+        log.append(LogEntryFactory.create(2, new byte[0])); // 4
+        log.append(LogEntryFactory.create(3, new byte[0])); // 5
 
         assertEquals(5, log.getLastIndex());
 
-        LogEntry logEntry1 = new LogEntry(2, new byte[0]);
-        LogEntry logEntry2 = new LogEntry(2, new byte[0]);
+        LogEntry logEntry1 = LogEntryFactory.create(2, new byte[0]);
+        LogEntry logEntry2 = LogEntryFactory.create(2, new byte[0]);
 
         List<LogEntry> logEntries = new ArrayList<LogEntry>();
         logEntries.add(logEntry1);
@@ -138,11 +139,11 @@ public class LogTest {
     @Test
     public void testComplexAppend_ShouldSucceed3() throws IOException {
         LogEntry[] logEntriesArr = new LogEntry[] {
-                new LogEntry(1, new byte[0]), // 1
-                new LogEntry(1, new byte[0]), // 2
-                new LogEntry(1, new byte[0]), // 3
-                new LogEntry(2, new byte[0]), // 4
-                new LogEntry(3, new byte[0]) // 5
+                LogEntryFactory.create(1, new byte[0]), // 1
+                LogEntryFactory.create(1, new byte[0]), // 2
+                LogEntryFactory.create(1, new byte[0]), // 3
+                LogEntryFactory.create(2, new byte[0]), // 4
+                LogEntryFactory.create(3, new byte[0]) // 5
         };
 
         for (LogEntry le : logEntriesArr) {
@@ -167,16 +168,16 @@ public class LogTest {
 
     @Test
     public void testComplexAppend_ShouldFail1() throws IOException {
-        log.append(new LogEntry(1, new byte[0])); // 1
-        log.append(new LogEntry(1, new byte[0])); // 2
-        log.append(new LogEntry(1, new byte[0])); // 3
-        log.append(new LogEntry(2, new byte[0])); // 4
-        log.append(new LogEntry(3, new byte[0])); // 5
+        log.append(LogEntryFactory.create(1, new byte[0])); // 1
+        log.append(LogEntryFactory.create(1, new byte[0])); // 2
+        log.append(LogEntryFactory.create(1, new byte[0])); // 3
+        log.append(LogEntryFactory.create(2, new byte[0])); // 4
+        log.append(LogEntryFactory.create(3, new byte[0])); // 5
 
         assertEquals(5, log.getLastIndex());
 
-        LogEntry logEntry1 = new LogEntry(2, new byte[0]);
-        LogEntry logEntry2 = new LogEntry(2, new byte[0]);
+        LogEntry logEntry1 = LogEntryFactory.create(2, new byte[0]);
+        LogEntry logEntry2 = LogEntryFactory.create(2, new byte[0]);
 
         List<LogEntry> logEntries = new ArrayList<LogEntry>();
         logEntries.add(logEntry1);
@@ -192,8 +193,8 @@ public class LogTest {
         assertEquals(false, log.append(3, 1, null));
 
         List<LogEntry> logEntries = new ArrayList<LogEntry>();
-        logEntries.add(new LogEntry(2, new byte[0]));
-        logEntries.add(new LogEntry(2, new byte[0]));
+        logEntries.add(LogEntryFactory.create(2, new byte[0]));
+        logEntries.add(LogEntryFactory.create(2, new byte[0]));
 
         assertEquals(false, log.append(3, 1, logEntries));
         assertEquals(false, log.append(-1, 1, logEntries));
@@ -202,11 +203,11 @@ public class LogTest {
     @Test
     public void testCommit() {
         LogEntry[] logEntries = new LogEntry[] {
-                new LogEntry(1),
-                new LogEntry(1, new byte[] { 1 }),
-                new LogEntry(1, new byte[] { 2 }),
-                new LogEntry(1),
-                new LogEntry(1, new byte[] { 3 })
+                LogEntryFactory.create(1),
+                LogEntryFactory.create(1, new byte[] { 1 }),
+                LogEntryFactory.create(1, new byte[] { 2 }),
+                LogEntryFactory.create(1),
+                LogEntryFactory.create(1, new byte[] { 3 })
         };
 
         for (LogEntry le : logEntries) {
@@ -228,24 +229,24 @@ public class LogTest {
         assertEquals(3, log.getCommitIndex());
         assertEquals(2, commands.size());
 
-        assertArrayEquals(logEntries[1].getCommand(), commands.get(0));
-        assertArrayEquals(logEntries[2].getCommand(), commands.get(1));
+        assertArrayEquals(logEntries[1].getEntry().toByteArray(), commands.get(0));
+        assertArrayEquals(logEntries[2].getEntry().toByteArray(), commands.get(1));
 
         log.commit(3, stateMachine);
 
         assertEquals(3, log.getCommitIndex());
         assertEquals(2, commands.size());
 
-        assertArrayEquals(logEntries[1].getCommand(), commands.get(0));
-        assertArrayEquals(logEntries[2].getCommand(), commands.get(1));
+        assertArrayEquals(logEntries[1].getEntry().toByteArray(), commands.get(0));
+        assertArrayEquals(logEntries[2].getEntry().toByteArray(), commands.get(1));
 
         log.commit(10, stateMachine);
 
         assertEquals(5, log.getCommitIndex());
         assertEquals(3, commands.size());
 
-        assertArrayEquals(logEntries[1].getCommand(), commands.get(0));
-        assertArrayEquals(logEntries[2].getCommand(), commands.get(1));
-        assertArrayEquals(logEntries[4].getCommand(), commands.get(2));
+        assertArrayEquals(logEntries[1].getEntry().toByteArray(), commands.get(0));
+        assertArrayEquals(logEntries[2].getEntry().toByteArray(), commands.get(1));
+        assertArrayEquals(logEntries[4].getEntry().toByteArray(), commands.get(2));
     }
 }

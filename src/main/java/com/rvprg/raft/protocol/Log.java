@@ -4,7 +4,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 
-import com.rvprg.raft.protocol.impl.LogEntry;
+import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.sm.StateMachine;
 
 public interface Log extends Closeable {

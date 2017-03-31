@@ -4,7 +4,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.google.protobuf.ByteString;
 import com.rvprg.raft.protocol.Log;
+import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
+import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
 import com.rvprg.raft.sm.StateMachine;
 
 public class TransientLogImpl implements Log {
@@ -108,7 +111,8 @@ public class TransientLogImpl implements Log {
         log.clear();
         commitIndex = 1;
         firstIndex = 0;
-        log.add(new LogEntry(0, new byte[0]));
+        LogEntry logEntry = LogEntry.newBuilder().setTerm(0).setType(LogEntryType.NoOperationCommand).setEntry(ByteString.copyFrom(new byte[0])).build();
+        log.add(logEntry);
     }
 
     @Override
@@ -123,8 +127,8 @@ public class TransientLogImpl implements Log {
 
             for (int i = getCommitIndex() + 1; i <= newIndex; ++i) {
                 LogEntry logEntry = get(i);
-                if (logEntry.isStateMachineCommand()) {
-                    stateMachine.apply(logEntry.getCommand());
+                if (logEntry.getType() == LogEntryType.StateMachineCommand) {
+                    stateMachine.apply(logEntry.getEntry().toByteArray());
                 }
             }
 

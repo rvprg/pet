@@ -16,7 +16,7 @@ import org.junit.Test;
 
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftObserver;
-import com.rvprg.raft.protocol.impl.LogEntry;
+import com.rvprg.raft.protocol.impl.LogEntryFactory;
 import com.rvprg.raft.protocol.impl.RaftImpl;
 import com.rvprg.raft.protocol.impl.RaftObserverImpl;
 
@@ -111,7 +111,7 @@ public class RaftElectionSafetyTest extends RaftFunctionalTestBase {
         for (int i = 0; i < clusterSize / 2 + 1; ++i) {
             Raft raft = cluster.getRafts().get(i);
             majority.add(raft);
-            raft.getLog().append(new LogEntry(2, new byte[] { 2 }));
+            raft.getLog().append(LogEntryFactory.create(2, new byte[] { 2 }));
         }
 
         cluster.start();
@@ -149,9 +149,9 @@ public class RaftElectionSafetyTest extends RaftFunctionalTestBase {
         for (int i = 0; i < clusterSize; ++i) {
             Raft raft = cluster.getRafts().get(i);
             majority.add(raft);
-            raft.getLog().append(new LogEntry(2, new byte[] { 2 }));
+            raft.getLog().append(LogEntryFactory.create(2, new byte[] { 2 }));
             if (i < clusterSize / 2 + 1) {
-                raft.getLog().append(new LogEntry(2, new byte[] { 3 }));
+                raft.getLog().append(LogEntryFactory.create(2, new byte[] { 3 }));
             }
         }
 

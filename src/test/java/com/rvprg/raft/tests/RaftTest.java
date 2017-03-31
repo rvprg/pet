@@ -35,12 +35,13 @@ import com.rvprg.raft.protocol.Log;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftObserver;
 import com.rvprg.raft.protocol.Role;
-import com.rvprg.raft.protocol.impl.LogEntry;
+import com.rvprg.raft.protocol.impl.LogEntryFactory;
 import com.rvprg.raft.protocol.impl.RaftImpl;
 import com.rvprg.raft.protocol.impl.RaftObserverImpl;
 import com.rvprg.raft.protocol.impl.TransientLogImpl;
 import com.rvprg.raft.protocol.messages.ProtocolMessages;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntries;
+import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage.MessageType;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVote;
@@ -78,6 +79,7 @@ public class RaftTest {
         Log log = mock(Log.class);
 
         final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
+
         final AtomicLong lastHeartbeatTime = new AtomicLong();
         final AtomicLong requestVotesInitiatedTime = new AtomicLong();
 
@@ -154,7 +156,7 @@ public class RaftTest {
         Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("test", port));
         RaftObserver raftObserver = mock(RaftObserver.class);
         Log log = mock(Log.class);
-        LogEntry logEntry = new LogEntry(0, null);
+        LogEntry logEntry = LogEntryFactory.create(0);
         Mockito.when(log.getLast()).thenReturn(logEntry);
         Mockito.when(log.getLastIndex()).thenReturn(0);
 
@@ -211,8 +213,7 @@ public class RaftTest {
                 .setLastLogTerm(0)
                 .build();
 
-        LogEntry logEntry = mock(LogEntry.class);
-        Mockito.when(logEntry.getTerm()).thenReturn(0);
+        LogEntry logEntry = LogEntryFactory.create(0);
         Mockito.when(log.getLast()).thenReturn(logEntry);
         Mockito.when(log.getLastIndex()).thenReturn(0);
 
@@ -270,8 +271,7 @@ public class RaftTest {
                 .setLastLogTerm(0)
                 .build();
 
-        LogEntry logEntry = mock(LogEntry.class);
-        Mockito.when(logEntry.getTerm()).thenReturn(0);
+        LogEntry logEntry = LogEntryFactory.create(0);
         Mockito.when(log.getLast()).thenReturn(logEntry);
         Mockito.when(log.getLastIndex()).thenReturn(0);
 
@@ -307,6 +307,7 @@ public class RaftTest {
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
 
         final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
+
         Method initializeEventLoop = RaftImpl.class.getDeclaredMethod("initializeEventLoop", new Class[] {});
         initializeEventLoop.setAccessible(true);
         initializeEventLoop.invoke(raft, new Object[] {});
@@ -321,8 +322,7 @@ public class RaftTest {
                 .setLastLogTerm(1)
                 .build();
 
-        LogEntry logEntry = mock(LogEntry.class);
-        Mockito.when(logEntry.getTerm()).thenReturn(0);
+        LogEntry logEntry = LogEntryFactory.create(0);
         Mockito.when(log.getLast()).thenReturn(logEntry);
         Mockito.when(log.getLastIndex()).thenReturn(0);
 
@@ -338,7 +338,9 @@ public class RaftTest {
 
         // Assume receiver's log is more up to date then no vote should be
         // granted (i.e. last entry has more recent term, 1 != 2)
-        Mockito.when(logEntry.getTerm()).thenReturn(2);
+        logEntry = LogEntryFactory.create(2);
+        Mockito.when(log.getLast()).thenReturn(logEntry);
+        // Mockito.when(logEntry.getTerm()).thenReturn(2);
 
         raft.consumeRequestVote(member, requestVote);
 
@@ -352,7 +354,8 @@ public class RaftTest {
 
         // Assume receiver's log ends with the same term, but its length is
         // longer than candidates, so no vote should be granted.
-        Mockito.when(logEntry.getTerm()).thenReturn(1);
+        logEntry = LogEntryFactory.create(1);
+        Mockito.when(log.getLast()).thenReturn(logEntry);
         Mockito.when(log.getLastIndex()).thenReturn(2);
 
         raft.consumeRequestVote(member, requestVote);
