@@ -1,11 +1,11 @@
-package com.rvprg.raft.protocol.impl;
+package com.rvprg.raft.log.impl;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import com.google.protobuf.ByteString;
-import com.rvprg.raft.protocol.Log;
+import com.rvprg.raft.log.Log;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
 import com.rvprg.raft.sm.StateMachine;
@@ -141,6 +141,11 @@ public class TransientLogImpl implements Log {
     @Override
     public synchronized int getFirstIndex() {
         return firstIndex;
+    }
+
+    @Override
+    public void delete() {
+        // nop
     }
 
 }

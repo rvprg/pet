@@ -16,12 +16,16 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
 import com.google.inject.Inject;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.rvprg.raft.configuration.Configuration;
-import com.rvprg.raft.protocol.Log;
+import com.rvprg.raft.log.Log;
+import com.rvprg.raft.log.LogEntryFactory;
+import com.rvprg.raft.log.LogException;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftObserver;
 import com.rvprg.raft.protocol.Role;
@@ -50,6 +54,7 @@ import net.jcip.annotations.GuardedBy;
 
 public class RaftImpl implements Raft {
     private final Logger logger = LoggerFactory.getLogger(RaftImpl.class);
+    private final static Marker severe = MarkerFactory.getMarker("SEVERE");
     private final static Charset defaultCharsetForRaftCommands = Charset.forName("UTF-8");
 
     private final MemberId selfId;
@@ -172,12 +177,16 @@ public class RaftImpl implements Raft {
             response.setTerm(getCurrentTerm());
             MemberId candidateId = MemberId.fromString(requestVote.getCandidateId());
             if (votedFor == null || votedFor.equals(candidateId)) {
-                grantVote = checkCandidatesLogIsUpToDate(requestVote);
+                try {
+                    grantVote = checkCandidatesLogIsUpToDate(requestVote);
+                } catch (LogException e) {
+                    logger.error(severe, "Member: {}. Term: {}. checkCandidatesLogIsUpToDate failed.", member.getMemberId(), getCurrentTerm(), e);
+                }
             }
 
             if (grantVote) {
                 votedFor = candidateId;
-                logger.debug("Member: {}. Term: {}. Giving vote to: {}.", selfId, currentTerm, votedFor);
+                logger.debug("Member: {}. Term: {}. Giving vote to: {}.", selfId, getCurrentTerm(), votedFor);
             }
         }
 
@@ -206,7 +215,7 @@ public class RaftImpl implements Raft {
             if (sameTerm && requestVoteResponse.getVoteGranted()) {
                 observer.voteReceived();
                 ++votesReceived;
-                logger.debug("Member: {}. Term: {}. Votes received: {}.", selfId, currentTerm, votesReceived);
+                logger.debug("Member: {}. Term: {}. Votes received: {}.", selfId, getCurrentTerm(), votesReceived);
             } else {
                 observer.voteRejected();
             }
@@ -217,7 +226,7 @@ public class RaftImpl implements Raft {
         }
     }
 
-    private boolean checkCandidatesLogIsUpToDate(RequestVote requestVote) {
+    private boolean checkCandidatesLogIsUpToDate(RequestVote requestVote) throws LogException {
         if (log.getLast().getTerm() == requestVote.getLastLogTerm()) {
             return requestVote.getLastLogIndex() >= log.getLastIndex();
         }
@@ -241,7 +250,7 @@ public class RaftImpl implements Raft {
             if (getRole() != Role.Candidate) {
                 return;
             }
-            logger.debug("Member: {}. Term: {}. Votes Received: {}. BECAME LEADER.", selfId, currentTerm, votesReceived);
+            logger.debug("Member: {}. Term: {}. Votes Received: {}. BECAME LEADER.", selfId, getCurrentTerm(), votesReceived);
             cancelElectionTimeoutTask();
             scheduleSendHeartbeats();
             schedulePeriodicHeartbeatTask();
@@ -331,19 +340,23 @@ public class RaftImpl implements Raft {
             }
         }
 
-        if (appendEntries.getLogEntriesCount() == 0) {
-            processHeartbeat(appendEntries);
-            log.commit(appendEntries.getLeaderCommitIndex(), stateMachine);
-        } else {
-            boolean successFlag = processAppendEntries(appendEntries);
-            int indexOfFirstNewEntry = appendEntries.getPrevLogIndex() + 1;
-            int indexOfLastNewEntry = appendEntries.getPrevLogIndex() + appendEntries.getLogEntriesCount();
-            if (successFlag) {
-                log.commit(Math.min(appendEntries.getLeaderCommitIndex(), indexOfLastNewEntry), stateMachine);
-            } else {
+        try {
+            if (appendEntries.getLogEntriesCount() == 0) {
+                processHeartbeat(appendEntries);
                 log.commit(appendEntries.getLeaderCommitIndex(), stateMachine);
+            } else {
+                boolean successFlag = processAppendEntries(appendEntries);
+                int indexOfFirstNewEntry = appendEntries.getPrevLogIndex() + 1;
+                int indexOfLastNewEntry = appendEntries.getPrevLogIndex() + appendEntries.getLogEntriesCount();
+                if (successFlag) {
+                    log.commit(Math.min(appendEntries.getLeaderCommitIndex(), indexOfLastNewEntry), stateMachine);
+                } else {
+                    log.commit(appendEntries.getLeaderCommitIndex(), stateMachine);
+                }
+                sendAppendEntriesResponse(member, getAppendEntriesResponse(indexOfFirstNewEntry, indexOfLastNewEntry, successFlag));
             }
-            sendAppendEntriesResponse(member, getAppendEntriesResponse(indexOfFirstNewEntry, indexOfLastNewEntry, successFlag));
+        } catch (LogException e) {
+            logger.error(severe, "Member: {}. Term: {}. consumeAppendEntries failed.", member.getMemberId(), getCurrentTerm(), e);
         }
     }
 
@@ -387,7 +400,7 @@ public class RaftImpl implements Raft {
         }
     }
 
-    private boolean processAppendEntries(AppendEntries appendEntries) {
+    private boolean processAppendEntries(AppendEntries appendEntries) throws LogException {
         List<LogEntry> logEntries = appendEntries.getLogEntriesList();
         processRaftCommands(logEntries);
         return log.append(appendEntries.getPrevLogIndex(), appendEntries.getPrevLogTerm(), logEntries);
@@ -436,7 +449,12 @@ public class RaftImpl implements Raft {
         } finally {
             indexesLock.writeLock().unlock();
         }
-        checkReplicationStatus();
+
+        try {
+            checkReplicationStatus();
+        } catch (LogException e) {
+            logger.error(severe, "Member: {}. Term: {}. Replication check failed due to log exception.", member.getMemberId(), getCurrentTerm(), e);
+        }
     }
 
     private void processFailedAppendEntriesResponse(Member member, AppendEntriesResponse appendEntriesResponse) {
@@ -554,7 +572,7 @@ public class RaftImpl implements Raft {
             ScheduledFuture<?> future = eventLoop.get().schedule(() -> this.scheduleAppendEntries(memberId), configuration.getReplicationRetryInterval(), TimeUnit.MILLISECONDS);
             cancelTask(replicationRetryTasks.get(memberId).getAndSet(future));
         } catch (RejectedExecutionException e) {
-            logger.error("Member: {}. Term: {}. Scheduling replication retry failed.", memberId, currentTerm, e);
+            logger.error(severe, "Member: {}. Term: {}. Scheduling replication retry failed.", memberId, getCurrentTerm(), e);
         }
     }
 
@@ -562,11 +580,15 @@ public class RaftImpl implements Raft {
         scheduleAppendEntriesRetry(memberId);
         Member member = memberConnector.getActiveMember(memberId);
         if (member != null) {
-            scheduleSendMessageToMember(member, getAppendEntries(memberId));
+            try {
+                scheduleSendMessageToMember(member, getAppendEntries(memberId));
+            } catch (LogException e) {
+                logger.error(severe, "Member: {}. Term: {}. Could not schedule replication.", memberId, getCurrentTerm(), e);
+            }
         }
     }
 
-    private void checkReplicationStatus() {
+    private void checkReplicationStatus() throws LogException {
         Iterator<Entry<Integer, ApplyCommandFuture>> it = replicationCompletableFutures.entrySet().iterator();
         while (it.hasNext()) {
             Entry<Integer, ApplyCommandFuture> entry = it.next();
@@ -585,7 +607,7 @@ public class RaftImpl implements Raft {
             }
 
             if (replicationCount >= getMajority()) {
-                if (log.get(entry.getKey()).getTerm() == getCurrentTerm()) {
+                if (log.get(currIndex).getTerm() == getCurrentTerm()) {
                     log.commit(entry.getKey(), stateMachine);
                 }
                 entry.getValue().complete(true);
@@ -601,7 +623,7 @@ public class RaftImpl implements Raft {
     private void electionTimedout() {
         observer.electionTimedout();
         synchronized (stateLock) {
-            logger.debug("Member: {}. Term: {}. Election timedout.", selfId, currentTerm);
+            logger.debug("Member: {}. Term: {}. Election timedout.", selfId, getCurrentTerm());
         }
         initiateElection();
     }
@@ -621,14 +643,14 @@ public class RaftImpl implements Raft {
             votedFor = null;
             leader = null;
             votesReceived = 0;
-            logger.debug("Member: {}. Term: {}. New election.", selfId, currentTerm);
+            logger.debug("Member: {}. Term: {}. New election.", selfId, getCurrentTerm());
         }
 
         synchronized (stateLock) {
             if (votedFor == null) {
                 ++votesReceived;
                 votedFor = selfId;
-                logger.debug("Member: {}. Term: {}. Votes Received: {}. Voted for itself.", selfId, currentTerm, votesReceived);
+                logger.debug("Member: {}. Term: {}. Votes Received: {}. Voted for itself.", selfId, getCurrentTerm(), votesReceived);
             } else {
                 return;
             }
@@ -649,20 +671,24 @@ public class RaftImpl implements Raft {
         try {
             return member.getChannel().eventLoop().schedule(() -> RaftImpl.this.sendMessage(member, msg), 0, TimeUnit.MILLISECONDS);
         } catch (RejectedExecutionException e) {
-            logger.error("Member: {}. Term: {}. Message type: {}. Message sending failed.", member, currentTerm, msg.getType(), e);
+            logger.error("Member: {}. Term: {}. Message type: {}. Message sending failed.", member, getCurrentTerm(), msg.getType(), e);
         }
         return null;
     }
 
     private void scheduleSendVoteRequests() {
-        scheduleSendMessageToEachVotingMember(getRequestVoteMessage());
+        try {
+            scheduleSendMessageToEachVotingMember(getRequestVoteMessage());
+        } catch (LogException e) {
+            logger.error(severe, "Term: {}. scheduleSendVoteRequests failed.", getCurrentTerm(), e);
+        }
     }
 
     private void scheduleSendHeartbeats() {
         scheduleSendMessageToEachMember(getHeartbeatMessage());
     }
 
-    private RaftMessage getAppendEntries(MemberId memberId) {
+    private RaftMessage getAppendEntries(MemberId memberId) throws LogException {
         int nextIndex = 0;
         indexesLock.readLock().lock();
         try {
@@ -700,7 +726,7 @@ public class RaftImpl implements Raft {
         return requestVote;
     }
 
-    private RaftMessage getRequestVoteMessage() {
+    private RaftMessage getRequestVoteMessage() throws LogException {
         RequestVote req = RequestVote.newBuilder()
                 .setTerm(getCurrentTerm())
                 .setCandidateId(selfId.toString())

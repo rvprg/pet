@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 import org.junit.After;
 import org.junit.Before;
@@ -15,9 +16,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import com.rvprg.raft.protocol.Log;
-import com.rvprg.raft.protocol.impl.LogEntryFactory;
-import com.rvprg.raft.protocol.impl.TransientLogImpl;
+import com.rvprg.raft.log.Log;
+import com.rvprg.raft.log.LogEntryFactory;
+import com.rvprg.raft.log.LogException;
+import com.rvprg.raft.log.impl.LevelDBLogImpl;
+import com.rvprg.raft.log.impl.TransientLogImpl;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.sm.StateMachine;
 
@@ -31,21 +34,22 @@ public class LogTest {
 
     @Parameterized.Parameters(name = "{0}")
     public static Iterable<? extends Object> data() {
-        return Arrays.asList(new TransientLogImpl());
+        return Arrays.asList(new TransientLogImpl(), new LevelDBLogImpl());
     }
 
     @Before
     public void init() throws IOException {
-        log.init("");
+        log.init(UUID.randomUUID().toString());
     }
 
     @After
     public void close() throws IOException {
         log.close();
+        log.delete();
     }
 
     @Test
-    public void testSimpleAppendAndGet() throws IOException {
+    public void testSimpleAppendAndGet() throws IOException, LogException {
         LogEntry logEntry1 = LogEntryFactory.create(1, new byte[0]);
         LogEntry logEntry2 = LogEntryFactory.create(1, new byte[0]);
         LogEntry logEntry3 = LogEntryFactory.create(2, new byte[0]);
@@ -90,7 +94,7 @@ public class LogTest {
     }
 
     @Test
-    public void testComplexAppend_ShouldSucceed1() throws IOException {
+    public void testComplexAppend_ShouldSucceed1() throws IOException, LogException {
         log.append(LogEntryFactory.create(1, new byte[0])); // 1
         log.append(LogEntryFactory.create(1, new byte[0])); // 2
         log.append(LogEntryFactory.create(1, new byte[0])); // 3
@@ -115,7 +119,7 @@ public class LogTest {
     }
 
     @Test
-    public void testComplexAppend_ShouldSucceed2() throws IOException {
+    public void testComplexAppend_ShouldSucceed2() throws IOException, LogException {
         log.append(LogEntryFactory.create(1, new byte[0])); // 1
         log.append(LogEntryFactory.create(1, new byte[0])); // 2
         log.append(LogEntryFactory.create(1, new byte[0])); // 3
@@ -137,7 +141,7 @@ public class LogTest {
     }
 
     @Test
-    public void testComplexAppend_ShouldSucceed3() throws IOException {
+    public void testComplexAppend_ShouldSucceed3() throws IOException, LogException {
         LogEntry[] logEntriesArr = new LogEntry[] {
                 LogEntryFactory.create(1, new byte[0]), // 1
                 LogEntryFactory.create(1, new byte[0]), // 2
@@ -167,7 +171,7 @@ public class LogTest {
     }
 
     @Test
-    public void testComplexAppend_ShouldFail1() throws IOException {
+    public void testComplexAppend_ShouldFail1() throws IOException, LogException {
         log.append(LogEntryFactory.create(1, new byte[0])); // 1
         log.append(LogEntryFactory.create(1, new byte[0])); // 2
         log.append(LogEntryFactory.create(1, new byte[0])); // 3
@@ -189,7 +193,7 @@ public class LogTest {
     }
 
     @Test
-    public void testComplexAppend_ShouldFail2() throws IOException {
+    public void testComplexAppend_ShouldFail2() throws IOException, LogException {
         assertEquals(false, log.append(3, 1, null));
 
         List<LogEntry> logEntries = new ArrayList<LogEntry>();
@@ -201,7 +205,7 @@ public class LogTest {
     }
 
     @Test
-    public void testCommit() {
+    public void testCommit() throws LogException {
         LogEntry[] logEntries = new LogEntry[] {
                 LogEntryFactory.create(1),
                 LogEntryFactory.create(1, new byte[] { 1 }),

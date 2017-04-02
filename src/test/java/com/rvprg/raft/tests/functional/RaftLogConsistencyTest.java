@@ -9,6 +9,7 @@ import java.util.concurrent.TimeoutException;
 
 import org.junit.Test;
 
+import com.rvprg.raft.log.LogException;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.impl.ApplyCommandResult;
 import com.rvprg.raft.protocol.impl.RaftImpl;
@@ -17,7 +18,7 @@ public class RaftLogConsistencyTest extends RaftFunctionalTestBase {
 
     @Test
     public void testLogConsistencyProperty()
-            throws InterruptedException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+            throws InterruptedException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, LogException {
         // This test creates a cluster of clusterSize members. Then it applies
         // applyCount different commands. After that it elects a new leader and
         // starts everything again. It repeats the cycle iterations times.

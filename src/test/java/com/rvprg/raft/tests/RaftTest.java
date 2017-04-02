@@ -31,14 +31,15 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.rvprg.raft.Module;
 import com.rvprg.raft.configuration.Configuration;
-import com.rvprg.raft.protocol.Log;
+import com.rvprg.raft.log.Log;
+import com.rvprg.raft.log.LogEntryFactory;
+import com.rvprg.raft.log.LogException;
+import com.rvprg.raft.log.impl.TransientLogImpl;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftObserver;
 import com.rvprg.raft.protocol.Role;
-import com.rvprg.raft.protocol.impl.LogEntryFactory;
 import com.rvprg.raft.protocol.impl.RaftImpl;
 import com.rvprg.raft.protocol.impl.RaftObserverImpl;
-import com.rvprg.raft.protocol.impl.TransientLogImpl;
 import com.rvprg.raft.protocol.messages.ProtocolMessages;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntries;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
@@ -142,7 +143,7 @@ public class RaftTest {
     }
 
     @Test
-    public void testElectionTimeout() throws InterruptedException {
+    public void testElectionTimeout() throws InterruptedException, LogException {
         int port = NetworkUtils.getRandomFreePort();
         Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", port)).build();
 
@@ -189,7 +190,7 @@ public class RaftTest {
     }
 
     @Test
-    public void testConsumeVoteRequest_GiveVoteOnce() {
+    public void testConsumeVoteRequest_GiveVoteOnce() throws LogException {
         Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
@@ -247,7 +248,7 @@ public class RaftTest {
     }
 
     @Test
-    public void testConsumeVoteRequest_GiveVoteSameCandidate() {
+    public void testConsumeVoteRequest_GiveVoteSameCandidate() throws LogException {
         Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
@@ -294,7 +295,7 @@ public class RaftTest {
 
     @Test
     public void testConsumeVoteRequest_GiveVoteIfLogIsAsUpToDateAsReceivers()
-            throws NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+            throws NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, LogException {
         Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);

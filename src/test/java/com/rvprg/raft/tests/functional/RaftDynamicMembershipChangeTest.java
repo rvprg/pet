@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.Test;
 
+import com.rvprg.raft.log.LogException;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftObserver;
 import com.rvprg.raft.protocol.impl.AddCatchingUpMemberResult;
@@ -27,7 +28,7 @@ import com.rvprg.raft.transport.MemberId;
 
 public class RaftDynamicMembershipChangeTest extends RaftFunctionalTestBase {
     @Test(timeout = 60000)
-    public void testAddMemberDynamically() throws NoSuchMethodException, SecurityException, InterruptedException, ExecutionException {
+    public void testAddMemberDynamically() throws NoSuchMethodException, SecurityException, InterruptedException, ExecutionException, LogException {
         int clusterSize = 5;
         int logSize = 5;
 

@@ -15,13 +15,14 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.rvprg.raft.Module;
 import com.rvprg.raft.configuration.Configuration;
-import com.rvprg.raft.protocol.Log;
+import com.rvprg.raft.log.Log;
+import com.rvprg.raft.log.LogException;
+import com.rvprg.raft.log.impl.TransientLogImpl;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftObserver;
 import com.rvprg.raft.protocol.Role;
 import com.rvprg.raft.protocol.impl.RaftImpl;
 import com.rvprg.raft.protocol.impl.RaftObserverImpl;
-import com.rvprg.raft.protocol.impl.TransientLogImpl;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.tests.helpers.NetworkUtils;
@@ -212,7 +213,7 @@ public class RaftFunctionalTestBase {
             }
         }
 
-        public void checkLogConsistency() {
+        public void checkLogConsistency() throws LogException {
             Log firstRaftLog = rafts.get(0).getLog();
             int firstIndex = firstRaftLog.getFirstIndex();
             int lastIndex = firstRaftLog.getCommitIndex();

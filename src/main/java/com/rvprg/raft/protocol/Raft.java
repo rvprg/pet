@@ -1,6 +1,7 @@
 package com.rvprg.raft.protocol;
 
 import com.rvprg.raft.configuration.Configuration;
+import com.rvprg.raft.log.Log;
 import com.rvprg.raft.protocol.impl.AddCatchingUpMemberResult;
 import com.rvprg.raft.protocol.impl.ApplyCommandResult;
 import com.rvprg.raft.protocol.impl.RemoveCatchingUpMemberResult;
