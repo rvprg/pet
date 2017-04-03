@@ -25,12 +25,12 @@ public class TransientLogImpl implements Log {
     }
 
     @Override
-    public synchronized int getCommitIndex() {
+    public synchronized long getCommitIndex() {
         return commitIndex;
     }
 
     @Override
-    public synchronized boolean append(int prevLogIndex, int prevLogTerm, List<LogEntry> logEntries) {
+    public synchronized boolean append(long prevLogIndex, long prevLogTerm, List<LogEntry> logEntries) {
         if (logEntries == null || logEntries.isEmpty()) {
             return false;
         }
@@ -46,7 +46,7 @@ public class TransientLogImpl implements Log {
 
         LogEntry newNextEntry = logEntries.get(0);
 
-        int nextEntryIndex = prevLogIndex + 1;
+        long nextEntryIndex = prevLogIndex + 1;
         LogEntry nextEntry = get(nextEntryIndex);
         if (nextEntry != null && nextEntry.getTerm() != newNextEntry.getTerm()) {
             while (log.size() > nextEntryIndex) {
@@ -54,8 +54,8 @@ public class TransientLogImpl implements Log {
             }
         }
 
-        for (int i = nextEntryIndex, j = 0; j < logEntries.size(); ++i, ++j) {
-            insert(i, logEntries.get(j));
+        for (long i = nextEntryIndex, j = 0; j < logEntries.size(); ++i, ++j) {
+            insert((int) i, logEntries.get((int) j));
         }
 
         return true;
@@ -70,38 +70,38 @@ public class TransientLogImpl implements Log {
     }
 
     @Override
-    public synchronized LogEntry get(int index) {
+    public synchronized LogEntry get(long index) {
         if (index >= log.size() || index < 0) {
             return null;
         }
-        return log.get(index);
+        return log.get((int) index);
     }
 
     @Override
     public synchronized LogEntry getLast() {
-        return log.get(getLastIndex());
+        return log.get((int) getLastIndex());
     }
 
     @Override
-    public synchronized int getLastIndex() {
+    public synchronized long getLastIndex() {
         return log.size() - 1;
     }
 
     @Override
-    public synchronized List<LogEntry> get(int nextIndex, int maxNum) {
+    public synchronized List<LogEntry> get(long nextIndex, int maxNum) {
         if (nextIndex > log.size() - 1 || nextIndex < 0 || maxNum <= 0) {
             return new ArrayList<LogEntry>();
         }
 
         if (nextIndex + maxNum > log.size() - 1) {
-            return log.subList(nextIndex, log.size());
+            return log.subList((int) nextIndex, log.size());
         }
 
-        return log.subList(nextIndex, nextIndex + maxNum);
+        return log.subList((int) nextIndex, (int) (nextIndex + maxNum));
     }
 
     @Override
-    public int append(LogEntry logEntry) {
+    public long append(LogEntry logEntry) {
         log.add(logEntry);
         return log.size() - 1;
     }
@@ -121,25 +121,25 @@ public class TransientLogImpl implements Log {
     }
 
     @Override
-    public synchronized int commit(int commitUpToIndex, StateMachine stateMachine) {
+    public synchronized long commit(long commitUpToIndex, StateMachine stateMachine) {
         if (commitUpToIndex > getCommitIndex()) {
-            int newIndex = Math.min(commitUpToIndex, getLastIndex());
+            long newIndex = Math.min(commitUpToIndex, getLastIndex());
 
-            for (int i = getCommitIndex() + 1; i <= newIndex; ++i) {
+            for (long i = getCommitIndex() + 1; i <= newIndex; ++i) {
                 LogEntry logEntry = get(i);
                 if (logEntry.getType() == LogEntryType.StateMachineCommand) {
                     stateMachine.apply(logEntry.getEntry().toByteArray());
                 }
             }
 
-            this.commitIndex = newIndex;
+            this.commitIndex = (int) newIndex;
         }
         return this.commitIndex;
 
     }
 
     @Override
-    public synchronized int getFirstIndex() {
+    public synchronized long getFirstIndex() {
         return firstIndex;
     }
 

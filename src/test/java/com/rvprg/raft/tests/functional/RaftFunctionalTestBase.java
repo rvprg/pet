@@ -215,10 +215,10 @@ public class RaftFunctionalTestBase {
 
         public void checkLogConsistency() throws LogException {
             Log firstRaftLog = rafts.get(0).getLog();
-            int firstIndex = firstRaftLog.getFirstIndex();
-            int lastIndex = firstRaftLog.getCommitIndex();
+            long firstIndex = firstRaftLog.getFirstIndex();
+            long lastIndex = firstRaftLog.getCommitIndex();
 
-            for (int i = firstIndex; i <= lastIndex; ++i) {
+            for (long i = firstIndex; i <= lastIndex; ++i) {
                 LogEntry le = firstRaftLog.get(i);
                 for (Raft raft : rafts) {
                     assertTrue(raft.getLog().get(i).equals(le));
@@ -227,7 +227,7 @@ public class RaftFunctionalTestBase {
         }
 
         public void checkLastIndexes() {
-            int lastIndex = rafts.get(0).getLog().getLastIndex();
+            long lastIndex = rafts.get(0).getLog().getLastIndex();
             assertTrue(rafts.stream().map(x -> x.getLog().getLastIndex()).allMatch((x) -> lastIndex == x));
         }
 

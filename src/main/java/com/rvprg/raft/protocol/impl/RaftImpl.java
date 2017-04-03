@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
@@ -67,12 +67,12 @@ public class RaftImpl implements Raft {
     private final AtomicReference<ScheduledFuture<?>> electionTimeoutMonitorTask = new AtomicReference<>();
     private final AtomicReference<ScheduledFuture<?>> periodicHeartbeatTask = new AtomicReference<>();
 
-    private final ConcurrentHashMap<Integer, ApplyCommandFuture> replicationCompletableFutures = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, ApplyCommandFuture> replicationCompletableFutures = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<MemberId, AtomicReference<ScheduledFuture<?>>> replicationRetryTasks = new ConcurrentHashMap<>();
 
     private final ReentrantReadWriteLock indexesLock = new ReentrantReadWriteLock();
-    private final ConcurrentHashMap<MemberId, AtomicInteger> nextIndexes = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<MemberId, AtomicInteger> matchIndexes = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<MemberId, AtomicLong> nextIndexes = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<MemberId, AtomicLong> matchIndexes = new ConcurrentHashMap<>();
 
     private final Object dynamicMembershipChangeLock = new Object();
     @GuardedBy("dynamicMembershipChangeLock")
@@ -268,8 +268,8 @@ public class RaftImpl implements Raft {
     }
 
     private void updateMemberIdRelatedBookkeeping(MemberId memberId) {
-        nextIndexes.put(memberId, new AtomicInteger(log.getLastIndex() + 1));
-        matchIndexes.put(memberId, new AtomicInteger(0));
+        nextIndexes.put(memberId, new AtomicLong(log.getLastIndex() + 1));
+        matchIndexes.put(memberId, new AtomicLong(0));
         replicationRetryTasks.putIfAbsent(memberId, new AtomicReference<ScheduledFuture<?>>(null));
         scheduleAppendEntries(memberId);
     }
@@ -346,8 +346,8 @@ public class RaftImpl implements Raft {
                 log.commit(appendEntries.getLeaderCommitIndex(), stateMachine);
             } else {
                 boolean successFlag = processAppendEntries(appendEntries);
-                int indexOfFirstNewEntry = appendEntries.getPrevLogIndex() + 1;
-                int indexOfLastNewEntry = appendEntries.getPrevLogIndex() + appendEntries.getLogEntriesCount();
+                long indexOfFirstNewEntry = appendEntries.getPrevLogIndex() + 1;
+                long indexOfLastNewEntry = appendEntries.getPrevLogIndex() + appendEntries.getLogEntriesCount();
                 if (successFlag) {
                     log.commit(Math.min(appendEntries.getLeaderCommitIndex(), indexOfLastNewEntry), stateMachine);
                 } else {
@@ -367,7 +367,7 @@ public class RaftImpl implements Raft {
         member.getChannel().writeAndFlush(responseMessage);
     }
 
-    private AppendEntriesResponse getAppendEntriesResponse(int indexOfFirstNewEntry, int indexOfLastNewEntry, boolean successFlag) {
+    private AppendEntriesResponse getAppendEntriesResponse(long indexOfFirstNewEntry, long indexOfLastNewEntry, boolean successFlag) {
         AppendEntriesResponse.Builder appendEntriesResponse = AppendEntriesResponse.newBuilder();
         return appendEntriesResponse
                 .setSuccess(successFlag)
@@ -428,15 +428,15 @@ public class RaftImpl implements Raft {
     private void processSuccessfulAppendEntriesResponse(Member member, AppendEntriesResponse appendEntriesResponse) {
         indexesLock.writeLock().lock();
         try {
-            AtomicInteger nextIndexRef = nextIndexes.get(member.getMemberId());
-            AtomicInteger matchIndexRef = matchIndexes.get(member.getMemberId());
+            AtomicLong nextIndexRef = nextIndexes.get(member.getMemberId());
+            AtomicLong matchIndexRef = matchIndexes.get(member.getMemberId());
 
             if (nextIndexRef.get() != appendEntriesResponse.getStartIndex()) {
                 return;
             }
 
-            int newMatchIndex = appendEntriesResponse.getEndIndex();
-            int newNextIndex = appendEntriesResponse.getEndIndex() + 1;
+            long newMatchIndex = appendEntriesResponse.getEndIndex();
+            long newNextIndex = appendEntriesResponse.getEndIndex() + 1;
 
             nextIndexRef.set(newNextIndex);
             matchIndexRef.set(newMatchIndex);
@@ -460,7 +460,7 @@ public class RaftImpl implements Raft {
     private void processFailedAppendEntriesResponse(Member member, AppendEntriesResponse appendEntriesResponse) {
         indexesLock.writeLock().lock();
         try {
-            AtomicInteger nextIndexRef = nextIndexes.get(member.getMemberId());
+            AtomicLong nextIndexRef = nextIndexes.get(member.getMemberId());
             if (nextIndexRef.get() == appendEntriesResponse.getStartIndex()) {
                 nextIndexRef.set(appendEntriesResponse.getLogLength() + 1);
             }
@@ -538,15 +538,15 @@ public class RaftImpl implements Raft {
         return applyCommand(LogEntryType.StateMachineCommand, command);
     }
 
-    private ApplyCommandFuture scheduleReplication(int index) {
+    private ApplyCommandFuture scheduleReplication(long index) {
         ApplyCommandFuture applyCommandFuture = new ApplyCommandFuture();
         replicationCompletableFutures.put(index, applyCommandFuture);
 
         for (MemberId memberId : memberConnector.getRegisteredMemberIds()) {
-            int nextIndex = 0;
+            long nextIndex = 0;
             indexesLock.readLock().lock();
             try {
-                AtomicInteger nextIndexInt = nextIndexes.get(memberId);
+                AtomicLong nextIndexInt = nextIndexes.get(memberId);
                 if (nextIndexInt == null) {
                     throw new IllegalStateException("nextIndex is not initialized");
                 }
@@ -589,13 +589,13 @@ public class RaftImpl implements Raft {
     }
 
     private void checkReplicationStatus() throws LogException {
-        Iterator<Entry<Integer, ApplyCommandFuture>> it = replicationCompletableFutures.entrySet().iterator();
+        Iterator<Entry<Long, ApplyCommandFuture>> it = replicationCompletableFutures.entrySet().iterator();
         while (it.hasNext()) {
-            Entry<Integer, ApplyCommandFuture> entry = it.next();
-            int currIndex = entry.getKey();
+            Entry<Long, ApplyCommandFuture> entry = it.next();
+            long currIndex = entry.getKey();
 
             int replicationCount = 0;
-            for (AtomicInteger matchIndex : matchIndexes.values()) {
+            for (AtomicLong matchIndex : matchIndexes.values()) {
                 indexesLock.readLock().lock();
                 try {
                     if (matchIndex.get() >= currIndex) {
@@ -689,7 +689,7 @@ public class RaftImpl implements Raft {
     }
 
     private RaftMessage getAppendEntries(MemberId memberId) throws LogException {
-        int nextIndex = 0;
+        long nextIndex = 0;
         indexesLock.readLock().lock();
         try {
             nextIndex = nextIndexes.get(memberId).get();
@@ -702,9 +702,9 @@ public class RaftImpl implements Raft {
             return getHeartbeatMessage();
         }
 
-        int prevLogIndex = nextIndex - 1;
+        long prevLogIndex = nextIndex - 1;
         int prevLogTerm = log.get(prevLogIndex).getTerm();
-        int commitIndex = log.getCommitIndex();
+        long commitIndex = log.getCommitIndex();
 
         MemberId leaderMemberId = getLeaderMemberId();
 

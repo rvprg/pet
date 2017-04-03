@@ -159,7 +159,7 @@ public class RaftTest {
         Log log = mock(Log.class);
         LogEntry logEntry = LogEntryFactory.create(0);
         Mockito.when(log.getLast()).thenReturn(logEntry);
-        Mockito.when(log.getLastIndex()).thenReturn(0);
+        Mockito.when(log.getLastIndex()).thenReturn(0L);
 
         final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
         // Start as a follower with term set to 0.
@@ -216,7 +216,7 @@ public class RaftTest {
 
         LogEntry logEntry = LogEntryFactory.create(0);
         Mockito.when(log.getLast()).thenReturn(logEntry);
-        Mockito.when(log.getLastIndex()).thenReturn(0);
+        Mockito.when(log.getLastIndex()).thenReturn(0L);
 
         raft.consumeRequestVote(member, requestVote0);
 
@@ -274,7 +274,7 @@ public class RaftTest {
 
         LogEntry logEntry = LogEntryFactory.create(0);
         Mockito.when(log.getLast()).thenReturn(logEntry);
-        Mockito.when(log.getLastIndex()).thenReturn(0);
+        Mockito.when(log.getLastIndex()).thenReturn(0L);
 
         raft.consumeRequestVote(member, requestVote);
 
@@ -325,7 +325,7 @@ public class RaftTest {
 
         LogEntry logEntry = LogEntryFactory.create(0);
         Mockito.when(log.getLast()).thenReturn(logEntry);
-        Mockito.when(log.getLastIndex()).thenReturn(0);
+        Mockito.when(log.getLastIndex()).thenReturn(0L);
 
         raft.consumeRequestVote(member, requestVote);
 
@@ -357,7 +357,7 @@ public class RaftTest {
         // longer than candidates, so no vote should be granted.
         logEntry = LogEntryFactory.create(1);
         Mockito.when(log.getLast()).thenReturn(logEntry);
-        Mockito.when(log.getLastIndex()).thenReturn(2);
+        Mockito.when(log.getLastIndex()).thenReturn(2L);
 
         raft.consumeRequestVote(member, requestVote);
 

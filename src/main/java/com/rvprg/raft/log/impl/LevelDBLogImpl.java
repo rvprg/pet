@@ -41,19 +41,19 @@ public class LevelDBLogImpl implements Log {
         }
     }
 
-    private void setCommitIndex(int index) {
+    private void setCommitIndex(long index) {
         setIntegerValueByKey(CommitIndexKey, index);
     }
 
-    private void setLastIndex(int index) {
+    private void setLastIndex(long index) {
         setIntegerValueByKey(LastIndexKey, index);
     }
 
-    private void setFirstIndex(int index) {
+    private void setFirstIndex(long index) {
         setIntegerValueByKey(FirstIndexKey, index);
     }
 
-    private void setIntegerValueByKey(byte[] key, int index) {
+    private void setIntegerValueByKey(byte[] key, long index) {
         stateLock.writeLock().lock();
         try {
             database.put(key, ByteUtils.toBytes(index));
@@ -62,7 +62,7 @@ public class LevelDBLogImpl implements Log {
         }
     }
 
-    private int getIntegerValueByKey(byte[] key) {
+    private long getIntegerValueByKey(byte[] key) {
         stateLock.readLock().lock();
         try {
             byte[] value = database.get(key);
@@ -76,18 +76,18 @@ public class LevelDBLogImpl implements Log {
     }
 
     @Override
-    public int getCommitIndex() {
+    public long getCommitIndex() {
         return getIntegerValueByKey(CommitIndexKey);
     }
 
     @Override
-    public int commit(int commitUpToIndex, StateMachine stateMachine) throws LogException {
+    public long commit(long commitUpToIndex, StateMachine stateMachine) throws LogException {
         stateLock.writeLock().lock();
         try {
             if (commitUpToIndex > getCommitIndex()) {
-                int newIndex = Math.min(commitUpToIndex, getLastIndex());
+                long newIndex = Math.min(commitUpToIndex, getLastIndex());
 
-                for (int i = getCommitIndex() + 1; i <= newIndex; ++i) {
+                for (long i = getCommitIndex() + 1; i <= newIndex; ++i) {
                     LogEntry logEntry = get(i);
                     if (logEntry.getType() == LogEntryType.StateMachineCommand) {
                         stateMachine.apply(logEntry.getEntry().toByteArray());
@@ -103,12 +103,12 @@ public class LevelDBLogImpl implements Log {
     }
 
     @Override
-    public int getLastIndex() {
+    public long getLastIndex() {
         return getIntegerValueByKey(LastIndexKey);
     }
 
     @Override
-    public int getFirstIndex() {
+    public long getFirstIndex() {
         return getIntegerValueByKey(FirstIndexKey);
     }
 
@@ -123,7 +123,7 @@ public class LevelDBLogImpl implements Log {
     }
 
     @Override
-    public boolean append(int prevLogIndex, int prevLogTerm, List<LogEntry> logEntries) throws LogException {
+    public boolean append(long prevLogIndex, long prevLogTerm, List<LogEntry> logEntries) throws LogException {
         if (logEntries == null || logEntries.isEmpty()) {
             return false;
         }
@@ -139,20 +139,20 @@ public class LevelDBLogImpl implements Log {
 
         LogEntry newNextEntry = logEntries.get(0);
 
-        int nextEntryIndex = prevLogIndex + 1;
+        long nextEntryIndex = prevLogIndex + 1;
         LogEntry nextEntry = get(nextEntryIndex);
         WriteBatch wb = database.createWriteBatch();
 
         stateLock.writeLock().lock();
         try {
             if (nextEntry != null && nextEntry.getTerm() != newNextEntry.getTerm()) {
-                int lastIndex = getLastIndex();
-                for (int currIndex = nextEntryIndex; currIndex <= lastIndex; ++currIndex) {
+                long lastIndex = getLastIndex();
+                for (long currIndex = nextEntryIndex; currIndex <= lastIndex; ++currIndex) {
                     wb.delete(ByteUtils.toBytes(currIndex));
                 }
             }
 
-            int currIndex = nextEntryIndex;
+            long currIndex = nextEntryIndex;
             for (int j = 0; j < logEntries.size(); ++j) {
                 wb.put(ByteUtils.toBytes(currIndex + j), logEntries.get(j).toByteArray());
             }
@@ -172,7 +172,7 @@ public class LevelDBLogImpl implements Log {
     }
 
     @Override
-    public LogEntry get(int index) throws LogException {
+    public LogEntry get(long index) throws LogException {
         stateLock.readLock().lock();
         try {
             byte[] logEntry = database.get(ByteUtils.toBytes(index));
@@ -188,15 +188,15 @@ public class LevelDBLogImpl implements Log {
     }
 
     @Override
-    public List<LogEntry> get(int nextIndex, int maxNum) throws LogException {
-        int lastLogIndex = getLastIndex();
+    public List<LogEntry> get(long nextIndex, int maxNum) throws LogException {
+        long lastLogIndex = getLastIndex();
 
         ArrayList<LogEntry> retArr = new ArrayList<LogEntry>();
         if (nextIndex > lastLogIndex || nextIndex < 0 || maxNum <= 0) {
             return retArr;
         }
 
-        int currIndex = nextIndex;
+        long currIndex = nextIndex;
         while (currIndex < nextIndex + maxNum) {
             byte[] value = database.get(ByteUtils.toBytes(currIndex));
             if (value == null) {
@@ -214,10 +214,10 @@ public class LevelDBLogImpl implements Log {
     }
 
     @Override
-    public int append(LogEntry logEntry) {
+    public long append(LogEntry logEntry) {
         stateLock.writeLock().lock();
         try {
-            int nextIndex = getLastIndex() + 1;
+            long nextIndex = getLastIndex() + 1;
             database.put(ByteUtils.toBytes(nextIndex), logEntry.toByteArray());
             setLastIndex(nextIndex);
             return nextIndex;

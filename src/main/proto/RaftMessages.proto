@@ -23,7 +23,7 @@ message RaftMessage {
 message RequestVote {
     required uint32 term = 1;
     required string candidateId = 2;
-    required uint32 lastLogIndex = 3;
+    required uint64 lastLogIndex = 3;
     required uint32 lastLogTerm = 4;
 }
 
@@ -46,18 +46,18 @@ message LogEntry {
 message AppendEntries {
     required uint32 term = 1;
     optional string leaderId = 2;
-    optional uint32 prevLogIndex = 3;
+    optional uint64 prevLogIndex = 3;
     optional uint32 prevLogTerm = 4;
-    optional uint32 leaderCommitIndex = 5;
+    optional uint64 leaderCommitIndex = 5;
     repeated LogEntry logEntries = 6;
 }
 
 message AppendEntriesResponse {
     required uint32 term = 1;
     required bool success = 2;
-    optional uint32 startIndex = 3;
-    optional uint32 endIndex = 4;
-    optional uint32 logLength = 5;
+    optional uint64 startIndex = 3;
+    optional uint64 endIndex = 4;
+    optional uint64 logLength = 5;
 }
 
 message DynamicMembershipChangeCommand {

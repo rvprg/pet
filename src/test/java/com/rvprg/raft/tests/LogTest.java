@@ -54,9 +54,9 @@ public class LogTest {
         LogEntry logEntry2 = LogEntryFactory.create(1, new byte[0]);
         LogEntry logEntry3 = LogEntryFactory.create(2, new byte[0]);
 
-        int index1 = log.append(logEntry1);
-        int index2 = log.append(logEntry2);
-        int index3 = log.append(logEntry3);
+        long index1 = log.append(logEntry1);
+        long index2 = log.append(logEntry2);
+        long index3 = log.append(logEntry3);
 
         assertEquals(1, index1);
         assertEquals(2, index2);

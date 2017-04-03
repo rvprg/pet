@@ -8,23 +8,23 @@ import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.sm.StateMachine;
 
 public interface Log extends Closeable {
-    int getCommitIndex();
+    long getCommitIndex();
 
-    int commit(int commitUpToIndex, StateMachine stateMachine) throws LogException;
+    long commit(long commitUpToIndex, StateMachine stateMachine) throws LogException;
 
-    int getLastIndex();
+    long getLastIndex();
 
-    int getFirstIndex();
+    long getFirstIndex();
 
     LogEntry getLast() throws LogException;
 
-    boolean append(int prevLogIndex, int prevLogTerm, List<LogEntry> logEntries) throws LogException;
+    boolean append(long prevLogIndex, long prevLogTerm, List<LogEntry> logEntries) throws LogException;
 
-    LogEntry get(int index) throws LogException;
+    LogEntry get(long index) throws LogException;
 
-    List<LogEntry> get(int nextIndex, int maxNum) throws LogException;
+    List<LogEntry> get(long nextIndex, int maxNum) throws LogException;
 
-    int append(LogEntry logEntry);
+    long append(LogEntry logEntry);
 
     void init(String name) throws IOException;
 
