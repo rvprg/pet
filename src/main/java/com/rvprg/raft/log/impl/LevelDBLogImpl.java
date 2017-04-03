@@ -4,9 +4,9 @@ import static org.fusesource.leveldbjni.JniDBFactory.factory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.commons.io.FileUtils;
 import org.iq80.leveldb.DB;
@@ -14,6 +14,7 @@ import org.iq80.leveldb.Options;
 import org.iq80.leveldb.WriteBatch;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.rvprg.raft.log.ByteUtils;
 import com.rvprg.raft.log.Log;
 import com.rvprg.raft.log.LogEntryFactory;
 import com.rvprg.raft.log.LogException;
@@ -23,13 +24,14 @@ import com.rvprg.raft.sm.StateMachine;
 
 public class LevelDBLogImpl implements Log {
 
-    // TODO: Synchronizatoin is completely broken.
     private volatile DB database;
     private File databaseFile;
 
     private static byte[] LastIndexKey = "LastIndex".getBytes();
     private static byte[] FirstIndexKey = "FirstIndexKey".getBytes();
     private static byte[] CommitIndexKey = "CommitIndexKey".getBytes();
+
+    private final ReentrantReadWriteLock stateLock = new ReentrantReadWriteLock();
 
     @Override
     public void close() throws IOException {
@@ -39,12 +41,38 @@ public class LevelDBLogImpl implements Log {
         }
     }
 
-    private int getIntegerValueByKey(byte[] key) {
-        byte[] value = database.get(key);
-        if (value == null) {
-            throw new IllegalArgumentException("Key not found");
+    private void setCommitIndex(int index) {
+        setIntegerValueByKey(CommitIndexKey, index);
+    }
+
+    private void setLastIndex(int index) {
+        setIntegerValueByKey(LastIndexKey, index);
+    }
+
+    private void setFirstIndex(int index) {
+        setIntegerValueByKey(FirstIndexKey, index);
+    }
+
+    private void setIntegerValueByKey(byte[] key, int index) {
+        stateLock.writeLock().lock();
+        try {
+            database.put(key, ByteUtils.toBytes(index));
+        } finally {
+            stateLock.writeLock().unlock();
         }
-        return fromBytes(value);
+    }
+
+    private int getIntegerValueByKey(byte[] key) {
+        stateLock.readLock().lock();
+        try {
+            byte[] value = database.get(key);
+            if (value == null) {
+                throw new IllegalArgumentException("Key not found");
+            }
+            return ByteUtils.fromBytes(value);
+        } finally {
+            stateLock.readLock().unlock();
+        }
     }
 
     @Override
@@ -54,23 +82,24 @@ public class LevelDBLogImpl implements Log {
 
     @Override
     public int commit(int commitUpToIndex, StateMachine stateMachine) throws LogException {
-        if (commitUpToIndex > getCommitIndex()) {
-            int newIndex = Math.min(commitUpToIndex, getLastIndex());
+        stateLock.writeLock().lock();
+        try {
+            if (commitUpToIndex > getCommitIndex()) {
+                int newIndex = Math.min(commitUpToIndex, getLastIndex());
 
-            for (int i = getCommitIndex() + 1; i <= newIndex; ++i) {
-                LogEntry logEntry = get(i);
-                if (logEntry.getType() == LogEntryType.StateMachineCommand) {
-                    stateMachine.apply(logEntry.getEntry().toByteArray());
+                for (int i = getCommitIndex() + 1; i <= newIndex; ++i) {
+                    LogEntry logEntry = get(i);
+                    if (logEntry.getType() == LogEntryType.StateMachineCommand) {
+                        stateMachine.apply(logEntry.getEntry().toByteArray());
+                    }
                 }
+
+                setCommitIndex(newIndex);
             }
-
-            setCommitIndex(newIndex);
+            return getCommitIndex();
+        } finally {
+            stateLock.writeLock().unlock();
         }
-        return getCommitIndex();
-    }
-
-    private void setCommitIndex(int index) {
-        setIntegerValueByKey(CommitIndexKey, index);
     }
 
     @Override
@@ -78,26 +107,19 @@ public class LevelDBLogImpl implements Log {
         return getIntegerValueByKey(LastIndexKey);
     }
 
-    private void setLastIndex(int index) {
-        setIntegerValueByKey(LastIndexKey, index);
-    }
-
-    private void setIntegerValueByKey(byte[] key, int index) {
-        database.put(key, toBytes(index));
-    }
-
     @Override
     public int getFirstIndex() {
         return getIntegerValueByKey(FirstIndexKey);
     }
 
-    private void setFirstIndex(int index) {
-        setIntegerValueByKey(FirstIndexKey, index);
-    }
-
     @Override
     public LogEntry getLast() throws LogException {
-        return get(getLastIndex());
+        stateLock.readLock().lock();
+        try {
+            return get(getLastIndex());
+        } finally {
+            stateLock.readLock().unlock();
+        }
     }
 
     @Override
@@ -120,17 +142,19 @@ public class LevelDBLogImpl implements Log {
         int nextEntryIndex = prevLogIndex + 1;
         LogEntry nextEntry = get(nextEntryIndex);
         WriteBatch wb = database.createWriteBatch();
+
+        stateLock.writeLock().lock();
         try {
             if (nextEntry != null && nextEntry.getTerm() != newNextEntry.getTerm()) {
                 int lastIndex = getLastIndex();
                 for (int currIndex = nextEntryIndex; currIndex <= lastIndex; ++currIndex) {
-                    wb.delete(toBytes(currIndex));
+                    wb.delete(ByteUtils.toBytes(currIndex));
                 }
             }
 
             int currIndex = nextEntryIndex;
             for (int j = 0; j < logEntries.size(); ++j) {
-                wb.put(toBytes(currIndex + j), logEntries.get(j).toByteArray());
+                wb.put(ByteUtils.toBytes(currIndex + j), logEntries.get(j).toByteArray());
             }
 
             database.write(wb);
@@ -138,6 +162,7 @@ public class LevelDBLogImpl implements Log {
 
             return true;
         } finally {
+            stateLock.writeLock().unlock();
             try {
                 wb.close();
             } catch (IOException e) {
@@ -148,14 +173,17 @@ public class LevelDBLogImpl implements Log {
 
     @Override
     public LogEntry get(int index) throws LogException {
+        stateLock.readLock().lock();
         try {
-            byte[] logEntry = database.get(toBytes(index));
+            byte[] logEntry = database.get(ByteUtils.toBytes(index));
             if (logEntry == null) {
                 return null;
             }
             return LogEntry.parseFrom(logEntry);
         } catch (InvalidProtocolBufferException e) {
             throw new LogException(e);
+        } finally {
+            stateLock.readLock().unlock();
         }
     }
 
@@ -170,7 +198,7 @@ public class LevelDBLogImpl implements Log {
 
         int currIndex = nextIndex;
         while (currIndex < nextIndex + maxNum) {
-            byte[] value = database.get(toBytes(currIndex));
+            byte[] value = database.get(ByteUtils.toBytes(currIndex));
             if (value == null) {
                 return retArr;
             }
@@ -187,10 +215,15 @@ public class LevelDBLogImpl implements Log {
 
     @Override
     public int append(LogEntry logEntry) {
-        int nextIndex = getLastIndex() + 1;
-        database.put(toBytes(nextIndex), logEntry.toByteArray());
-        setLastIndex(nextIndex);
-        return nextIndex;
+        stateLock.writeLock().lock();
+        try {
+            int nextIndex = getLastIndex() + 1;
+            database.put(ByteUtils.toBytes(nextIndex), logEntry.toByteArray());
+            setLastIndex(nextIndex);
+            return nextIndex;
+        } finally {
+            stateLock.writeLock().unlock();
+        }
     }
 
     @Override
@@ -201,24 +234,18 @@ public class LevelDBLogImpl implements Log {
 
         Options options = new Options();
         options.createIfMissing(true);
-
         databaseFile = new File(name);
         database = factory.open(databaseFile, options);
 
-        setLastIndex(-1);
-        setFirstIndex(0);
-        append(LogEntryFactory.create(0));
-        setCommitIndex(1);
-    }
-
-    private byte[] toBytes(int value) {
-        ByteBuffer bbArr = ByteBuffer.allocate(4);
-        bbArr.putInt(value);
-        return bbArr.array();
-    }
-
-    private int fromBytes(byte[] value) {
-        return ByteBuffer.wrap(value).getInt();
+        stateLock.writeLock().lock();
+        try {
+            setLastIndex(-1);
+            setFirstIndex(0);
+            append(LogEntryFactory.create(0));
+            setCommitIndex(1);
+        } finally {
+            stateLock.writeLock().unlock();
+        }
     }
 
     @Override
