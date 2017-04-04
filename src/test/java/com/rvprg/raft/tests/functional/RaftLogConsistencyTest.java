@@ -41,13 +41,14 @@ public class RaftLogConsistencyTest extends RaftFunctionalTestBase {
                 byte[] buff = ByteBuffer.allocate(4).putInt(commandNumber).array();
                 ApplyCommandResult applyCommandResult = currentLeader.applyCommand(buff);
 
-                applyCommandResult.getResult().ifPresent(x -> {
+                if (applyCommandResult.getResult() != null) {
                     try {
-                        x.get(3000, TimeUnit.MILLISECONDS);
+                        applyCommandResult.getResult().get(3000, TimeUnit.MILLISECONDS);
                     } catch (TimeoutException | InterruptedException | ExecutionException e) {
                         // fine
                     }
-                });
+                }
+                ;
             }
 
             if (i < iterations - 1) {

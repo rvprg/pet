@@ -39,13 +39,14 @@ public class RaftDynamicMembershipChangeTest extends RaftFunctionalTestBase {
         for (int i = 0; i < logSize; ++i) {
             byte[] buff = ByteBuffer.allocate(4).putInt(i).array();
             ApplyCommandResult applyCommandResult = currentLeader.applyCommand(buff);
-            applyCommandResult.getResult().ifPresent(x -> {
+            if (applyCommandResult.getResult() != null) {
                 try {
-                    x.get(3000, TimeUnit.MILLISECONDS);
+                    applyCommandResult.getResult().get(3000, TimeUnit.MILLISECONDS);
                 } catch (TimeoutException | InterruptedException | ExecutionException e) {
                     // fine
                 }
-            });
+            }
+            ;
         }
 
         cluster.waitUntilCommitAdvances();
@@ -83,8 +84,8 @@ public class RaftDynamicMembershipChangeTest extends RaftFunctionalTestBase {
 
         // Phase 1: Add as a catching up server.
         AddCatchingUpMemberResult addCatchingUpMemberResult = currentLeader.addCatchingUpMember(newMemberId);
-        assertTrue(addCatchingUpMemberResult.getResult().isPresent());
-        assertTrue(addCatchingUpMemberResult.getResult().get());
+        assertTrue(addCatchingUpMemberResult.getResult() != null);
+        assertTrue(addCatchingUpMemberResult.getResult());
 
         // Polling.
         boolean finished = false;
@@ -100,15 +101,13 @@ public class RaftDynamicMembershipChangeTest extends RaftFunctionalTestBase {
         // Phase 2: Add as a normal member
         ApplyCommandResult addMemberDynamicallyResult = currentLeader.addMemberDynamically(newMemberId);
         newRaftMember.becomeVotingMember();
-        assertTrue(addMemberDynamicallyResult.getResult().isPresent());
+        assertTrue(addMemberDynamicallyResult.getResult() != null);
         final AtomicBoolean addSuccess = new AtomicBoolean(false);
-        addMemberDynamicallyResult.getResult().ifPresent(x -> {
-            try {
-                addSuccess.set(x.get(10000, TimeUnit.MILLISECONDS));
-            } catch (TimeoutException | InterruptedException | ExecutionException e) {
-                addSuccess.set(false);
-            }
-        });
+        try {
+            addSuccess.set(addMemberDynamicallyResult.getResult().get(10000, TimeUnit.MILLISECONDS));
+        } catch (TimeoutException | InterruptedException | ExecutionException e) {
+            addSuccess.set(false);
+        }
 
         cluster.getRafts().add(newRaftMember);
         cluster.waitUntilCommitAdvances();
@@ -135,8 +134,8 @@ public class RaftDynamicMembershipChangeTest extends RaftFunctionalTestBase {
 
         // Remove a member.
         ApplyCommandResult removeCatchingUpMemberResult = currentLeader.removeMemberDynamically(currentLeader.getMemberId());
-        assertTrue(removeCatchingUpMemberResult.getResult().isPresent());
-        assertTrue(removeCatchingUpMemberResult.getResult().get().get());
+        assertTrue(removeCatchingUpMemberResult.getResult() != null);
+        assertTrue(removeCatchingUpMemberResult.getResult().get());
 
         cluster.waitUntilCommitAdvances();
         cluster.waitUntilFollowersAdvance();

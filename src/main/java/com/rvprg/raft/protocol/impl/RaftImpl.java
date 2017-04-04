@@ -859,7 +859,8 @@ public class RaftImpl implements Raft {
 
         synchronized (dynamicMembershipChangeLock) {
             if (dynamicMembershipChangeInProgress != null &&
-                    !dynamicMembershipChangeInProgress.getResult().get().isDone()) {
+                    dynamicMembershipChangeInProgress.getResult() != null &&
+                    !dynamicMembershipChangeInProgress.getResult().isDone()) {
                 throw new IllegalStateException("Member adding is in progress.");
             }
 
@@ -876,7 +877,8 @@ public class RaftImpl implements Raft {
 
         synchronized (dynamicMembershipChangeLock) {
             if (dynamicMembershipChangeInProgress != null &&
-                    !dynamicMembershipChangeInProgress.getResult().get().isDone()) {
+                    dynamicMembershipChangeInProgress.getResult() != null &&
+                    !dynamicMembershipChangeInProgress.getResult().isDone()) {
                 throw new IllegalStateException("Member removing is in progress.");
             }
 
