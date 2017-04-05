@@ -106,7 +106,7 @@ public class RaftImpl implements Raft {
 
     @Inject
     public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine, RaftObserver observer) {
-        this(configuration, memberConnector, messageReceiver, log, stateMachine, 0, Role.Follower, observer);
+        this(configuration, memberConnector, messageReceiver, log, stateMachine, log.getTerm(), Role.Follower, observer);
     }
 
     public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine,
@@ -123,6 +123,7 @@ public class RaftImpl implements Raft {
         this.random = new Random();
         this.observer = observer == null ? RaftObserver.getDefaultInstance() : observer;
         this.stateMachine = stateMachine;
+        this.votedFor = log.getVotedFor();
 
         memberConnectorObserver = new MemberConnectorObserverImpl(this, messageReceiver.getChannelPipelineInitializer());
         configuration.getMemberIds().forEach(memberId -> memberConnector.register(memberId, memberConnectorObserver));
@@ -186,6 +187,7 @@ public class RaftImpl implements Raft {
 
             if (grantVote) {
                 votedFor = candidateId;
+                log.setVotedFor(votedFor);
                 logger.debug("Member: {}. Term: {}. Giving vote to: {}.", selfId, getCurrentTerm(), votedFor);
             }
         }
@@ -237,6 +239,7 @@ public class RaftImpl implements Raft {
         synchronized (stateLock) {
             if (term > currentTerm) {
                 currentTerm = term;
+                log.setTerm(currentTerm);
                 return 1;
             } else if (term < currentTerm) {
                 return -1;
@@ -297,6 +300,7 @@ public class RaftImpl implements Raft {
         synchronized (stateLock) {
             role = Role.Follower;
             votedFor = null;
+            log.setVotedFor(null);
             votesReceived = 0;
             memberConnector.getRegisteredMemberIds().forEach(
                     memberId -> {
@@ -640,7 +644,9 @@ public class RaftImpl implements Raft {
         synchronized (stateLock) {
             role = Role.Candidate;
             ++currentTerm;
+            log.setTerm(currentTerm);
             votedFor = null;
+            log.setVotedFor(votedFor);
             leader = null;
             votesReceived = 0;
             logger.debug("Member: {}. Term: {}. New election.", selfId, getCurrentTerm());

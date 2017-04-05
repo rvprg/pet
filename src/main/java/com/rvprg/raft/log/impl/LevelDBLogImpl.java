@@ -21,15 +21,18 @@ import com.rvprg.raft.log.LogException;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
 import com.rvprg.raft.sm.StateMachine;
+import com.rvprg.raft.transport.MemberId;
 
 public class LevelDBLogImpl implements Log {
 
     private volatile DB database;
     private File databaseFile;
 
-    private static byte[] LastIndexKey = "LastIndex".getBytes();
-    private static byte[] FirstIndexKey = "FirstIndexKey".getBytes();
-    private static byte[] CommitIndexKey = "CommitIndexKey".getBytes();
+    private static final byte[] LastIndexKey = "LastIndex".getBytes();
+    private static final byte[] FirstIndexKey = "FirstIndexKey".getBytes();
+    private static final byte[] CommitIndexKey = "CommitIndexKey".getBytes();
+    private static final byte[] TermKey = "TermKey".getBytes();
+    private static final byte[] VoteForKey = "VoteForKey".getBytes();
 
     private final ReentrantReadWriteLock stateLock = new ReentrantReadWriteLock();
 
@@ -42,34 +45,34 @@ public class LevelDBLogImpl implements Log {
     }
 
     private void setCommitIndex(long index) {
-        setIntegerValueByKey(CommitIndexKey, index);
+        setLongValueByKey(CommitIndexKey, index);
     }
 
     private void setLastIndex(long index) {
-        setIntegerValueByKey(LastIndexKey, index);
+        setLongValueByKey(LastIndexKey, index);
     }
 
     private void setFirstIndex(long index) {
-        setIntegerValueByKey(FirstIndexKey, index);
+        setLongValueByKey(FirstIndexKey, index);
     }
 
-    private void setIntegerValueByKey(byte[] key, long index) {
+    private void setLongValueByKey(byte[] key, long index) {
         stateLock.writeLock().lock();
         try {
-            database.put(key, ByteUtils.toBytes(index));
+            database.put(key, ByteUtils.longToBytes(index));
         } finally {
             stateLock.writeLock().unlock();
         }
     }
 
-    private long getIntegerValueByKey(byte[] key) {
+    private long getLongValueByKey(byte[] key) {
         stateLock.readLock().lock();
         try {
             byte[] value = database.get(key);
             if (value == null) {
                 throw new IllegalArgumentException("Key not found");
             }
-            return ByteUtils.fromBytes(value);
+            return ByteUtils.longFromBytes(value);
         } finally {
             stateLock.readLock().unlock();
         }
@@ -77,7 +80,7 @@ public class LevelDBLogImpl implements Log {
 
     @Override
     public long getCommitIndex() {
-        return getIntegerValueByKey(CommitIndexKey);
+        return getLongValueByKey(CommitIndexKey);
     }
 
     @Override
@@ -104,12 +107,12 @@ public class LevelDBLogImpl implements Log {
 
     @Override
     public long getLastIndex() {
-        return getIntegerValueByKey(LastIndexKey);
+        return getLongValueByKey(LastIndexKey);
     }
 
     @Override
     public long getFirstIndex() {
-        return getIntegerValueByKey(FirstIndexKey);
+        return getLongValueByKey(FirstIndexKey);
     }
 
     @Override
@@ -148,13 +151,13 @@ public class LevelDBLogImpl implements Log {
             if (nextEntry != null && nextEntry.getTerm() != newNextEntry.getTerm()) {
                 long lastIndex = getLastIndex();
                 for (long currIndex = nextEntryIndex; currIndex <= lastIndex; ++currIndex) {
-                    wb.delete(ByteUtils.toBytes(currIndex));
+                    wb.delete(ByteUtils.longToBytes(currIndex));
                 }
             }
 
             long currIndex = nextEntryIndex;
             for (int j = 0; j < logEntries.size(); ++j) {
-                wb.put(ByteUtils.toBytes(currIndex + j), logEntries.get(j).toByteArray());
+                wb.put(ByteUtils.longToBytes(currIndex + j), logEntries.get(j).toByteArray());
             }
 
             database.write(wb);
@@ -175,7 +178,7 @@ public class LevelDBLogImpl implements Log {
     public LogEntry get(long index) throws LogException {
         stateLock.readLock().lock();
         try {
-            byte[] logEntry = database.get(ByteUtils.toBytes(index));
+            byte[] logEntry = database.get(ByteUtils.longToBytes(index));
             if (logEntry == null) {
                 return null;
             }
@@ -198,7 +201,7 @@ public class LevelDBLogImpl implements Log {
 
         long currIndex = nextIndex;
         while (currIndex < nextIndex + maxNum) {
-            byte[] value = database.get(ByteUtils.toBytes(currIndex));
+            byte[] value = database.get(ByteUtils.longToBytes(currIndex));
             if (value == null) {
                 return retArr;
             }
@@ -218,7 +221,7 @@ public class LevelDBLogImpl implements Log {
         stateLock.writeLock().lock();
         try {
             long nextIndex = getLastIndex() + 1;
-            database.put(ByteUtils.toBytes(nextIndex), logEntry.toByteArray());
+            database.put(ByteUtils.longToBytes(nextIndex), logEntry.toByteArray());
             setLastIndex(nextIndex);
             return nextIndex;
         } finally {
@@ -258,6 +261,38 @@ public class LevelDBLogImpl implements Log {
     @Override
     public String toString() {
         return "LevelDB log implementation";
+    }
+
+    @Override
+    public void setTerm(int term) {
+        database.put(TermKey, ByteUtils.intToBytes(term));
+    }
+
+    @Override
+    public int getTerm() {
+        byte[] value = database.get(TermKey);
+        if (value == null) {
+            return 0;
+        }
+        return ByteUtils.intFromBytes(value);
+    }
+
+    @Override
+    public void setVotedFor(MemberId memberId) {
+        if (memberId == null) {
+            database.delete(VoteForKey);
+        } else {
+            database.put(VoteForKey, memberId.toString().getBytes());
+        }
+    }
+
+    @Override
+    public MemberId getVotedFor() {
+        byte[] value = database.get(VoteForKey);
+        if (value != null) {
+            return MemberId.fromString(new String(value));
+        }
+        return null;
     }
 
 }

@@ -190,18 +190,19 @@ public class RaftFunctionalTestBase {
         }
 
         public void waitUntilCommitAdvances() throws InterruptedException {
-            Raft currentLeader = getLeader();
             // Polling. Wait until commit index advances.
+            Raft currentLeader = getLeader();
             while (currentLeader.getLog().getCommitIndex() != currentLeader.getLog().getLastIndex()) {
                 Thread.sleep(500);
+                currentLeader = getLeader();
             }
         }
 
         public void waitUntilFollowersAdvance() throws InterruptedException {
-            Raft currentLeader = getLeader();
             // Polling. Wait until all followers advance their commit indexes.
             boolean finished = false;
             while (!finished) {
+                Raft currentLeader = getLeader();
                 finished = true;
                 for (Raft raft : rafts) {
                     if (raft.getLog().getCommitIndex() != currentLeader.getLog().getCommitIndex()) {

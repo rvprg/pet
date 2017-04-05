@@ -9,11 +9,14 @@ import com.rvprg.raft.log.Log;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
 import com.rvprg.raft.sm.StateMachine;
+import com.rvprg.raft.transport.MemberId;
 
 public class TransientLogImpl implements Log {
     private final ArrayList<LogEntry> log = new ArrayList<LogEntry>();
     private int commitIndex = 0;
     private int firstIndex = 0;
+    private int term;
+    private MemberId votedFor;
 
     public TransientLogImpl() {
         init("");
@@ -146,6 +149,26 @@ public class TransientLogImpl implements Log {
     @Override
     public void delete() {
         // nop
+    }
+
+    @Override
+    public void setTerm(int term) {
+        this.term = term;
+    }
+
+    @Override
+    public int getTerm() {
+        return term;
+    }
+
+    @Override
+    public void setVotedFor(MemberId memberId) {
+        this.votedFor = memberId;
+    }
+
+    @Override
+    public MemberId getVotedFor() {
+        return votedFor;
     }
 
 }

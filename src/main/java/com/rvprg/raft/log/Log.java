@@ -6,8 +6,17 @@ import java.util.List;
 
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.sm.StateMachine;
+import com.rvprg.raft.transport.MemberId;
 
 public interface Log extends Closeable {
+    void setVotedFor(MemberId memberId);
+
+    MemberId getVotedFor();
+
+    void setTerm(int term);
+
+    int getTerm();
+
     long getCommitIndex();
 
     long commit(long commitUpToIndex, StateMachine stateMachine) throws LogException;
