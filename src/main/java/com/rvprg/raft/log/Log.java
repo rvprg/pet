@@ -38,4 +38,6 @@ public interface Log extends Closeable {
     void init(String name) throws IOException;
 
     void delete() throws IOException;
+
+    void truncate(long toIndex) throws LogException;
 }

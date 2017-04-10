@@ -295,4 +295,28 @@ public class LevelDBLogImpl implements Log {
         return null;
     }
 
+    @Override
+    public void truncate(long toIndex) throws LogException {
+        if (toIndex > getCommitIndex()) {
+            throw new LogException("toIndex > getCommitIndex()");
+        }
+
+        WriteBatch wb = database.createWriteBatch();
+        try {
+            long nextIndex = getFirstIndex();
+            while (nextIndex < toIndex) {
+                wb.delete(ByteUtils.longToBytes(nextIndex));
+                nextIndex++;
+            }
+            database.write(wb);
+            setFirstIndex(toIndex);
+        } finally {
+            try {
+                wb.close();
+            } catch (IOException e) {
+                throw new LogException(e);
+            }
+        }
+    }
+
 }

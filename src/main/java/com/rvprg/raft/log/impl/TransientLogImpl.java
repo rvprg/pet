@@ -6,6 +6,7 @@ import java.util.List;
 
 import com.google.protobuf.ByteString;
 import com.rvprg.raft.log.Log;
+import com.rvprg.raft.log.LogException;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
 import com.rvprg.raft.sm.StateMachine;
@@ -14,7 +15,7 @@ import com.rvprg.raft.transport.MemberId;
 public class TransientLogImpl implements Log {
     private final ArrayList<LogEntry> log = new ArrayList<LogEntry>();
     private int commitIndex = 0;
-    private int firstIndex = 0;
+    private long firstIndex = 0;
     private int term;
     private MemberId votedFor;
 
@@ -74,7 +75,7 @@ public class TransientLogImpl implements Log {
 
     @Override
     public synchronized LogEntry get(long index) {
-        if (index >= log.size() || index < 0) {
+        if (index >= log.size() || index < 0 || index < getFirstIndex()) {
             return null;
         }
         return log.get((int) index);
@@ -169,6 +170,15 @@ public class TransientLogImpl implements Log {
     @Override
     public MemberId getVotedFor() {
         return votedFor;
+    }
+
+    @Override
+    public void truncate(long toIndex) throws LogException {
+        if (toIndex > getCommitIndex()) {
+            throw new LogException("toIndex > getCommitIndex()");
+        }
+
+        firstIndex = toIndex;
     }
 
 }

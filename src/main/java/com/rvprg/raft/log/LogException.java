@@ -9,4 +9,8 @@ public class LogException extends Exception {
 
     public LogException() {
     }
+
+    public LogException(String string) {
+        super(string);
+    }
 }

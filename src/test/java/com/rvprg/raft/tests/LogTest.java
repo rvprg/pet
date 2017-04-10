@@ -2,6 +2,7 @@ package com.rvprg.raft.tests;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
@@ -252,5 +253,37 @@ public class LogTest {
         assertArrayEquals(logEntries[1].getEntry().toByteArray(), commands.get(0));
         assertArrayEquals(logEntries[2].getEntry().toByteArray(), commands.get(1));
         assertArrayEquals(logEntries[4].getEntry().toByteArray(), commands.get(2));
+    }
+
+    @Test(expected = LogException.class)
+    public void testTruncate_ShouldFail() throws LogException {
+        log.append(LogEntryFactory.create(1, new byte[0])); // 1
+        log.truncate(2);
+    }
+
+    @Test
+    public void testTruncate() throws LogException {
+        log.append(LogEntryFactory.create(1, new byte[0])); // 1
+        log.append(LogEntryFactory.create(1, new byte[0])); // 2
+        log.append(LogEntryFactory.create(1, new byte[0])); // 3
+        log.append(LogEntryFactory.create(2, new byte[0])); // 4
+        log.append(LogEntryFactory.create(3, new byte[0])); // 5
+
+        assertEquals(5, log.getLastIndex());
+        assertEquals(0, log.getFirstIndex());
+
+        log.commit(log.getLastIndex(), new StateMachine() {
+            @Override
+            public void apply(byte[] command) {
+            }
+        });
+
+        log.truncate(4);
+
+        assertEquals(5, log.getLastIndex());
+        assertEquals(4, log.getFirstIndex());
+
+        assertNull(log.get(3));
+        assertNotNull(log.get(4));
     }
 }
