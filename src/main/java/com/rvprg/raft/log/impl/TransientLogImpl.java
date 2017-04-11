@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.google.protobuf.ByteString;
+import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.log.Log;
 import com.rvprg.raft.log.LogException;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
@@ -20,7 +21,7 @@ public class TransientLogImpl implements Log {
     private MemberId votedFor;
 
     public TransientLogImpl() {
-        init("");
+        initialize(null);
     }
 
     @Override
@@ -111,7 +112,7 @@ public class TransientLogImpl implements Log {
     }
 
     @Override
-    public synchronized void init(String name) {
+    public synchronized void initialize(Configuration configuration) {
         log.clear();
         commitIndex = 1;
         firstIndex = 0;
@@ -121,7 +122,7 @@ public class TransientLogImpl implements Log {
 
     @Override
     public String toString() {
-        return "Transient log implementation";
+        return "Transient log";
     }
 
     @Override

@@ -12,8 +12,11 @@ import org.apache.commons.io.FileUtils;
 import org.iq80.leveldb.DB;
 import org.iq80.leveldb.Options;
 import org.iq80.leveldb.WriteBatch;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.log.ByteUtils;
 import com.rvprg.raft.log.Log;
 import com.rvprg.raft.log.LogEntryFactory;
@@ -24,10 +27,12 @@ import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.transport.MemberId;
 
 public class LevelDBLogImpl implements Log {
+    private final Logger logger = LoggerFactory.getLogger(LevelDBLogImpl.class);
 
     private volatile DB database;
     private File databaseFile;
 
+    private static final byte[] RaftLogKey = "RaftLog".getBytes();
     private static final byte[] LastIndexKey = "LastIndex".getBytes();
     private static final byte[] FirstIndexKey = "FirstIndexKey".getBytes();
     private static final byte[] CommitIndexKey = "CommitIndexKey".getBytes();
@@ -35,12 +40,32 @@ public class LevelDBLogImpl implements Log {
     private static final byte[] VoteForKey = "VoteForKey".getBytes();
 
     private final ReentrantReadWriteLock stateLock = new ReentrantReadWriteLock();
+    private volatile Configuration configuration;
 
     @Override
     public void close() throws IOException {
         if (database != null) {
             database.close();
             database = null;
+            logger.info("{} has been closed: {}.", this, configuration.getLogUri());
+        }
+    }
+
+    private boolean isDatabaseInitialized() {
+        return database.get(RaftLogKey) != null;
+    }
+
+    private void initializeDatabase() {
+        stateLock.writeLock().lock();
+        try {
+            setLastIndex(-1);
+            setFirstIndex(0);
+            append(LogEntryFactory.create(0));
+            setCommitIndex(1);
+            database.put(RaftLogKey, new byte[] {});
+            logger.info("{} has been initialized: {}.", this, configuration.getLogUri());
+        } finally {
+            stateLock.writeLock().unlock();
         }
     }
 
@@ -98,6 +123,13 @@ public class LevelDBLogImpl implements Log {
                 }
 
                 setCommitIndex(newIndex);
+
+                // FIXME: schedule as a background task?
+                if (getCommitIndex() - getFirstIndex() > configuration.getLogCompactionThreshold()) {
+                    logger.info("{} compaction started.", this);
+                    truncate(getCommitIndex());
+                    logger.info("{} compaction finished.", this);
+                }
             }
             return getCommitIndex();
         } finally {
@@ -230,24 +262,22 @@ public class LevelDBLogImpl implements Log {
     }
 
     @Override
-    public void init(String name) throws IOException {
+    public void initialize(Configuration configuration) throws IOException {
         if (database != null) {
             throw new IllegalStateException("Already initialized");
         }
+        this.configuration = configuration;
 
         Options options = new Options();
         options.createIfMissing(true);
-        databaseFile = new File(name);
+        databaseFile = new File(configuration.getLogUri());
         database = factory.open(databaseFile, options);
 
-        stateLock.writeLock().lock();
-        try {
-            setLastIndex(-1);
-            setFirstIndex(0);
-            append(LogEntryFactory.create(0));
-            setCommitIndex(1);
-        } finally {
-            stateLock.writeLock().unlock();
+        if (isDatabaseInitialized()) {
+            logger.info("{}: FirstIndex={}, LastIndex={}, CommitIndex={}, votedFor={}, term={}",
+                    this, getFirstIndex(), getLastIndex(), getCommitIndex(), getVotedFor(), getTerm());
+        } else {
+            initializeDatabase();
         }
     }
 
@@ -255,12 +285,13 @@ public class LevelDBLogImpl implements Log {
     public void delete() throws IOException {
         if (databaseFile != null) {
             FileUtils.deleteDirectory(databaseFile);
+            logger.info("{} has been deleted: {}.", this, configuration.getLogUri());
         }
     }
 
     @Override
     public String toString() {
-        return "LevelDB log implementation";
+        return "LevelDB log";
     }
 
     @Override
@@ -301,6 +332,8 @@ public class LevelDBLogImpl implements Log {
             throw new LogException("toIndex > getCommitIndex()");
         }
 
+        logger.info("{} truncating log up to {}.", this, toIndex);
+
         WriteBatch wb = database.createWriteBatch();
         try {
             long nextIndex = getFirstIndex();
@@ -310,6 +343,7 @@ public class LevelDBLogImpl implements Log {
             }
             database.write(wb);
             setFirstIndex(toIndex);
+            logger.info("{} has been truncated. FirstIndex={}.", this, getFirstIndex());
         } finally {
             try {
                 wb.close();

@@ -4,6 +4,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 
+import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.transport.MemberId;
@@ -35,7 +36,7 @@ public interface Log extends Closeable {
 
     long append(LogEntry logEntry);
 
-    void init(String name) throws IOException;
+    void initialize(Configuration configuration) throws IOException;
 
     void delete() throws IOException;
 

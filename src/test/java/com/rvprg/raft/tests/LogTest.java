@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -17,6 +18,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.log.Log;
 import com.rvprg.raft.log.LogEntryFactory;
 import com.rvprg.raft.log.LogException;
@@ -24,6 +26,7 @@ import com.rvprg.raft.log.impl.LevelDBLogImpl;
 import com.rvprg.raft.log.impl.TransientLogImpl;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.sm.StateMachine;
+import com.rvprg.raft.transport.MemberId;
 
 @RunWith(Parameterized.class)
 public class LogTest {
@@ -40,7 +43,10 @@ public class LogTest {
 
     @Before
     public void init() throws IOException {
-        log.init(UUID.randomUUID().toString());
+        Configuration configuration = Configuration.newBuilder()
+                .logUri(URI.create("file:///" + UUID.randomUUID().toString()))
+                .memberId(new MemberId("localhost", 1234)).build();
+        log.initialize(configuration);
     }
 
     @After

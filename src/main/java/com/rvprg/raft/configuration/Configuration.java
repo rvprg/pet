@@ -1,5 +1,6 @@
 package com.rvprg.raft.configuration;
 
+import java.net.URI;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -20,6 +21,8 @@ public class Configuration {
         private int autoReconnectRetryInterval = 1000;
         private int replicationRetryInterval = 500;
         private int maxNumberOfLogEntriesPerRequest = 3;
+        private int logCompactionThreshold = 100;
+        private URI logUri;
         private Set<MemberId> memberIds = new HashSet<MemberId>();
 
         public Builder memberId(MemberId memberId) {
@@ -52,13 +55,23 @@ public class Configuration {
             return this;
         }
 
-        public Builder setReplicationRetryInterval(int replicationRetryInterval) {
+        public Builder replicationRetryInterval(int replicationRetryInterval) {
             this.replicationRetryInterval = replicationRetryInterval;
             return this;
         }
 
-        public Builder setMaxNumberOfLogEntriesPerRequest(int maxNumberOfLogEntriesPerRequest) {
+        public Builder maxNumberOfLogEntriesPerRequest(int maxNumberOfLogEntriesPerRequest) {
             this.maxNumberOfLogEntriesPerRequest = maxNumberOfLogEntriesPerRequest;
+            return this;
+        }
+
+        public Builder logCompactionThreshold(int logCompactionThreshold) {
+            this.logCompactionThreshold = logCompactionThreshold;
+            return this;
+        }
+
+        public Builder logUri(URI logUri) {
+            this.logUri = logUri;
             return this;
         }
 
@@ -70,7 +83,9 @@ public class Configuration {
             Verify.verify(maxNumberOfLogEntriesPerRequest > 0, "maxNumberOfLogEntriesPerRequest must be positive and nonzero");
             Verify.verify(heartbeatInterval > 0, "heartbeatInterval must be positive and nonzero");
             Verify.verify(electionMinTimeout < electionMaxTimeout, "electionMaxTimeout must not be smaller than election electionMinTimeout");
+            Verify.verify(logCompactionThreshold > 0, "logCompactionThreshold must be positive and nonzero");
             Verify.verify(memberId != null, "memberId must not be null");
+            Verify.verify(logUri != null, "logUri must not be null");
             return new Configuration(this);
         }
 
@@ -84,6 +99,8 @@ public class Configuration {
     private final Set<MemberId> memberIds;
     private final int replicationRetryInterval;
     private final int maxNumberOfLogEntriesPerRequest;
+    private final int logCompactionThreshold;
+    private final URI logUri;
 
     public int getMaxNumberOfLogEntriesPerRequest() {
         return maxNumberOfLogEntriesPerRequest;
@@ -98,6 +115,8 @@ public class Configuration {
         replicationRetryInterval = builder.replicationRetryInterval;
         maxNumberOfLogEntriesPerRequest = builder.maxNumberOfLogEntriesPerRequest;
         memberIds = ImmutableSet.copyOf(builder.memberIds);
+        logCompactionThreshold = builder.logCompactionThreshold;
+        logUri = builder.logUri;
     }
 
     public MemberId getMemberId() {
@@ -130,6 +149,14 @@ public class Configuration {
 
     public int getReplicationRetryInterval() {
         return replicationRetryInterval;
+    }
+
+    public int getLogCompactionThreshold() {
+        return logCompactionThreshold;
+    }
+
+    public URI getLogUri() {
+        return logUri;
     }
 
 }
