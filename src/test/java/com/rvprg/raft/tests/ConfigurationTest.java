@@ -1,5 +1,7 @@
 package com.rvprg.raft.tests;
 
+import java.net.URI;
+
 import org.junit.Test;
 
 import com.google.common.base.VerifyException;
@@ -19,6 +21,6 @@ public class ConfigurationTest {
 
     @Test
     public void testConditions_ShouldSucceed_Defaults() {
-        Configuration.newBuilder().memberId(new MemberId("localhost", 1234)).build();
+        Configuration.newBuilder().memberId(new MemberId("localhost", 1234)).logUri(URI.create("file:///test")).build();
     }
 }

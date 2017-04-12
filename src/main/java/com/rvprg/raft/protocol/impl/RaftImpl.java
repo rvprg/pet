@@ -66,6 +66,7 @@ public class RaftImpl implements Raft {
     private final AtomicReference<ScheduledFuture<?>> newElectionInitiatorTask = new AtomicReference<>();
     private final AtomicReference<ScheduledFuture<?>> electionTimeoutMonitorTask = new AtomicReference<>();
     private final AtomicReference<ScheduledFuture<?>> periodicHeartbeatTask = new AtomicReference<>();
+    private final AtomicReference<ScheduledFuture<?>> logCompactionTask = new AtomicReference<>();
 
     private final ConcurrentHashMap<Long, ApplyCommandFuture> replicationCompletableFutures = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<MemberId, AtomicReference<ScheduledFuture<?>>> replicationRetryTasks = new ConcurrentHashMap<>();
@@ -359,8 +360,18 @@ public class RaftImpl implements Raft {
                 }
                 sendAppendEntriesResponse(member, getAppendEntriesResponse(indexOfFirstNewEntry, indexOfLastNewEntry, successFlag));
             }
+            logCompaction();
         } catch (LogException e) {
             logger.error(severe, "Member: {}. Term: {}. consumeAppendEntries failed.", member.getMemberId(), getCurrentTerm(), e);
+        }
+    }
+
+    private void logCompaction() throws LogException {
+        // TODO: schedule a task?
+        if (log.getCommitIndex() - log.getFirstIndex() > configuration.getLogCompactionThreshold()) {
+            logger.info("{} compaction started.", log);
+            log.truncate(log.getCommitIndex());
+            logger.info("{} compaction finished.", log);
         }
     }
 
@@ -613,6 +624,7 @@ public class RaftImpl implements Raft {
             if (replicationCount >= getMajority()) {
                 if (log.get(currIndex).getTerm() == getCurrentTerm()) {
                     log.commit(entry.getKey(), stateMachine);
+                    logCompaction();
                 }
                 entry.getValue().complete(true);
                 it.remove();

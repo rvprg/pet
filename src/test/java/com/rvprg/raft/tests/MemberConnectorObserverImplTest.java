@@ -3,6 +3,7 @@ package com.rvprg.raft.tests;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
+import java.net.URI;
 import java.util.List;
 
 import org.junit.Test;
@@ -21,7 +22,7 @@ import com.rvprg.raft.transport.MemberId;
 public class MemberConnectorObserverImplTest {
     @Test
     public void testObserverAddsHandlersOnConnect() throws InterruptedException {
-        Injector injector = Guice.createInjector(new Module(Configuration.newBuilder().memberId(new MemberId("localhost", 1234)).build()));
+        Injector injector = Guice.createInjector(new Module(Configuration.newBuilder().memberId(new MemberId("localhost", 1234)).logUri(URI.create("file:///test")).build()));
         MemberConnector connector = injector.getInstance(MemberConnector.class);
         ChannelPipelineInitializer pipelineInitializer = injector.getInstance(ChannelPipelineInitializer.class);
 

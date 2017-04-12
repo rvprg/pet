@@ -4,6 +4,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -37,7 +38,7 @@ public class RaftFunctionalTestBase {
 
     public Raft getRaft(String host, int port, Set<MemberId> nodes, int electionMinTimeout, int electionMaxTimeout, RaftObserver raftObserver) {
         Configuration configuration = Configuration.newBuilder().memberId(new MemberId(host, port)).addMemberIds(nodes).electionMinTimeout(electionMinTimeout)
-                .electionMaxTimeout(electionMaxTimeout).build();
+                .electionMaxTimeout(electionMaxTimeout).logUri(URI.create("file:///test")).build();
 
         Injector injector = Guice.createInjector(new Module(configuration));
         MemberConnector memberConnector = injector.getInstance(MemberConnector.class);

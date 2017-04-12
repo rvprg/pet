@@ -5,6 +5,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
+import java.net.URI;
+
 import org.junit.Test;
 
 import com.google.inject.Guice;
@@ -22,7 +24,7 @@ import com.rvprg.raft.transport.MemberId;
 public class RaftMemberConnectorTest {
     @Test(timeout = 60000)
     public void testCatchingUpAndVotingMembesBookkeeping() throws InterruptedException {
-        Injector injector = Guice.createInjector(new Module(Configuration.newBuilder().memberId(new MemberId("localhost", 1)).build()));
+        Injector injector = Guice.createInjector(new Module(Configuration.newBuilder().memberId(new MemberId("localhost", 1)).logUri(URI.create("file:///test")).build()));
         MemberConnector memberConnector = injector.getInstance(MemberConnector.class);
         ChannelPipelineInitializer pipelineInitializer = injector.getInstance(ChannelPipelineInitializer.class);
         EchoServer server1 = new EchoServer(pipelineInitializer);

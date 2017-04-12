@@ -123,13 +123,6 @@ public class LevelDBLogImpl implements Log {
                 }
 
                 setCommitIndex(newIndex);
-
-                // FIXME: schedule as a background task?
-                if (getCommitIndex() - getFirstIndex() > configuration.getLogCompactionThreshold()) {
-                    logger.info("{} compaction started.", this);
-                    truncate(getCommitIndex());
-                    logger.info("{} compaction finished.", this);
-                }
             }
             return getCommitIndex();
         } finally {

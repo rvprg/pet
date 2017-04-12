@@ -13,6 +13,7 @@ import static org.mockito.Mockito.verify;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -71,7 +72,7 @@ public class RaftTest {
 
     @Test
     public void checkHeartbeatTimeout() throws InterruptedException {
-        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).build();
+        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).logUri(URI.create("file:///test")).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -145,7 +146,7 @@ public class RaftTest {
     @Test
     public void testElectionTimeout() throws InterruptedException, LogException {
         int port = NetworkUtils.getRandomFreePort();
-        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", port)).build();
+        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", port)).logUri(URI.create("file:///test")).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MembersRegistry memberRegistry = mock(MembersRegistry.class);
@@ -191,7 +192,7 @@ public class RaftTest {
 
     @Test
     public void testConsumeVoteRequest_GiveVoteOnce() throws LogException {
-        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).build();
+        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).logUri(URI.create("file:///test")).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -249,7 +250,7 @@ public class RaftTest {
 
     @Test
     public void testConsumeVoteRequest_GiveVoteSameCandidate() throws LogException {
-        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).build();
+        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).logUri(URI.create("file:///test")).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -296,7 +297,7 @@ public class RaftTest {
     @Test
     public void testConsumeVoteRequest_GiveVoteIfLogIsAsUpToDateAsReceivers()
             throws NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, LogException {
-        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).build();
+        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).logUri(URI.create("file:///test")).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -366,7 +367,7 @@ public class RaftTest {
 
     @Test
     public void testConsumeVoteRequest_DontGiveVoteIfTermIsOutdated() {
-        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).build();
+        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).logUri(URI.create("file:///test")).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -396,7 +397,7 @@ public class RaftTest {
     @Test
     public void testConsumeVoteRequestResponse_CheckMajorityRule()
             throws NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
-        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).build();
+        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).logUri(URI.create("file:///test")).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -485,7 +486,7 @@ public class RaftTest {
     @Test
     public void testConsumeVoteRequestResponse_CheckSateTerm()
             throws NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
-        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).build();
+        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).logUri(URI.create("file:///test")).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -536,7 +537,7 @@ public class RaftTest {
         }
 
         // For the leader last it.next().
-        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", it.next())).addMemberIds(memberIds).build();
+        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", it.next())).addMemberIds(memberIds).logUri(URI.create("file:///test")).build();
         Injector injector = Guice.createInjector(new Module(configuration));
 
         MemberConnector memberConnector = injector.getInstance(MemberConnector.class);
