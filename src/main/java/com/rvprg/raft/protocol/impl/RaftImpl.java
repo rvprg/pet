@@ -1,6 +1,7 @@
 package com.rvprg.raft.protocol.impl;
 
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
@@ -295,7 +296,9 @@ public class RaftImpl implements Raft {
         if (isStarted()) {
             cancelElectionTimeoutTask();
             cancelPeriodicHeartbeatTask();
-            scheduleHeartbeatMonitorTask();
+            if (isVotingMember()) {
+                scheduleHeartbeatMonitorTask();
+            }
         }
 
         synchronized (stateLock) {
@@ -305,6 +308,7 @@ public class RaftImpl implements Raft {
             votesReceived = 0;
             memberConnector.getRegisteredMemberIds().forEach(
                     memberId -> {
+                        replicationRetryTasks.putIfAbsent(memberId, new AtomicReference<ScheduledFuture<?>>(null));
                         cancelTask(replicationRetryTasks.get(memberId).getAndSet(null));
                     });
 
@@ -402,12 +406,14 @@ public class RaftImpl implements Raft {
                 DynamicMembershipChangeCommand command = DynamicMembershipChangeCommand.parseFrom(le.getEntry().toByteArray());
                 MemberId memberId = MemberId.fromString(command.getMemberId().toString(defaultCharsetForRaftCommands));
                 if (command.getType() == CommandType.AddMember) {
+                    logger.info("Member: {}. Term: {}. Adding {} to the cluster.", selfId, getCurrentTerm(), memberId);
                     if (!memberId.equals(selfId)) {
                         memberConnector.register(memberId, memberConnectorObserver);
                         memberConnector.connect(memberId);
                     }
                 } else {
                     memberConnector.unregister(memberId);
+                    logger.info("Member: {}. Term: {}. Removing {} from from cluster.", selfId, getCurrentTerm(), memberId);
                 }
             } catch (InvalidProtocolBufferException e) {
                 logger.error("Error on processing raft command.", e);
@@ -535,13 +541,22 @@ public class RaftImpl implements Raft {
         return applyCommand(LogEntryType.NoOperationCommand, new byte[0]);
     }
 
+    private long logAppend(LogEntry logEntry) {
+        if (logEntry.getType() == LogEntryType.RaftProtocolCommand) {
+            List<LogEntry> raftCommand = new ArrayList<>();
+            raftCommand.add(logEntry);
+            processRaftCommands(raftCommand);
+        }
+        return log.append(logEntry);
+    }
+
     private ApplyCommandResult applyCommand(LogEntryType type, byte[] command) {
         if (!isLeader()) {
             return new ApplyCommandResult(null, getLeaderMemberId());
         }
 
         LogEntry logEntry = LogEntryFactory.create(getCurrentTerm(), type, command);
-        ApplyCommandFuture applyCommandFuture = scheduleReplication(log.append(logEntry));
+        ApplyCommandFuture applyCommandFuture = scheduleReplication(logAppend(logEntry));
 
         synchronized (stateLock) {
             return new ApplyCommandResult(applyCommandFuture, getLeaderMemberId());
@@ -893,6 +908,10 @@ public class RaftImpl implements Raft {
             return new ApplyCommandResult(null, getLeaderMemberId());
         }
 
+        if (selfId.equals(memberId) && isLeader()) {
+            throw new IllegalArgumentException("Can't remove leader. Please initiate leader stepdown first.");
+        }
+
         synchronized (dynamicMembershipChangeLock) {
             if (dynamicMembershipChangeInProgress != null &&
                     dynamicMembershipChangeInProgress.getResult() != null &&
@@ -917,14 +936,15 @@ public class RaftImpl implements Raft {
 
     @Override
     public void becomeCatchingUpMember() {
-        cancelHeartbeatMonitorTask();
         catchingUpMember.set(true);
+        cancelHeartbeatMonitorTask();
+        becomeFollower();
     }
 
     @Override
     public void becomeVotingMember() {
+        catchingUpMember.set(false);
         scheduleHeartbeatMonitorTask();
-        catchingUpMember.set(true);
     }
 
     public MemberId getLeaderMemberId() {

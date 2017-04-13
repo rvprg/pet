@@ -18,6 +18,7 @@ import org.junit.Test;
 import com.rvprg.raft.log.LogException;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftObserver;
+import com.rvprg.raft.protocol.Role;
 import com.rvprg.raft.protocol.impl.AddCatchingUpMemberResult;
 import com.rvprg.raft.protocol.impl.ApplyCommandResult;
 import com.rvprg.raft.protocol.impl.RaftImpl;
@@ -27,6 +28,7 @@ import com.rvprg.raft.tests.helpers.NetworkUtils;
 import com.rvprg.raft.transport.MemberId;
 
 public class RaftDynamicMembershipChangeTest extends RaftFunctionalTestBase {
+
     @Test(timeout = 60000)
     public void testAddMemberDynamically() throws NoSuchMethodException, SecurityException, InterruptedException, ExecutionException, LogException {
         int clusterSize = 5;
@@ -130,19 +132,23 @@ public class RaftDynamicMembershipChangeTest extends RaftFunctionalTestBase {
 
         RaftCluster cluster = new RaftCluster(clusterSize, clusterSize, clusterSize - 1, 300, 500);
         cluster.start();
+        Raft memberToRemove = cluster.getLeader();
+
+        memberToRemove.becomeCatchingUpMember();
+        while (memberToRemove.getRole() == Role.Leader) {
+            Thread.sleep(100);
+        }
+
         Raft currentLeader = cluster.getLeader();
 
         // Remove a member.
-        ApplyCommandResult removeCatchingUpMemberResult = currentLeader.removeMemberDynamically(currentLeader.getMemberId());
+        ApplyCommandResult removeCatchingUpMemberResult = currentLeader.removeMemberDynamically(memberToRemove.getMemberId());
         assertTrue(removeCatchingUpMemberResult.getResult() != null);
         assertTrue(removeCatchingUpMemberResult.getResult().get());
 
         cluster.waitUntilCommitAdvances();
+        cluster.getRafts().remove(memberToRemove);
         cluster.waitUntilFollowersAdvance();
-
-        currentLeader.becomeCatchingUpMember();
-
-        cluster.getRafts().remove(currentLeader);
 
         Field memberConnectorField = RaftImpl.class.getDeclaredField("memberConnector");
         memberConnectorField.setAccessible(true);
