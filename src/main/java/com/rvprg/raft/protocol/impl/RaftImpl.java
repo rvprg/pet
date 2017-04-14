@@ -132,7 +132,9 @@ public class RaftImpl implements Raft {
     }
 
     private void initializeEventLoop() {
-        EventLoopGroup prevEventLoop = eventLoop.getAndSet(new NioEventLoopGroup());
+        EventLoopGroup prevEventLoop = eventLoop.getAndSet(
+                configuration.getMainEventLoopThreadPoolSize() > 0 ? new NioEventLoopGroup(configuration.getMainEventLoopThreadPoolSize()) : new NioEventLoopGroup());
+
         if (prevEventLoop != null) {
             prevEventLoop.shutdownGracefully();
         }

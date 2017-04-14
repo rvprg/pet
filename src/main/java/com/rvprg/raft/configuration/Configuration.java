@@ -22,6 +22,7 @@ public class Configuration {
         private int replicationRetryInterval = 500;
         private int maxNumberOfLogEntriesPerRequest = 3;
         private int logCompactionThreshold = 100;
+        private int mainEventLoopThreadPoolSize = 0;
         private URI logUri;
         private Set<MemberId> memberIds = new HashSet<MemberId>();
 
@@ -75,6 +76,11 @@ public class Configuration {
             return this;
         }
 
+        public Builder mainEventLoopThreadPoolSize(int mainEventLoopThreadPoolSize) {
+            this.mainEventLoopThreadPoolSize = mainEventLoopThreadPoolSize;
+            return this;
+        }
+
         public Configuration build() {
             Verify.verify(autoReconnectRetryInterval > 0, "autoReconnectRetryInterval must be positive and nonzero");
             Verify.verify(replicationRetryInterval > 0, "replicationRetryInterval must be positive and nonzero");
@@ -84,6 +90,7 @@ public class Configuration {
             Verify.verify(heartbeatInterval > 0, "heartbeatInterval must be positive and nonzero");
             Verify.verify(electionMinTimeout < electionMaxTimeout, "electionMaxTimeout must not be smaller than election electionMinTimeout");
             Verify.verify(logCompactionThreshold > 0, "logCompactionThreshold must be positive and nonzero");
+            Verify.verify(mainEventLoopThreadPoolSize >= 0, "mainEventLoopThreadPoolSize must be positive");
             Verify.verify(memberId != null, "memberId must not be null");
             Verify.verify(logUri != null, "logUri must not be null");
             return new Configuration(this);
@@ -101,6 +108,7 @@ public class Configuration {
     private final int maxNumberOfLogEntriesPerRequest;
     private final int logCompactionThreshold;
     private final URI logUri;
+    private final int mainEventLoopThreadPoolSize;
 
     public int getMaxNumberOfLogEntriesPerRequest() {
         return maxNumberOfLogEntriesPerRequest;
@@ -117,6 +125,11 @@ public class Configuration {
         memberIds = ImmutableSet.copyOf(builder.memberIds);
         logCompactionThreshold = builder.logCompactionThreshold;
         logUri = builder.logUri;
+        mainEventLoopThreadPoolSize = builder.mainEventLoopThreadPoolSize;
+    }
+
+    public int getMainEventLoopThreadPoolSize() {
+        return mainEventLoopThreadPoolSize;
     }
 
     public MemberId getMemberId() {
