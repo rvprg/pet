@@ -125,6 +125,23 @@ public class RaftDynamicMembershipChangeTest extends RaftFunctionalTestBase {
         cluster.checkLogConsistency();
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void testRemoveMemberDynamically_LeaderRemovesItself()
+            throws NoSuchMethodException, SecurityException, InterruptedException, ExecutionException, NoSuchFieldException, IllegalArgumentException, IllegalAccessException {
+        int clusterSize = 5;
+
+        RaftCluster cluster = new RaftCluster(clusterSize, clusterSize, clusterSize - 1, 300, 500);
+        cluster.start();
+        Raft currentLeader = cluster.getLeader();
+
+        // Try to remove the leader.
+        try {
+            currentLeader.removeMemberDynamically(currentLeader.getMemberId());
+        } finally {
+            cluster.shutdown();
+        }
+    }
+
     @Test(timeout = 60000)
     public void testRemoveMemberDynamically()
             throws NoSuchMethodException, SecurityException, InterruptedException, ExecutionException, NoSuchFieldException, IllegalArgumentException, IllegalAccessException {
