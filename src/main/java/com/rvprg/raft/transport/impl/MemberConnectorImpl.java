@@ -54,7 +54,8 @@ public class MemberConnectorImpl implements MemberConnector {
         this.membersRegistry = members;
         this.configuration = configuration;
         clientBootstrap = new Bootstrap();
-        workerGroup = new NioEventLoopGroup();
+        workerGroup = configuration.getMemberConnectorEventLoopThreadPoolSize() > 0 ? new NioEventLoopGroup(configuration.getMemberConnectorEventLoopThreadPoolSize())
+                : new NioEventLoopGroup();
         clientBootstrap.group(workerGroup);
         clientBootstrap.channel(NioSocketChannel.class);
         clientBootstrap.option(ChannelOption.SO_KEEPALIVE, true);

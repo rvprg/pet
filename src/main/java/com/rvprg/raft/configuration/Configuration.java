@@ -23,6 +23,10 @@ public class Configuration {
         private int maxNumberOfLogEntriesPerRequest = 3;
         private int logCompactionThreshold = 100;
         private int mainEventLoopThreadPoolSize = 0;
+        private int memberConnectorEventLoopThreadPoolSize = 0;
+        private int messageReceiverBossEventLoopThreadPoolSize = 0;
+        private int messageReceiverWorkerEventLoopThreadPoolSize = 0;
+
         private URI logUri;
         private Set<MemberId> memberIds = new HashSet<MemberId>();
 
@@ -81,6 +85,21 @@ public class Configuration {
             return this;
         }
 
+        public Builder memberConnectorEventLoopThreadPoolSize(int memberConnectorEventLoopThreadPoolSize) {
+            this.memberConnectorEventLoopThreadPoolSize = memberConnectorEventLoopThreadPoolSize;
+            return this;
+        }
+
+        public Builder messageReceiverBossEventLoopThreadPoolSize(int messageReceiverBossEventLoopThreadPoolSize) {
+            this.messageReceiverBossEventLoopThreadPoolSize = messageReceiverBossEventLoopThreadPoolSize;
+            return this;
+        }
+
+        public Builder messageReceiverWorkerEventLoopThreadPoolSize(int messageReceiverWorkerEventLoopThreadPoolSize) {
+            this.messageReceiverWorkerEventLoopThreadPoolSize = messageReceiverWorkerEventLoopThreadPoolSize;
+            return this;
+        }
+
         public Configuration build() {
             Verify.verify(autoReconnectRetryInterval > 0, "autoReconnectRetryInterval must be positive and nonzero");
             Verify.verify(replicationRetryInterval > 0, "replicationRetryInterval must be positive and nonzero");
@@ -91,6 +110,9 @@ public class Configuration {
             Verify.verify(electionMinTimeout < electionMaxTimeout, "electionMaxTimeout must not be smaller than election electionMinTimeout");
             Verify.verify(logCompactionThreshold > 0, "logCompactionThreshold must be positive and nonzero");
             Verify.verify(mainEventLoopThreadPoolSize >= 0, "mainEventLoopThreadPoolSize must be positive");
+            Verify.verify(memberConnectorEventLoopThreadPoolSize >= 0, "memberConnectorEventLoopThreadPoolSize must be positive");
+            Verify.verify(messageReceiverBossEventLoopThreadPoolSize >= 0, "messageReceiverBossEventLoopThreadPoolSize must be positive");
+            Verify.verify(messageReceiverWorkerEventLoopThreadPoolSize >= 0, "messageReceiverWorkerEventLoopThreadPoolSize must be positive");
             Verify.verify(memberId != null, "memberId must not be null");
             Verify.verify(logUri != null, "logUri must not be null");
             return new Configuration(this);
@@ -109,10 +131,9 @@ public class Configuration {
     private final int logCompactionThreshold;
     private final URI logUri;
     private final int mainEventLoopThreadPoolSize;
-
-    public int getMaxNumberOfLogEntriesPerRequest() {
-        return maxNumberOfLogEntriesPerRequest;
-    }
+    private final int memberConnectorEventLoopThreadPoolSize;
+    private final int messageReceiverBossEventLoopThreadPoolSize;
+    private final int messageReceiverWorkerEventLoopThreadPoolSize;
 
     public Configuration(Builder builder) {
         memberId = builder.memberId;
@@ -126,6 +147,25 @@ public class Configuration {
         logCompactionThreshold = builder.logCompactionThreshold;
         logUri = builder.logUri;
         mainEventLoopThreadPoolSize = builder.mainEventLoopThreadPoolSize;
+        memberConnectorEventLoopThreadPoolSize = builder.memberConnectorEventLoopThreadPoolSize;
+        messageReceiverBossEventLoopThreadPoolSize = builder.messageReceiverBossEventLoopThreadPoolSize;
+        messageReceiverWorkerEventLoopThreadPoolSize = builder.messageReceiverWorkerEventLoopThreadPoolSize;
+    }
+
+    public int getMessageReceiverWorkerEventLoopThreadPoolSize() {
+        return messageReceiverWorkerEventLoopThreadPoolSize;
+    }
+
+    public int getMaxNumberOfLogEntriesPerRequest() {
+        return maxNumberOfLogEntriesPerRequest;
+    }
+
+    public int getMemberConnectorEventLoopThreadPoolSize() {
+        return memberConnectorEventLoopThreadPoolSize;
+    }
+
+    public int getMessageReceiverBossEventLoopThreadPoolSize() {
+        return messageReceiverBossEventLoopThreadPoolSize;
     }
 
     public int getMainEventLoopThreadPoolSize() {

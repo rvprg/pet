@@ -38,8 +38,10 @@ public class MessageReceiverImpl implements MessageReceiver {
 
     private void createEventLoops() {
         synchronized (stateLock) {
-            this.bossGroup = new NioEventLoopGroup();
-            this.workerGroup = new NioEventLoopGroup();
+            this.bossGroup = configuration.getMessageReceiverBossEventLoopThreadPoolSize() > 0
+                    ? new NioEventLoopGroup(configuration.getMessageReceiverBossEventLoopThreadPoolSize()) : new NioEventLoopGroup();
+            this.workerGroup = configuration.getMessageReceiverWorkerEventLoopThreadPoolSize() > 0
+                    ? new NioEventLoopGroup(configuration.getMessageReceiverWorkerEventLoopThreadPoolSize()) : new NioEventLoopGroup();
         }
     }
 
