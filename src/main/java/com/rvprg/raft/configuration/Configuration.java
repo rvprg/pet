@@ -108,7 +108,7 @@ public class Configuration {
             Verify.verify(maxNumberOfLogEntriesPerRequest > 0, "maxNumberOfLogEntriesPerRequest must be positive and nonzero");
             Verify.verify(heartbeatInterval > 0, "heartbeatInterval must be positive and nonzero");
             Verify.verify(electionMinTimeout < electionMaxTimeout, "electionMaxTimeout must not be smaller than election electionMinTimeout");
-            Verify.verify(logCompactionThreshold > 0, "logCompactionThreshold must be positive and nonzero");
+            Verify.verify(logCompactionThreshold >= 0, "logCompactionThreshold must be positive or zero");
             Verify.verify(mainEventLoopThreadPoolSize >= 0, "mainEventLoopThreadPoolSize must be positive");
             Verify.verify(memberConnectorEventLoopThreadPoolSize >= 0, "memberConnectorEventLoopThreadPoolSize must be positive");
             Verify.verify(messageReceiverBossEventLoopThreadPoolSize >= 0, "messageReceiverBossEventLoopThreadPoolSize must be positive");

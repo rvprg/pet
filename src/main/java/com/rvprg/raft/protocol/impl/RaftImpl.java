@@ -6,6 +6,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Random;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -67,7 +68,7 @@ public class RaftImpl implements Raft {
     private final AtomicReference<ScheduledFuture<?>> newElectionInitiatorTask = new AtomicReference<>();
     private final AtomicReference<ScheduledFuture<?>> electionTimeoutMonitorTask = new AtomicReference<>();
     private final AtomicReference<ScheduledFuture<?>> periodicHeartbeatTask = new AtomicReference<>();
-    private final AtomicReference<ScheduledFuture<?>> logCompactionTask = new AtomicReference<>();
+    private final AtomicReference<CompletableFuture<?>> logCompactionTask = new AtomicReference<>(CompletableFuture.completedFuture(true));
 
     private final ConcurrentHashMap<Long, ApplyCommandFuture> replicationCompletableFutures = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<MemberId, AtomicReference<ScheduledFuture<?>>> replicationRetryTasks = new ConcurrentHashMap<>();
@@ -373,12 +374,26 @@ public class RaftImpl implements Raft {
     }
 
     private void logCompaction() throws LogException {
-        // TODO: schedule a task?
-        if (log.getCommitIndex() - log.getFirstIndex() > configuration.getLogCompactionThreshold()) {
-            logger.info("{} compaction started.", log);
-            log.truncate(log.getCommitIndex());
-            logger.info("{} compaction finished.", log);
+        if (configuration.getLogCompactionThreshold() == 0 ||
+                log.getCommitIndex() - log.getFirstIndex() < configuration.getLogCompactionThreshold()) {
+            return;
         }
+
+        logCompactionTask.updateAndGet(compactionTask -> {
+            if (!compactionTask.isDone()) {
+                return compactionTask;
+            }
+
+            return CompletableFuture.runAsync(() -> {
+                try {
+                    logger.info("{} compaction started.", log);
+                    log.truncate(log.getCommitIndex());
+                    logger.info("{} compaction finished.", log);
+                } catch (Exception e) {
+                    logger.error(severe, "{} Compaction failed.", log, e);
+                }
+            }, eventLoop.get());
+        });
     }
 
     private void sendAppendEntriesResponse(Member member, AppendEntriesResponse appendEntriesResponse) {
