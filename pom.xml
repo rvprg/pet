@@ -74,8 +74,9 @@
     <artifactId>jacoco-maven-plugin</artifactId>
     <version>${version.jacoco}</version>
     <configuration>
-     <include>com.rvprg.*</include>
-     <exclude>com.rvprg.protocol.messages.**</exclude>
+     <excludes>
+      <exclude>com/rvprg/raft/protocol/messages/**/*</exclude>
+     </excludes>
     </configuration>
     <executions>
      <execution>
