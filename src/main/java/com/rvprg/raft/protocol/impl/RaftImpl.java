@@ -670,9 +670,7 @@ public class RaftImpl implements Raft {
 
     private void electionTimedout() {
         observer.electionTimedout();
-        synchronized (stateLock) {
-            logger.debug("Member: {}. Term: {}. Election timedout.", selfId, getCurrentTerm());
-        }
+        logger.debug("Member: {}. Term: {}. Election timedout.", selfId, getCurrentTerm());
         initiateElection();
     }
 
