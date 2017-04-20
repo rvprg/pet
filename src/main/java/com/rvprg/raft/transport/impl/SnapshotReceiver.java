@@ -5,11 +5,17 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.util.concurrent.CompletableFuture;
 
+import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage;
+import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage.MessageType;
+import com.rvprg.raft.protocol.messages.ProtocolMessages.SnapshotDownloadRequest;
+import com.rvprg.raft.transport.ChannelPipelineInitializer;
 import com.rvprg.raft.transport.MemberId;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
@@ -23,17 +29,32 @@ public class SnapshotReceiver {
     private final EventLoopGroup workerGroup;
     private final CompletableFuture<Boolean> completionFuture = new CompletableFuture<Boolean>();
     private final Channel channel;
+    private final MemberId selfId;
+    private final ChannelPipelineInitializer channelPipelineInitializer;
 
     private class SnapshotReceiveHandler extends SimpleChannelInboundHandler<ByteBuf> {
         private BufferedOutputStream out;
         private final File fileName;
+        private final String snapshotId;
 
-        public SnapshotReceiveHandler(File fileName) {
+        public SnapshotReceiveHandler(String snapshotId, File fileName) {
             this.fileName = fileName;
+            this.snapshotId = snapshotId;
         }
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) throws Exception {
+            ctx.channel().writeAndFlush(RaftMessage.newBuilder().setType(MessageType.SnapshotDownloadRequest)
+                    .setSnapshotDownloadRequest(
+                            SnapshotDownloadRequest.newBuilder().setMemberId(selfId.toString()).setSnapshotId(snapshotId))
+                    .build()).addListener(new ChannelFutureListener() {
+                        @Override
+                        public void operationComplete(ChannelFuture future) throws Exception {
+                            for (String handlerName : channelPipelineInitializer.getHandlerNames()) {
+                                ctx.pipeline().remove(handlerName);
+                            }
+                        }
+                    });
             out = new BufferedOutputStream(new FileOutputStream(fileName));
         }
 
@@ -47,7 +68,6 @@ public class SnapshotReceiver {
             if (out != null) {
                 out.close();
             }
-            System.out.println("done");
             completionFuture.complete(true);
         }
 
@@ -62,15 +82,19 @@ public class SnapshotReceiver {
         }
     }
 
-    public SnapshotReceiver(MemberId memberId, File fileName) throws InterruptedException {
+    public SnapshotReceiver(ChannelPipelineInitializer channelPipelineInitializer,
+            MemberId selfId, MemberId memberId, String snapshotId, File fileName) throws InterruptedException {
         this.workerGroup = new NioEventLoopGroup();
+        this.selfId = selfId;
+        this.channelPipelineInitializer = channelPipelineInitializer;
 
         channel = new Bootstrap().group(workerGroup)
                 .channel(NioSocketChannel.class)
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     public void initChannel(SocketChannel ch) throws Exception {
-                        ch.pipeline().addLast(new SnapshotReceiveHandler(fileName));
+                        channelPipelineInitializer.initialize(ch.pipeline())
+                                .addLast(new SnapshotReceiveHandler(snapshotId, fileName));
                     }
                 })
                 .option(ChannelOption.SO_KEEPALIVE, true)

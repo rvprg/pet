@@ -18,6 +18,7 @@ import org.junit.Test;
 
 import com.rvprg.raft.tests.helpers.NetworkUtils;
 import com.rvprg.raft.transport.MemberId;
+import com.rvprg.raft.transport.impl.ChannelPipelineInitializerImpl;
 import com.rvprg.raft.transport.impl.SnapshotReceiver;
 import com.rvprg.raft.transport.impl.SnapshotSender;
 
@@ -37,10 +38,14 @@ public class SnapshotExchangeTest {
         file.close();
 
         MemberId memberId = new MemberId("localhost", NetworkUtils.getRandomFreePort());
+        MemberId selfId = new MemberId("localhost", NetworkUtils.getRandomFreePort());
 
-        SnapshotSender sender = new SnapshotSender(memberId, origFile);
-        SnapshotReceiver receiver = new SnapshotReceiver(memberId, destFile);
-        System.out.println(receiver.getCompletionFuture().get());
+        ChannelPipelineInitializerImpl pipelineInitializer = new ChannelPipelineInitializerImpl();
+        // @formatter:off
+        SnapshotSender sender = new SnapshotSender(pipelineInitializer, memberId, "test", origFile, (m, c) -> { }, m -> { }, (m, e) -> { });
+        // @formatter:on
+        SnapshotReceiver receiver = new SnapshotReceiver(pipelineInitializer, selfId, memberId, "test", destFile);
+        receiver.getCompletionFuture().get();
 
         receiver.shutdown();
         sender.shutdown();

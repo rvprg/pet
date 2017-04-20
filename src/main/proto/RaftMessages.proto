@@ -10,6 +10,7 @@ message RaftMessage {
         RequestVoteResponse = 2;
         AppendEntries = 3;
         AppendEntriesResponse = 4;
+        SnapshotDownloadRequest = 5;
     }
 
     required MessageType type = 1;
@@ -18,6 +19,12 @@ message RaftMessage {
     optional RequestVoteResponse requestVoteResponse = 3;
     optional AppendEntries appendEntries = 4;
     optional AppendEntriesResponse appendEntriesResponse = 5;
+    optional SnapshotDownloadRequest snapshotDownloadRequest = 6;
+}
+
+message SnapshotDownloadRequest {
+    required string memberId = 1;
+    required string snapshotId = 2;
 }
 
 message RequestVote {
