@@ -9,6 +9,7 @@ import com.rvprg.raft.transport.MemberId;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
@@ -20,13 +21,16 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 
 public class SnapshotReceiver {
     private final EventLoopGroup workerGroup;
-    private final Bootstrap client;
-    private final File fileName;
     private final CompletableFuture<Boolean> completionFuture = new CompletableFuture<Boolean>();
-    private final MemberId memberId;
+    private final Channel channel;
 
     private class SnapshotReceiveHandler extends SimpleChannelInboundHandler<ByteBuf> {
         private BufferedOutputStream out;
+        private final File fileName;
+
+        public SnapshotReceiveHandler(File fileName) {
+            this.fileName = fileName;
+        }
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) throws Exception {
@@ -40,7 +44,10 @@ public class SnapshotReceiver {
 
         @Override
         public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-            out.close();
+            if (out != null) {
+                out.close();
+            }
+            System.out.println("done");
             completionFuture.complete(true);
         }
 
@@ -48,33 +55,38 @@ public class SnapshotReceiver {
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
                 throws Exception {
             completionFuture.completeExceptionally(cause);
+            if (out != null) {
+                out.close();
+            }
             ctx.channel().close();
         }
     }
 
-    public SnapshotReceiver(MemberId memberId, File fileName) {
+    public SnapshotReceiver(MemberId memberId, File fileName) throws InterruptedException {
         this.workerGroup = new NioEventLoopGroup();
-        this.client = new Bootstrap();
-        this.fileName = fileName;
-        this.memberId = memberId;
-    }
 
-    public void shutdown() {
-        workerGroup.shutdownGracefully().awaitUninterruptibly();
-    }
-
-    public CompletableFuture<Boolean> start() throws InterruptedException {
-        client.group(workerGroup)
+        channel = new Bootstrap().group(workerGroup)
                 .channel(NioSocketChannel.class)
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     public void initChannel(SocketChannel ch) throws Exception {
-                        ch.pipeline().addLast(new SnapshotReceiveHandler());
+                        ch.pipeline().addLast(new SnapshotReceiveHandler(fileName));
                     }
                 })
-                .option(ChannelOption.SO_KEEPALIVE, true);
+                .option(ChannelOption.SO_KEEPALIVE, true)
+                .connect(memberId)
+                .sync()
+                .channel();
+    }
 
-        client.connect(memberId).sync();
+    public void shutdown() {
+        if (channel != null) {
+            channel.close();
+        }
+        workerGroup.shutdownGracefully().awaitUninterruptibly();
+    }
+
+    public CompletableFuture<Boolean> getCompletionFuture() {
         return completionFuture;
     }
 

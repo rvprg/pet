@@ -23,29 +23,26 @@ public class SnapshotSender {
     private final EventLoopGroup workerGroup;
     private final ServerBootstrap server;
     private final File fileName;
-    private final MemberId memberId;
 
     private class SnapshotTransferInitiator extends ChannelInboundHandlerAdapter {
         @Override
         public void channelActive(ChannelHandlerContext ctx) throws Exception {
-            ctx.channel().writeAndFlush(new ChunkedFile(fileName)).addListener(ChannelFutureListener.CLOSE);
+            final ChunkedFile chunkedFile = new ChunkedFile(fileName);
+            ctx.channel().writeAndFlush(chunkedFile).addListener(ChannelFutureListener.CLOSE).addListener(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture future) throws Exception {
+                    chunkedFile.close();
+                }
+            });
         }
     }
 
-    public SnapshotSender(MemberId memberId, File fileName) {
+    public SnapshotSender(MemberId memberId, File fileName) throws InterruptedException {
         this.bossGroup = new NioEventLoopGroup();
         this.workerGroup = new NioEventLoopGroup();
         this.server = new ServerBootstrap();
         this.fileName = fileName;
-        this.memberId = memberId;
-    }
 
-    public void shutdown() {
-        bossGroup.shutdownGracefully().awaitUninterruptibly();
-        workerGroup.shutdownGracefully().awaitUninterruptibly();
-    }
-
-    public ChannelFuture start() throws InterruptedException {
         server.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)
                 .childHandler(new ChannelInitializer<SocketChannel>() {
@@ -59,7 +56,12 @@ public class SnapshotSender {
                 .option(ChannelOption.SO_BACKLOG, 128)
                 .childOption(ChannelOption.SO_KEEPALIVE, true);
 
-        return server.bind(memberId).sync();
+        server.bind(memberId).sync();
+    }
+
+    public void shutdown() {
+        bossGroup.shutdownGracefully().awaitUninterruptibly();
+        workerGroup.shutdownGracefully().awaitUninterruptibly();
     }
 
 }

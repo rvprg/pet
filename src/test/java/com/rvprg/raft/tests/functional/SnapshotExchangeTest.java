@@ -39,15 +39,18 @@ public class SnapshotExchangeTest {
         MemberId memberId = new MemberId("localhost", NetworkUtils.getRandomFreePort());
 
         SnapshotSender sender = new SnapshotSender(memberId, origFile);
-        sender.start();
         SnapshotReceiver receiver = new SnapshotReceiver(memberId, destFile);
-        receiver.start().get();
+        System.out.println(receiver.getCompletionFuture().get());
 
         receiver.shutdown();
         sender.shutdown();
 
-        byte[] origMd5 = DigestUtils.md5(new FileInputStream(origFile));
-        byte[] destMd5 = DigestUtils.md5(new FileInputStream(destFile));
+        FileInputStream f1 = new FileInputStream(origFile);
+        FileInputStream f2 = new FileInputStream(destFile);
+        byte[] origMd5 = DigestUtils.md5(f1);
+        byte[] destMd5 = DigestUtils.md5(f2);
+        f1.close();
+        f2.close();
 
         assertThat(origMd5, equalTo(destMd5));
 
