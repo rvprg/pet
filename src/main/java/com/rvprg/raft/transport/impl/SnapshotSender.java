@@ -56,7 +56,8 @@ public class SnapshotSender {
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, RaftMessage msg) throws Exception {
             if (msg.getType() != MessageType.SnapshotDownloadRequest) {
-                logger.error("Wrong message type. Ignoring.");
+                logger.error("Wrong message type. Closing connection.");
+                ctx.channel().close();
                 return;
             }
 
@@ -64,14 +65,15 @@ public class SnapshotSender {
             try {
                 memberId = MemberId.fromString(memberIdStr);
             } catch (IllegalArgumentException e) {
-                logger.error("Could not parse memberId. MemberId string = {}.", memberIdStr, e);
+                logger.error("Could not parse memberId. MemberId string = {}. Closing connection.", memberIdStr, e);
+                ctx.channel().close();
                 return;
             }
 
             String snapshotId = msg.getSnapshotDownloadRequest().getSnapshotId();
             if (!SnapshotSender.this.snapshotId.equalsIgnoreCase(snapshotId)) {
-                ctx.channel().close();
                 logger.info("MemberId={}. Requested snapshotId={}, but we are serving snapshotId={}. Closing connection.", memberIdStr, snapshotId, SnapshotSender.this.snapshotId);
+                ctx.channel().close();
                 return;
             }
 
