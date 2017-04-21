@@ -37,8 +37,8 @@ public class SnapshotSender {
     private final String snapshotId;
 
     private final BiConsumer<MemberId, Channel> transferStart;
-    private final Consumer<MemberId> transferComplete;
-    private final BiConsumer<MemberId, Throwable> transferCompleteExceptionally;
+    private final Consumer<MemberId> transferCompleted;
+    private final BiConsumer<MemberId, Throwable> transferCompletedExceptionally;
 
     private final ChannelPipelineInitializer channelPipelineInitializer;
 
@@ -50,7 +50,7 @@ public class SnapshotSender {
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
                 throws Exception {
-            transferCompleteExceptionally.accept(memberId, cause);
+            transferCompletedExceptionally.accept(memberId, cause);
         }
 
         @Override
@@ -64,7 +64,7 @@ public class SnapshotSender {
             try {
                 memberId = MemberId.fromString(memberIdStr);
             } catch (IllegalArgumentException e) {
-                logger.error("Could not parse memberId. {}", memberIdStr, e);
+                logger.error("Could not parse memberId. MemberId string = {}.", memberIdStr, e);
                 return;
             }
 
@@ -85,7 +85,7 @@ public class SnapshotSender {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
                     chunkedFile.close();
-                    transferComplete.accept(memberId);
+                    transferCompleted.accept(memberId);
                 }
             });
 
@@ -96,16 +96,16 @@ public class SnapshotSender {
     public SnapshotSender(ChannelPipelineInitializer channelPipelineInitializer,
             MemberId memberId, String snapshotId, File fileName,
             BiConsumer<MemberId, Channel> transferStart,
-            Consumer<MemberId> transferComplete,
-            BiConsumer<MemberId, Throwable> transferCompleteExceptionally) throws InterruptedException {
+            Consumer<MemberId> transferCompleted,
+            BiConsumer<MemberId, Throwable> transferCompletedExceptionally) throws InterruptedException {
         this.bossGroup = new NioEventLoopGroup();
         this.workerGroup = new NioEventLoopGroup();
         this.server = new ServerBootstrap();
         this.fileName = fileName;
         this.snapshotId = snapshotId;
         this.transferStart = transferStart;
-        this.transferComplete = transferComplete;
-        this.transferCompleteExceptionally = transferCompleteExceptionally;
+        this.transferCompleted = transferCompleted;
+        this.transferCompletedExceptionally = transferCompletedExceptionally;
         this.channelPipelineInitializer = channelPipelineInitializer;
 
         server.group(bossGroup, workerGroup)

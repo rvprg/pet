@@ -44,7 +44,7 @@ public class SnapshotExchangeTest {
         // @formatter:off
         SnapshotSender sender = new SnapshotSender(pipelineInitializer, memberId, "test", origFile, (m, c) -> { }, m -> { }, (m, e) -> { });
         // @formatter:on
-        SnapshotReceiver receiver = new SnapshotReceiver(pipelineInitializer, selfId, memberId, "test", destFile);
+        SnapshotReceiver receiver = new SnapshotReceiver(pipelineInitializer, selfId, memberId, "test", destFile, Files.size(origFile.toPath()));
         receiver.getCompletionFuture().get();
 
         receiver.shutdown();

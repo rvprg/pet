@@ -25,6 +25,7 @@ message RaftMessage {
 message SnapshotDownloadRequest {
     required string memberId = 1;
     required string snapshotId = 2;
+    required uint64 size = 3;
 }
 
 message RequestVote {
