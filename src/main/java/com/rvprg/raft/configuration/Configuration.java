@@ -1,11 +1,13 @@
 package com.rvprg.raft.configuration;
 
+import java.io.File;
 import java.net.URI;
 import java.util.HashSet;
 import java.util.Set;
 
 import com.google.common.base.Verify;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.io.Files;
 import com.rvprg.raft.transport.MemberId;
 
 import net.jcip.annotations.Immutable;
@@ -26,6 +28,7 @@ public class Configuration {
         private int memberConnectorEventLoopThreadPoolSize = 0;
         private int messageReceiverBossEventLoopThreadPoolSize = 0;
         private int messageReceiverWorkerEventLoopThreadPoolSize = 0;
+        private File snapshotFolderPath = Files.createTempDir();
 
         private URI logUri;
         private Set<MemberId> memberIds = new HashSet<MemberId>();
@@ -100,6 +103,11 @@ public class Configuration {
             return this;
         }
 
+        public Builder snapshotFolderPath(File snapshotFolderPath) {
+            this.snapshotFolderPath = snapshotFolderPath;
+            return this;
+        }
+
         public Configuration build() {
             Verify.verify(autoReconnectRetryInterval > 0, "autoReconnectRetryInterval must be positive and nonzero");
             Verify.verify(replicationRetryInterval > 0, "replicationRetryInterval must be positive and nonzero");
@@ -115,6 +123,9 @@ public class Configuration {
             Verify.verify(messageReceiverWorkerEventLoopThreadPoolSize >= 0, "messageReceiverWorkerEventLoopThreadPoolSize must be positive");
             Verify.verify(memberId != null, "memberId must not be null");
             Verify.verify(logUri != null, "logUri must not be null");
+            Verify.verify(snapshotFolderPath != null, "snapshotFolderPath must not be null");
+            Verify.verify(snapshotFolderPath.exists() && snapshotFolderPath.isDirectory() && snapshotFolderPath.canWrite(),
+                    "snapshotFolderPath point to existing folder and be writable");
             return new Configuration(this);
         }
 
@@ -134,6 +145,7 @@ public class Configuration {
     private final int memberConnectorEventLoopThreadPoolSize;
     private final int messageReceiverBossEventLoopThreadPoolSize;
     private final int messageReceiverWorkerEventLoopThreadPoolSize;
+    private final File snapshotFolderPath;
 
     public Configuration(Builder builder) {
         memberId = builder.memberId;
@@ -150,6 +162,7 @@ public class Configuration {
         memberConnectorEventLoopThreadPoolSize = builder.memberConnectorEventLoopThreadPoolSize;
         messageReceiverBossEventLoopThreadPoolSize = builder.messageReceiverBossEventLoopThreadPoolSize;
         messageReceiverWorkerEventLoopThreadPoolSize = builder.messageReceiverWorkerEventLoopThreadPoolSize;
+        snapshotFolderPath = builder.snapshotFolderPath;
     }
 
     public int getMessageReceiverWorkerEventLoopThreadPoolSize() {
@@ -210,6 +223,10 @@ public class Configuration {
 
     public URI getLogUri() {
         return logUri;
+    }
+
+    public File getSnapshotFolderPath() {
+        return snapshotFolderPath;
     }
 
 }

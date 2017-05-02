@@ -1,6 +1,11 @@
 package com.rvprg.raft.protocol.impl;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
 import java.nio.charset.Charset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -16,6 +21,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
+import org.apache.commons.codec.binary.Hex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
@@ -42,6 +48,7 @@ import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage.MessageType
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVote;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse.Builder;
+import com.rvprg.raft.sm.SnapshotWriter;
 import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnector;
@@ -386,9 +393,31 @@ public class RaftImpl implements Raft {
 
             return CompletableFuture.runAsync(() -> {
                 try {
-                    logger.info("{} compaction started.", log);
-                    log.truncate(log.getCommitIndex());
-                    logger.info("{} compaction finished.", log);
+                    byte[] prefix = new byte[4];
+                    random.nextBytes(prefix);
+                    File snapshotFileId = new File(
+                            configuration.getSnapshotFolderPath(),
+                            "Snapshot-" + Hex.encodeHexString(prefix) + "-" +
+                                    ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss.SSS")));
+
+                    try (OutputStream outputStream = new FileOutputStream(snapshotFileId)) {
+                        SnapshotWriter snapshotWriter = stateMachine.getSnapshotWriter();
+
+                        snapshotWriter.begin();
+                        long truncateUpToCommitIndex = log.getCommitIndex();
+                        try {
+                            logger.info("{} snapshot writing started to {}.", stateMachine, snapshotFileId);
+                            long fileSize = snapshotWriter.write(outputStream);
+                            logger.info("{} snapshot writing finished. File size {} bytes.", stateMachine, fileSize);
+                        } finally {
+                            snapshotWriter.end();
+                        }
+
+                        logger.info("{} compaction started.", log);
+                        log.truncate(truncateUpToCommitIndex);
+                        logger.info("{} compaction finished.", log);
+                    }
+
                 } catch (Exception e) {
                     logger.error(severe, "{} Compaction failed.", log, e);
                 }
