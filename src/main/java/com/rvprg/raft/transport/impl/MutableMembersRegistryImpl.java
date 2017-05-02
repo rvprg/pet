@@ -5,14 +5,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.google.common.collect.ImmutableSet;
-import com.rvprg.raft.transport.EditableMembersRegistry;
+import com.rvprg.raft.transport.MutableMembersRegistry;
 import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberId;
 
 import net.jcip.annotations.ThreadSafe;
 
 @ThreadSafe
-public class EditableMembersRegistryImpl implements EditableMembersRegistry {
+public class MutableMembersRegistryImpl implements MutableMembersRegistry {
     private final ConcurrentHashMap<MemberId, Member> members = new ConcurrentHashMap<MemberId, Member>();
     private ImmutableSet<Member> immutableSetOfMembers = ImmutableSet.of();
 

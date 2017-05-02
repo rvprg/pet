@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.Inject;
 import com.rvprg.raft.configuration.Configuration;
-import com.rvprg.raft.transport.EditableMembersRegistry;
+import com.rvprg.raft.transport.MutableMembersRegistry;
 import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberConnectorObserver;
@@ -50,7 +50,7 @@ public class MemberConnectorImpl implements MemberConnector {
     }
 
     @Inject
-    public MemberConnectorImpl(final Configuration configuration, final EditableMembersRegistry members) {
+    public MemberConnectorImpl(final Configuration configuration, final MutableMembersRegistry members) {
         this.membersRegistry = members;
         this.configuration = configuration;
         clientBootstrap = new Bootstrap();

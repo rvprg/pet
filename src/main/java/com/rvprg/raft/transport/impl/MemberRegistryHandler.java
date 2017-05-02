@@ -7,7 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.inject.Inject;
-import com.rvprg.raft.transport.EditableMembersRegistry;
+import com.rvprg.raft.transport.MutableMembersRegistry;
 import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberId;
@@ -19,7 +19,7 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 public class MemberRegistryHandler extends ChannelInboundHandlerAdapter {
     private final static Logger logger = LoggerFactory.getLogger(MemberRegistryHandler.class);
 
-    private final EditableMembersRegistry registry;
+    private final MutableMembersRegistry registry;
     private final MemberConnector memberConnector;
     private final BiConsumer<Member, Channel> activateNotifier;
     private final Consumer<MemberId> deactivateNotifier;
@@ -27,7 +27,7 @@ public class MemberRegistryHandler extends ChannelInboundHandlerAdapter {
 
     @Inject
     public MemberRegistryHandler(
-            EditableMembersRegistry members,
+            MutableMembersRegistry members,
             MemberConnector memberConnector,
             BiConsumer<Member, Channel> activateNotifier,
             Consumer<MemberId> deactivateNotifier,
