@@ -25,7 +25,6 @@ import com.rvprg.raft.log.LogException;
 import com.rvprg.raft.log.impl.LevelDBLogImpl;
 import com.rvprg.raft.log.impl.TransientLogImpl;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
-import com.rvprg.raft.sm.SnapshotWriter;
 import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.transport.MemberId;
 
@@ -232,12 +231,6 @@ public class LogTest {
             public void apply(byte[] command) {
                 commands.add(command);
             }
-
-            @Override
-            public SnapshotWriter getSnapshotWriter() {
-                return null;
-            }
-
         };
 
         assertEquals(1, log.getCommitIndex());
@@ -289,12 +282,6 @@ public class LogTest {
             @Override
             public void apply(byte[] command) {
             }
-
-            @Override
-            public SnapshotWriter getSnapshotWriter() {
-                return null;
-            }
-
         });
 
         log.truncate(4);

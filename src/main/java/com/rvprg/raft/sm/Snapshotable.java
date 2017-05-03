@@ -6,7 +6,7 @@ import java.io.OutputStream;
  * Writes state machine contents to a stream. Assumes write lock semantics.
  *
  */
-public interface SnapshotWriter {
+public interface Snapshotable {
     /**
      * Acquires write lock on the underlying state machine. A call to
      * end() must be made after writing the snapshot.

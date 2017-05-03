@@ -125,7 +125,7 @@ public class Configuration {
             Verify.verify(logUri != null, "logUri must not be null");
             Verify.verify(snapshotFolderPath != null, "snapshotFolderPath must not be null");
             Verify.verify(snapshotFolderPath.exists() && snapshotFolderPath.isDirectory() && snapshotFolderPath.canWrite(),
-                    "snapshotFolderPath point to existing folder and be writable");
+                    "snapshotFolderPath should point to existing folder and be writable");
             return new Configuration(this);
         }
 

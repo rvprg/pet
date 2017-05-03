@@ -1,7 +1,9 @@
 package com.rvprg.raft.protocol.impl;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.time.ZonedDateTime;
@@ -48,7 +50,7 @@ import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage.MessageType
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVote;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse.Builder;
-import com.rvprg.raft.sm.SnapshotWriter;
+import com.rvprg.raft.sm.Snapshotable;
 import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnector;
@@ -380,6 +382,38 @@ public class RaftImpl implements Raft {
         }
     }
 
+    private void writeSnapshotAndCompactLog() throws FileNotFoundException, IOException, LogException {
+        if (!(stateMachine instanceof Snapshotable)) {
+            logger.info("{} doesn't support snapshots. ", stateMachine);
+            return;
+        }
+
+        Snapshotable snapshotable = (Snapshotable) stateMachine;
+
+        byte[] prefix = new byte[4];
+        random.nextBytes(prefix);
+        File snapshotFileId = new File(
+                configuration.getSnapshotFolderPath(),
+                "Snapshot-" + Hex.encodeHexString(prefix) + "-" +
+                        ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss.SSS")));
+
+        try (OutputStream outputStream = new FileOutputStream(snapshotFileId)) {
+            snapshotable.begin();
+            long truncateUpToCommitIndex = log.getCommitIndex();
+            try {
+                logger.info("{} snapshot writing started to {}.", stateMachine, snapshotFileId);
+                long fileSize = snapshotable.write(outputStream);
+                logger.info("{} snapshot writing finished. File size {} bytes.", stateMachine, fileSize);
+            } finally {
+                snapshotable.end();
+            }
+
+            logger.info("{} compaction started.", log);
+            log.truncate(truncateUpToCommitIndex);
+            logger.info("{} compaction finished.", log);
+        }
+    }
+
     private void logCompaction() throws LogException {
         if (configuration.getLogCompactionThreshold() == 0 ||
                 log.getCommitIndex() - log.getFirstIndex() < configuration.getLogCompactionThreshold()) {
@@ -393,33 +427,9 @@ public class RaftImpl implements Raft {
 
             return CompletableFuture.runAsync(() -> {
                 try {
-                    byte[] prefix = new byte[4];
-                    random.nextBytes(prefix);
-                    File snapshotFileId = new File(
-                            configuration.getSnapshotFolderPath(),
-                            "Snapshot-" + Hex.encodeHexString(prefix) + "-" +
-                                    ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss.SSS")));
-
-                    try (OutputStream outputStream = new FileOutputStream(snapshotFileId)) {
-                        SnapshotWriter snapshotWriter = stateMachine.getSnapshotWriter();
-
-                        snapshotWriter.begin();
-                        long truncateUpToCommitIndex = log.getCommitIndex();
-                        try {
-                            logger.info("{} snapshot writing started to {}.", stateMachine, snapshotFileId);
-                            long fileSize = snapshotWriter.write(outputStream);
-                            logger.info("{} snapshot writing finished. File size {} bytes.", stateMachine, fileSize);
-                        } finally {
-                            snapshotWriter.end();
-                        }
-
-                        logger.info("{} compaction started.", log);
-                        log.truncate(truncateUpToCommitIndex);
-                        logger.info("{} compaction finished.", log);
-                    }
-
+                    writeSnapshotAndCompactLog();
                 } catch (Exception e) {
-                    logger.error(severe, "{} Compaction failed.", log, e);
+                    logger.error(severe, "{} Snapshot/Log Compaction failed.", log, e);
                 }
             }, eventLoop.get());
         });
