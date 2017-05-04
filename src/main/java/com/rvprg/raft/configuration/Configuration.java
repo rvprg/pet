@@ -29,6 +29,7 @@ public class Configuration {
         private int messageReceiverBossEventLoopThreadPoolSize = 0;
         private int messageReceiverWorkerEventLoopThreadPoolSize = 0;
         private File snapshotFolderPath = Files.createTempDir();
+        private int snapshotSenderPort = 10000;
 
         private URI logUri;
         private Set<MemberId> memberIds = new HashSet<MemberId>();
@@ -108,6 +109,11 @@ public class Configuration {
             return this;
         }
 
+        public Builder snapshotSenderPort(int snapshotSenderPort) {
+            this.snapshotSenderPort = snapshotSenderPort;
+            return this;
+        }
+
         public Configuration build() {
             Verify.verify(autoReconnectRetryInterval > 0, "autoReconnectRetryInterval must be positive and nonzero");
             Verify.verify(replicationRetryInterval > 0, "replicationRetryInterval must be positive and nonzero");
@@ -118,9 +124,10 @@ public class Configuration {
             Verify.verify(electionMinTimeout < electionMaxTimeout, "electionMaxTimeout must not be smaller than election electionMinTimeout");
             Verify.verify(logCompactionThreshold >= 0, "logCompactionThreshold must be positive or zero");
             Verify.verify(mainEventLoopThreadPoolSize >= 0, "mainEventLoopThreadPoolSize must be positive");
-            Verify.verify(memberConnectorEventLoopThreadPoolSize >= 0, "memberConnectorEventLoopThreadPoolSize must be positive");
-            Verify.verify(messageReceiverBossEventLoopThreadPoolSize >= 0, "messageReceiverBossEventLoopThreadPoolSize must be positive");
-            Verify.verify(messageReceiverWorkerEventLoopThreadPoolSize >= 0, "messageReceiverWorkerEventLoopThreadPoolSize must be positive");
+            Verify.verify(memberConnectorEventLoopThreadPoolSize >= 0, "memberConnectorEventLoopThreadPoolSize must be positive or zero");
+            Verify.verify(messageReceiverBossEventLoopThreadPoolSize >= 0, "messageReceiverBossEventLoopThreadPoolSize must be positive or zero");
+            Verify.verify(messageReceiverWorkerEventLoopThreadPoolSize >= 0, "messageReceiverWorkerEventLoopThreadPoolSize must be positive or zero");
+            Verify.verify(snapshotSenderPort > 0, "snapshotSenderPort must be positive");
             Verify.verify(memberId != null, "memberId must not be null");
             Verify.verify(logUri != null, "logUri must not be null");
             Verify.verify(snapshotFolderPath != null, "snapshotFolderPath must not be null");
@@ -146,6 +153,7 @@ public class Configuration {
     private final int messageReceiverBossEventLoopThreadPoolSize;
     private final int messageReceiverWorkerEventLoopThreadPoolSize;
     private final File snapshotFolderPath;
+    private final int snapshotSenderPort;
 
     public Configuration(Builder builder) {
         memberId = builder.memberId;
@@ -163,6 +171,7 @@ public class Configuration {
         messageReceiverBossEventLoopThreadPoolSize = builder.messageReceiverBossEventLoopThreadPoolSize;
         messageReceiverWorkerEventLoopThreadPoolSize = builder.messageReceiverWorkerEventLoopThreadPoolSize;
         snapshotFolderPath = builder.snapshotFolderPath;
+        snapshotSenderPort = builder.snapshotSenderPort;
     }
 
     public int getMessageReceiverWorkerEventLoopThreadPoolSize() {
@@ -227,6 +236,10 @@ public class Configuration {
 
     public File getSnapshotFolderPath() {
         return snapshotFolderPath;
+    }
+
+    public int getSnapshotSenderPort() {
+        return snapshotSenderPort;
     }
 
 }

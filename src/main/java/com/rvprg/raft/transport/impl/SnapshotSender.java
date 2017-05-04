@@ -1,7 +1,6 @@
 package com.rvprg.raft.transport.impl;
 
-import java.io.File;
-import java.util.function.BiConsumer;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import org.slf4j.Logger;
@@ -13,7 +12,6 @@ import com.rvprg.raft.transport.ChannelPipelineInitializer;
 import com.rvprg.raft.transport.MemberId;
 
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -33,24 +31,32 @@ public class SnapshotSender {
     private final EventLoopGroup bossGroup;
     private final EventLoopGroup workerGroup;
     private final ServerBootstrap server;
-    private final File fileName;
-    private final String snapshotId;
 
-    private final BiConsumer<MemberId, Channel> transferStart;
-    private final Consumer<MemberId> transferCompleted;
-    private final BiConsumer<MemberId, Throwable> transferCompletedExceptionally;
-
+    private final AtomicReference<SnapshotDescriptor> snapshot;
+    private final Consumer<SnapshotTransferEvent> eventCallback;
     private final ChannelPipelineInitializer channelPipelineInitializer;
 
     private class SnapshotTransferInitiator extends SimpleChannelInboundHandler<RaftMessage> {
         private MemberId memberId;
         public static final String SnapshotTransferInitiator = "SnapshotTransferInitiator";
         private static final String ChunkedWriteHandler = "ChunkedWriteHandler";
+        private SnapshotDescriptor snapshot;
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
                 throws Exception {
-            transferCompletedExceptionally.accept(memberId, cause);
+            eventCallback.accept(new SnapshotTransferExceptionThrownEvent(memberId, ctx.channel(), snapshot, cause));
+        }
+
+        @Override
+        public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+            eventCallback.accept(new SnapshotTransferConnectionClosedEvent(memberId, ctx.channel(), snapshot));
+        }
+
+        @Override
+        public void channelActive(ChannelHandlerContext ctx) throws Exception {
+            snapshot = SnapshotSender.this.snapshot.get();
+            eventCallback.accept(new SnapshotTransferConnectionOpenEvent(memberId, ctx.channel(), snapshot));
         }
 
         @Override
@@ -71,8 +77,8 @@ public class SnapshotSender {
             }
 
             String snapshotId = msg.getSnapshotDownloadRequest().getSnapshotId();
-            if (!SnapshotSender.this.snapshotId.equalsIgnoreCase(snapshotId)) {
-                logger.info("MemberId={}. Requested snapshotId={}, but we are serving snapshotId={}. Closing connection.", memberIdStr, snapshotId, SnapshotSender.this.snapshotId);
+            if (!snapshot.getSnapshotId().equalsIgnoreCase(snapshotId)) {
+                logger.info("MemberId={}. Requested snapshotId={}, but we are serving snapshotId={}. Closing connection.", memberIdStr, snapshotId, snapshot.getSnapshotId());
                 ctx.channel().close();
                 return;
             }
@@ -82,32 +88,28 @@ public class SnapshotSender {
             }
             ctx.pipeline().addBefore(SnapshotTransferInitiator, ChunkedWriteHandler, new ChunkedWriteHandler());
 
-            final ChunkedFile chunkedFile = new ChunkedFile(fileName);
+            final ChunkedFile chunkedFile = new ChunkedFile(snapshot.getFileName());
             ctx.channel().writeAndFlush(chunkedFile).addListener(ChannelFutureListener.CLOSE).addListener(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
                     chunkedFile.close();
-                    transferCompleted.accept(memberId);
+                    eventCallback.accept(new SnapshotTransferCompletedEvent(memberId, ctx.channel(), snapshot));
                 }
             });
 
-            transferStart.accept(memberId, ctx.channel());
+            eventCallback.accept(new SnapshotTransferStartedEvent(memberId, ctx.channel(), snapshot));
         }
     }
 
     public SnapshotSender(ChannelPipelineInitializer channelPipelineInitializer,
-            MemberId memberId, String snapshotId, File fileName,
-            BiConsumer<MemberId, Channel> transferStart,
-            Consumer<MemberId> transferCompleted,
-            BiConsumer<MemberId, Throwable> transferCompletedExceptionally) throws InterruptedException {
+            MemberId memberId,
+            SnapshotDescriptor snapshot,
+            Consumer<SnapshotTransferEvent> eventCallback) throws InterruptedException {
         this.bossGroup = new NioEventLoopGroup();
         this.workerGroup = new NioEventLoopGroup();
         this.server = new ServerBootstrap();
-        this.fileName = fileName;
-        this.snapshotId = snapshotId;
-        this.transferStart = transferStart;
-        this.transferCompleted = transferCompleted;
-        this.transferCompletedExceptionally = transferCompletedExceptionally;
+        this.snapshot = new AtomicReference<SnapshotDescriptor>(snapshot);
+        this.eventCallback = eventCallback;
         this.channelPipelineInitializer = channelPipelineInitializer;
 
         server.group(bossGroup, workerGroup)
