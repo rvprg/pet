@@ -128,6 +128,10 @@ public class SnapshotSender {
         server.bind(memberId).sync();
     }
 
+    public void setSnapshotDescriptor(SnapshotDescriptor snapshot) {
+        this.snapshot.set(snapshot);
+    }
+
     public void shutdown() {
         bossGroup.shutdownGracefully().awaitUninterruptibly();
         workerGroup.shutdownGracefully().awaitUninterruptibly();
