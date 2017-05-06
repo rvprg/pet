@@ -56,6 +56,9 @@ import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.MessageReceiver;
+import com.rvprg.raft.transport.impl.SnapshotDescriptor;
+import com.rvprg.raft.transport.impl.SnapshotSender;
+import com.rvprg.raft.transport.impl.SnapshotTransferEvent;
 
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoopGroup;
@@ -85,6 +88,8 @@ public class RaftImpl implements Raft {
     private final ReentrantReadWriteLock indexesLock = new ReentrantReadWriteLock();
     private final ConcurrentHashMap<MemberId, AtomicLong> nextIndexes = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<MemberId, AtomicLong> matchIndexes = new ConcurrentHashMap<>();
+
+    private final AtomicReference<SnapshotSender> snapshotSender = new AtomicReference<SnapshotSender>(null);
 
     private final Object dynamicMembershipChangeLock = new Object();
     @GuardedBy("dynamicMembershipChangeLock")
@@ -117,13 +122,14 @@ public class RaftImpl implements Raft {
     private final AtomicBoolean catchingUpMember = new AtomicBoolean(false);
 
     @Inject
-    public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine, RaftObserver observer) {
+    public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine, RaftObserver observer)
+            throws InterruptedException {
         this(configuration, memberConnector, messageReceiver, log, stateMachine, log.getTerm(), Role.Follower, observer);
     }
 
     public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine,
             int initTerm, Role initRole,
-            RaftObserver observer) {
+            RaftObserver observer) throws InterruptedException {
         this.memberConnector = new RaftMemberConnector(memberConnector);
         this.messageReceiver = messageReceiver;
         this.selfId = messageReceiver.getMemberId();
@@ -137,8 +143,18 @@ public class RaftImpl implements Raft {
         this.stateMachine = stateMachine;
         this.votedFor = log.getVotedFor();
 
+        // this.snapshotSender.set(new
+        // SnapshotSender(messageReceiver.getChannelPipelineInitializer(),
+        // selfId, x -> {
+        // snapshotSenderEventHandler(x);
+        // }));
+
         memberConnectorObserver = new MemberConnectorObserverImpl(this, messageReceiver.getChannelPipelineInitializer());
         configuration.getMemberIds().forEach(memberId -> memberConnector.register(memberId, memberConnectorObserver));
+    }
+
+    private void snapshotSenderEventHandler(SnapshotTransferEvent x) {
+        // TODO
     }
 
     private void initializeEventLoop() {
@@ -392,10 +408,11 @@ public class RaftImpl implements Raft {
 
         byte[] prefix = new byte[4];
         random.nextBytes(prefix);
+        String snapshotId = "Snapshot-" + Hex.encodeHexString(prefix) + "-" +
+                ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss.SSS"));
         File snapshotFileId = new File(
                 configuration.getSnapshotFolderPath(),
-                "Snapshot-" + Hex.encodeHexString(prefix) + "-" +
-                        ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss.SSS")));
+                snapshotId);
 
         try (OutputStream outputStream = new FileOutputStream(snapshotFileId)) {
             snapshotable.begin();
@@ -411,6 +428,9 @@ public class RaftImpl implements Raft {
             logger.info("{} compaction started.", log);
             log.truncate(truncateUpToCommitIndex);
             logger.info("{} compaction finished.", log);
+
+            SnapshotDescriptor descriptor = new SnapshotDescriptor(snapshotFileId, snapshotId);
+            snapshotSender.get().setSnapshotDescriptor(descriptor);
         }
     }
 

@@ -44,7 +44,8 @@ public class SnapshotExchangeTest {
         ChannelPipelineInitializerImpl pipelineInitializer = new ChannelPipelineInitializerImpl();
         SnapshotDescriptor snapshot = new SnapshotDescriptor(origFile, "test");
         // @formatter:off
-        SnapshotSender sender = new SnapshotSender(pipelineInitializer, memberId, snapshot, (e) -> {  });
+        SnapshotSender sender = new SnapshotSender(pipelineInitializer, memberId, (e) -> {  });
+        sender.setSnapshotDescriptor(snapshot);
         // @formatter:on
         SnapshotReceiver receiver = new SnapshotReceiver(pipelineInitializer, selfId, memberId, "test", destFile, Files.size(origFile.toPath()));
         receiver.getCompletionFuture().get();

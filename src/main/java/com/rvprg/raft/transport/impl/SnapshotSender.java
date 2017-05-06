@@ -56,6 +56,10 @@ public class SnapshotSender {
         @Override
         public void channelActive(ChannelHandlerContext ctx) throws Exception {
             snapshot = SnapshotSender.this.snapshot.get();
+            if (snapshot == null) {
+                ctx.channel().close();
+                return;
+            }
             eventCallback.accept(new SnapshotTransferConnectionOpenEvent(memberId, ctx.channel(), snapshot));
         }
 
@@ -103,12 +107,11 @@ public class SnapshotSender {
 
     public SnapshotSender(ChannelPipelineInitializer channelPipelineInitializer,
             MemberId memberId,
-            SnapshotDescriptor snapshot,
             Consumer<SnapshotTransferEvent> eventCallback) throws InterruptedException {
         this.bossGroup = new NioEventLoopGroup();
         this.workerGroup = new NioEventLoopGroup();
         this.server = new ServerBootstrap();
-        this.snapshot = new AtomicReference<SnapshotDescriptor>(snapshot);
+        this.snapshot = new AtomicReference<SnapshotDescriptor>(null);
         this.eventCallback = eventCallback;
         this.channelPipelineInitializer = channelPipelineInitializer;
 

@@ -32,11 +32,11 @@ import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.MessageReceiver;
 
 public class RaftFunctionalTestBase {
-    public Raft getRaft(String host, int port, Set<MemberId> nodes, RaftObserver raftObserver) {
+    public Raft getRaft(String host, int port, Set<MemberId> nodes, RaftObserver raftObserver) throws InterruptedException {
         return getRaft(host, port, nodes, 150, 300, raftObserver);
     }
 
-    public Raft getRaft(String host, int port, Set<MemberId> nodes, int electionMinTimeout, int electionMaxTimeout, RaftObserver raftObserver) {
+    public Raft getRaft(String host, int port, Set<MemberId> nodes, int electionMinTimeout, int electionMaxTimeout, RaftObserver raftObserver) throws InterruptedException {
         Configuration configuration = Configuration.newBuilder().memberId(new MemberId(host, port)).addMemberIds(nodes).electionMinTimeout(electionMinTimeout)
                 .electionMaxTimeout(electionMaxTimeout).logUri(URI.create("file:///test")).build();
 
@@ -63,12 +63,12 @@ public class RaftFunctionalTestBase {
             return ImmutableSet.copyOf(members);
         }
 
-        public RaftCluster(int clusterSize) throws NoSuchMethodException, SecurityException {
+        public RaftCluster(int clusterSize) throws NoSuchMethodException, SecurityException, InterruptedException {
             this(clusterSize, clusterSize, clusterSize, 250, 300);
         }
 
         public RaftCluster(int clusterSize, int startCountDownLatchCount, int shutdownCountDownLatchCount, int electionMinTimeout, int electionMaxTimeout)
-                throws NoSuchMethodException, SecurityException {
+                throws NoSuchMethodException, SecurityException, InterruptedException {
             startLatch = new CountDownLatch(startCountDownLatchCount);
             shutdownLatch = new CountDownLatch(shutdownCountDownLatchCount);
 
@@ -91,16 +91,17 @@ public class RaftFunctionalTestBase {
             cancelHeartBeat.setAccessible(true);
         }
 
-        public RaftCluster(int clusterSize, final RaftObserver observer) throws NoSuchMethodException, SecurityException {
+        public RaftCluster(int clusterSize, final RaftObserver observer) throws NoSuchMethodException, SecurityException, InterruptedException {
             this(clusterSize, 250, 300, observer);
         }
 
-        public RaftCluster(int clusterSize, int electionMinTimeout, int electionMaxTimeout, final RaftObserver observer) throws NoSuchMethodException, SecurityException {
+        public RaftCluster(int clusterSize, int electionMinTimeout, int electionMaxTimeout, final RaftObserver observer)
+                throws NoSuchMethodException, SecurityException, InterruptedException {
             this(clusterSize, clusterSize, clusterSize, electionMinTimeout, electionMaxTimeout, observer);
         }
 
         public RaftCluster(int clusterSize, int startCountDownLatchCount, int shutdownCountDownLatchCount, int electionMinTimeout, int electionMaxTimeout,
-                final RaftObserver observer) throws NoSuchMethodException, SecurityException {
+                final RaftObserver observer) throws NoSuchMethodException, SecurityException, InterruptedException {
             startLatch = new CountDownLatch(startCountDownLatchCount);
             shutdownLatch = new CountDownLatch(shutdownCountDownLatchCount);
 
@@ -245,7 +246,7 @@ public class RaftFunctionalTestBase {
             return members;
         }
 
-        public List<Raft> createRafts(Set<MemberId> members, int electionMinTimeout, int electionMaxTimeout, RaftObserver observer) {
+        public List<Raft> createRafts(Set<MemberId> members, int electionMinTimeout, int electionMaxTimeout, RaftObserver observer) throws InterruptedException {
             List<Raft> rafts = new ArrayList<Raft>();
             for (MemberId member : members) {
                 Set<MemberId> peers = (new HashSet<MemberId>(members));
