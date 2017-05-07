@@ -6,8 +6,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -33,6 +31,7 @@ import com.google.inject.Inject;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.rvprg.raft.configuration.Configuration;
+import com.rvprg.raft.log.ByteUtils;
 import com.rvprg.raft.log.Log;
 import com.rvprg.raft.log.LogEntryFactory;
 import com.rvprg.raft.log.LogException;
@@ -408,28 +407,33 @@ public class RaftImpl implements Raft {
 
         byte[] prefix = new byte[4];
         random.nextBytes(prefix);
-        String snapshotId = "Snapshot-" + Hex.encodeHexString(prefix) + "-" +
-                ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss.SSS"));
-        File snapshotFileId = new File(
+        String snapshotId = "snapshot-" + Hex.encodeHexString(prefix);
+        File snapshotFile = new File(
                 configuration.getSnapshotFolderPath(),
                 snapshotId);
 
-        try (OutputStream outputStream = new FileOutputStream(snapshotFileId)) {
+        try (OutputStream outputStream = new FileOutputStream(snapshotFile)) {
             snapshotable.begin();
             long truncateUpToCommitIndex = log.getCommitIndex();
             try {
-                logger.info("{} snapshot writing started to {}.", stateMachine, snapshotFileId);
+                logger.info("{} snapshot writing started to {}.", stateMachine, snapshotFile);
                 long fileSize = snapshotable.write(outputStream);
                 logger.info("{} snapshot writing finished. File size {} bytes.", stateMachine, fileSize);
             } finally {
                 snapshotable.end();
             }
 
+            LogEntry logEntry = log.get(truncateUpToCommitIndex);
+            int term = logEntry.getTerm();
+            String newSnapshotId = snapshotId + "-" +
+                    Hex.encodeHexString(ByteUtils.longToBytes(truncateUpToCommitIndex)) + "-" +
+                    Hex.encodeHexString(ByteUtils.intToBytes(term));
+
             logger.info("{} compaction started.", log);
             log.truncate(truncateUpToCommitIndex);
             logger.info("{} compaction finished.", log);
 
-            SnapshotDescriptor descriptor = new SnapshotDescriptor(snapshotFileId, snapshotId);
+            SnapshotDescriptor descriptor = new SnapshotDescriptor(snapshotFile, newSnapshotId);
             snapshotSender.get().setSnapshotDescriptor(descriptor);
         }
     }
