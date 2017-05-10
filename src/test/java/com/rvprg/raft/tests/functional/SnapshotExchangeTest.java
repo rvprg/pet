@@ -8,7 +8,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -16,10 +15,11 @@ import java.util.concurrent.ExecutionException;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.Test;
 
+import com.google.common.io.Files;
+import com.rvprg.raft.sm.SnapshotDescriptor;
 import com.rvprg.raft.tests.helpers.NetworkUtils;
 import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.impl.ChannelPipelineInitializerImpl;
-import com.rvprg.raft.transport.impl.SnapshotDescriptor;
 import com.rvprg.raft.transport.impl.SnapshotReceiver;
 import com.rvprg.raft.transport.impl.SnapshotSender;
 
@@ -42,12 +42,13 @@ public class SnapshotExchangeTest {
         MemberId selfId = new MemberId("localhost", NetworkUtils.getRandomFreePort());
 
         ChannelPipelineInitializerImpl pipelineInitializer = new ChannelPipelineInitializerImpl();
-        SnapshotDescriptor snapshot = new SnapshotDescriptor(origFile, "test");
+
+        SnapshotDescriptor snapshot = new SnapshotDescriptor(Files.createTempDir(), 1, 1);
         // @formatter:off
         SnapshotSender sender = new SnapshotSender(pipelineInitializer, memberId, (e) -> {  });
         sender.setSnapshotDescriptor(snapshot);
         // @formatter:on
-        SnapshotReceiver receiver = new SnapshotReceiver(pipelineInitializer, selfId, memberId, "test", destFile, Files.size(origFile.toPath()));
+        SnapshotReceiver receiver = new SnapshotReceiver(pipelineInitializer, selfId, memberId, "test", destFile, java.nio.file.Files.size(origFile.toPath()));
         receiver.getCompletionFuture().get();
 
         receiver.shutdown();
@@ -62,8 +63,8 @@ public class SnapshotExchangeTest {
 
         assertThat(origMd5, equalTo(destMd5));
 
-        Files.deleteIfExists(origFile.toPath());
-        Files.deleteIfExists(destFile.toPath());
+        java.nio.file.Files.deleteIfExists(origFile.toPath());
+        java.nio.file.Files.deleteIfExists(destFile.toPath());
     }
 
 }

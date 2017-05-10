@@ -1,8 +1,6 @@
 package com.rvprg.raft.protocol.impl;
 
-import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
@@ -21,7 +19,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
-import org.apache.commons.codec.binary.Hex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
@@ -31,7 +28,6 @@ import com.google.inject.Inject;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.rvprg.raft.configuration.Configuration;
-import com.rvprg.raft.log.ByteUtils;
 import com.rvprg.raft.log.Log;
 import com.rvprg.raft.log.LogEntryFactory;
 import com.rvprg.raft.log.LogException;
@@ -49,13 +45,13 @@ import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage.MessageType
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVote;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse.Builder;
+import com.rvprg.raft.sm.SnapshotDescriptor;
 import com.rvprg.raft.sm.Snapshotable;
 import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.MessageReceiver;
-import com.rvprg.raft.transport.impl.SnapshotDescriptor;
 import com.rvprg.raft.transport.impl.SnapshotSender;
 import com.rvprg.raft.transport.impl.SnapshotTransferEvent;
 
@@ -404,37 +400,25 @@ public class RaftImpl implements Raft {
         }
 
         Snapshotable snapshotable = (Snapshotable) stateMachine;
-
-        byte[] prefix = new byte[4];
-        random.nextBytes(prefix);
-        String snapshotId = "snapshot-" + Hex.encodeHexString(prefix);
-        File snapshotFile = new File(
-                configuration.getSnapshotFolderPath(),
-                snapshotId);
-
-        try (OutputStream outputStream = new FileOutputStream(snapshotFile)) {
-            snapshotable.begin();
-            long truncateUpToCommitIndex = log.getCommitIndex();
-            try {
-                logger.info("{} snapshot writing started to {}.", stateMachine, snapshotFile);
-                long fileSize = snapshotable.write(outputStream);
-                logger.info("{} snapshot writing finished. File size {} bytes.", stateMachine, fileSize);
-            } finally {
-                snapshotable.end();
-            }
-
-            LogEntry logEntry = log.get(truncateUpToCommitIndex);
-            int term = logEntry.getTerm();
-            String newSnapshotId = snapshotId + "-" +
-                    Hex.encodeHexString(ByteUtils.longToBytes(truncateUpToCommitIndex)) + "-" +
-                    Hex.encodeHexString(ByteUtils.intToBytes(term));
+        snapshotable.begin();
+        long commitIndex = log.getCommitIndex();
+        LogEntry logEntry = log.get(commitIndex);
+        int term = logEntry.getTerm();
+        SnapshotDescriptor descriptor = new SnapshotDescriptor(configuration.getSnapshotFolderPath(), commitIndex, term);
+        try (OutputStream outputStream = descriptor.getOutputStream()) {
+            logger.info("{} snapshot writing started. SnapshotDescriptor={}.", stateMachine, descriptor);
+            long fileSize = snapshotable.write(outputStream);
+            logger.info("{} snapshot writing finished. File size {} bytes.", stateMachine, fileSize);
 
             logger.info("{} compaction started.", log);
-            log.truncate(truncateUpToCommitIndex);
+            log.truncate(commitIndex);
             logger.info("{} compaction finished.", log);
 
-            SnapshotDescriptor descriptor = new SnapshotDescriptor(snapshotFile, newSnapshotId);
             snapshotSender.get().setSnapshotDescriptor(descriptor);
+        } catch (Exception e) {
+            logger.info("Error producing snapshot. SnapshotDescriptor={}.", descriptor, e);
+        } finally {
+            snapshotable.end();
         }
     }
 

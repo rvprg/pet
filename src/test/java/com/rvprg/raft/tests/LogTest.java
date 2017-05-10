@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,6 +26,7 @@ import com.rvprg.raft.log.LogException;
 import com.rvprg.raft.log.impl.LevelDBLogImpl;
 import com.rvprg.raft.log.impl.TransientLogImpl;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
+import com.rvprg.raft.sm.SnapshotInstallException;
 import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.transport.MemberId;
 
@@ -231,6 +233,10 @@ public class LogTest {
             public void apply(byte[] command) {
                 commands.add(command);
             }
+
+            @Override
+            public void installSnapshot(InputStream snapshot) throws SnapshotInstallException {
+            }
         };
 
         assertEquals(1, log.getCommitIndex());
@@ -281,6 +287,10 @@ public class LogTest {
         log.commit(log.getLastIndex(), new StateMachine() {
             @Override
             public void apply(byte[] command) {
+            }
+
+            @Override
+            public void installSnapshot(InputStream snapshot) throws SnapshotInstallException {
             }
         });
 

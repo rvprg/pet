@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage.MessageType;
+import com.rvprg.raft.sm.SnapshotDescriptor;
 import com.rvprg.raft.transport.ChannelPipelineInitializer;
 import com.rvprg.raft.transport.MemberId;
 
