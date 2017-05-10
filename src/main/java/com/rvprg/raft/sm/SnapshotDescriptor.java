@@ -122,4 +122,8 @@ public class SnapshotDescriptor {
         this.fileName = new File(folder, snapshotId);
         this.snapshotId = snapshotId;
     }
+
+    public File getFileName() {
+        return this.fileName;
+    }
 }
