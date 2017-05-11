@@ -4,8 +4,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FilenameFilter;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Arrays;
+import java.util.Optional;
 import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -21,6 +24,13 @@ public class SnapshotDescriptor {
     private final long index;
     private final int term;
     private final String uniqueId;
+
+    public static int compare(SnapshotDescriptor s1, SnapshotDescriptor s2) {
+        if (s1.term == s2.term) {
+            return Long.compare(s1.index, s2.index);
+        }
+        return Integer.compare(s1.term, s2.term);
+    }
 
     @Override
     public int hashCode() {
@@ -86,6 +96,20 @@ public class SnapshotDescriptor {
 
     public SnapshotDescriptor(String snapshotFile) {
         this(new File(snapshotFile));
+    }
+
+    public static SnapshotDescriptor getLatestSnapshotDescriptor(File folder) {
+        File[] snapshotFiles = folder.listFiles(new FilenameFilter() {
+            @Override
+            public boolean accept(File dir, String fileName) {
+                return snapshotFileNamePattern.matcher(fileName).find();
+            }
+        });
+        Optional<SnapshotDescriptor> latest = Arrays.stream(snapshotFiles).map(x -> new SnapshotDescriptor(x)).max(SnapshotDescriptor::compare);
+        if (latest.isPresent()) {
+            return latest.get();
+        }
+        return null;
     }
 
     public SnapshotDescriptor(File snapshotFile) {
