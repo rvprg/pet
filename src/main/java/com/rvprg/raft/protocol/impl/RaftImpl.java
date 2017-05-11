@@ -2,6 +2,7 @@ package com.rvprg.raft.protocol.impl;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -46,6 +47,7 @@ import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVote;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse.Builder;
 import com.rvprg.raft.sm.SnapshotDescriptor;
+import com.rvprg.raft.sm.SnapshotInstallException;
 import com.rvprg.raft.sm.Snapshotable;
 import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.transport.Member;
@@ -118,13 +120,13 @@ public class RaftImpl implements Raft {
 
     @Inject
     public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine, RaftObserver observer)
-            throws InterruptedException {
+            throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException {
         this(configuration, memberConnector, messageReceiver, log, stateMachine, log.getTerm(), Role.Follower, observer);
     }
 
     public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine,
             int initTerm, Role initRole,
-            RaftObserver observer) throws InterruptedException {
+            RaftObserver observer) throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException {
         this.memberConnector = new RaftMemberConnector(memberConnector);
         this.messageReceiver = messageReceiver;
         this.selfId = messageReceiver.getMemberId();
@@ -138,14 +140,26 @@ public class RaftImpl implements Raft {
         this.stateMachine = stateMachine;
         this.votedFor = log.getVotedFor();
 
-        // this.snapshotSender.set(new
-        // SnapshotSender(messageReceiver.getChannelPipelineInitializer(),
-        // selfId, x -> {
-        // snapshotSenderEventHandler(x);
-        // }));
+        initializeFromSnapshot();
 
         memberConnectorObserver = new MemberConnectorObserverImpl(this, messageReceiver.getChannelPipelineInitializer());
         configuration.getMemberIds().forEach(memberId -> memberConnector.register(memberId, memberConnectorObserver));
+    }
+
+    private void initializeFromSnapshot() throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException {
+        SnapshotDescriptor latestSnapshot = SnapshotDescriptor.getLatestSnapshotDescriptor(configuration.getSnapshotFolderPath());
+        if (latestSnapshot != null) {
+            try (InputStream inputStream = latestSnapshot.getInputStream()) {
+                this.stateMachine.installSnapshot(inputStream);
+                // TODO: update log index/term
+            }
+        }
+
+        this.snapshotSender.set(new SnapshotSender(messageReceiver.getChannelPipelineInitializer(),
+                selfId, x -> {
+                    snapshotSenderEventHandler(x);
+                }));
+        this.snapshotSender.get().setSnapshotDescriptor(latestSnapshot);
     }
 
     private void snapshotSenderEventHandler(SnapshotTransferEvent x) {
