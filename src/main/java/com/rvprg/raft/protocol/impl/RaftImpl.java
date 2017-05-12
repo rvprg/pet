@@ -50,6 +50,7 @@ import com.rvprg.raft.sm.SnapshotDescriptor;
 import com.rvprg.raft.sm.SnapshotInstallException;
 import com.rvprg.raft.sm.Snapshotable;
 import com.rvprg.raft.sm.StateMachine;
+import com.rvprg.raft.transport.ChannelPipelineInitializer;
 import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberId;
@@ -140,13 +141,19 @@ public class RaftImpl implements Raft {
         this.stateMachine = stateMachine;
         this.votedFor = log.getVotedFor();
 
-        initializeFromSnapshot();
+        if (messageReceiver.getMemberId() != null) {
+            initializeFromSnapshot(
+                    messageReceiver.getChannelPipelineInitializer(),
+                    new MemberId(messageReceiver.getMemberId().getHostName(),
+                            configuration.getSnapshotSenderPort()));
+        }
 
         memberConnectorObserver = new MemberConnectorObserverImpl(this, messageReceiver.getChannelPipelineInitializer());
         configuration.getMemberIds().forEach(memberId -> memberConnector.register(memberId, memberConnectorObserver));
     }
 
-    private void initializeFromSnapshot() throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException {
+    private void initializeFromSnapshot(ChannelPipelineInitializer channelPipelineInitializer, MemberId snapshotSenderMemberId)
+            throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException {
         SnapshotDescriptor latestSnapshot = SnapshotDescriptor.getLatestSnapshotDescriptor(configuration.getSnapshotFolderPath());
         if (latestSnapshot != null) {
             try (InputStream inputStream = latestSnapshot.getInputStream()) {
@@ -155,8 +162,8 @@ public class RaftImpl implements Raft {
             }
         }
 
-        this.snapshotSender.set(new SnapshotSender(messageReceiver.getChannelPipelineInitializer(),
-                selfId, x -> {
+        this.snapshotSender.set(new SnapshotSender(channelPipelineInitializer,
+                snapshotSenderMemberId, x -> {
                     snapshotSenderEventHandler(x);
                 }));
         this.snapshotSender.get().setSnapshotDescriptor(latestSnapshot);

@@ -3,6 +3,8 @@ package com.rvprg.raft.tests.functional;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashSet;
@@ -19,12 +21,13 @@ import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftObserver;
 import com.rvprg.raft.protocol.impl.RaftImpl;
 import com.rvprg.raft.protocol.impl.RaftObserverImpl;
+import com.rvprg.raft.sm.SnapshotInstallException;
 
 public class RaftElectionSafetyTest extends RaftFunctionalTestBase {
     @Test(timeout = 60000)
     public void testElectionSafetyProperty_OneLeaderPerTerm()
             throws InterruptedException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException,
-            InvocationTargetException {
+            InvocationTargetException, FileNotFoundException, SnapshotInstallException, IOException {
         // This test creates a cluster containing clusterSize members. It then
         // starts all of them, and waits until a leader is elected. Then it
         // kills the leader by stopping heartbeating. A new leader is elected.
@@ -83,7 +86,8 @@ public class RaftElectionSafetyTest extends RaftFunctionalTestBase {
 
     @Test(timeout = 60000)
     public void testElectionSafetyProperty_MostUpToDateLogWins_Case1()
-            throws InterruptedException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+            throws InterruptedException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException,
+            FileNotFoundException, SnapshotInstallException, IOException {
         // This test creates a cluster containing clusterSize members. It then
         // creates a few entries in the log of the majority of the
         // candidates. Then it starts the election process and checks if a
@@ -122,7 +126,8 @@ public class RaftElectionSafetyTest extends RaftFunctionalTestBase {
 
     @Test(timeout = 60000)
     public void testElectionSafetyProperty_MostUpToDateLogWins_Case2()
-            throws InterruptedException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+            throws InterruptedException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException,
+            FileNotFoundException, SnapshotInstallException, IOException {
         // This test creates a cluster containing clusterSize members. It then
         // creates a few entries in the log of the majority of the
         // candidates. Then it starts the election process and checks if a

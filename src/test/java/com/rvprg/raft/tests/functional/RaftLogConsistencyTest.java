@@ -1,5 +1,7 @@
 package com.rvprg.raft.tests.functional;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
@@ -13,12 +15,14 @@ import com.rvprg.raft.log.LogException;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.impl.ApplyCommandResult;
 import com.rvprg.raft.protocol.impl.RaftImpl;
+import com.rvprg.raft.sm.SnapshotInstallException;
 
 public class RaftLogConsistencyTest extends RaftFunctionalTestBase {
 
     @Test
     public void testLogConsistencyProperty()
-            throws InterruptedException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, LogException {
+            throws InterruptedException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, LogException,
+            FileNotFoundException, SnapshotInstallException, IOException {
         // This test creates a cluster of clusterSize members. Then it applies
         // applyCount different commands. After that it elects a new leader and
         // starts everything again. It repeats the cycle iterations times.

@@ -3,6 +3,8 @@ package com.rvprg.raft.tests.functional;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
@@ -24,13 +26,15 @@ import com.rvprg.raft.protocol.impl.ApplyCommandResult;
 import com.rvprg.raft.protocol.impl.RaftImpl;
 import com.rvprg.raft.protocol.impl.RaftMemberConnector;
 import com.rvprg.raft.protocol.impl.RaftObserverImpl;
+import com.rvprg.raft.sm.SnapshotInstallException;
 import com.rvprg.raft.tests.helpers.NetworkUtils;
 import com.rvprg.raft.transport.MemberId;
 
 public class RaftDynamicMembershipChangeTest extends RaftFunctionalTestBase {
 
     @Test(timeout = 60000)
-    public void testAddMemberDynamically() throws NoSuchMethodException, SecurityException, InterruptedException, ExecutionException, LogException {
+    public void testAddMemberDynamically()
+            throws NoSuchMethodException, SecurityException, InterruptedException, ExecutionException, LogException, FileNotFoundException, SnapshotInstallException, IOException {
         int clusterSize = 5;
         int logSize = 5;
 
@@ -127,7 +131,8 @@ public class RaftDynamicMembershipChangeTest extends RaftFunctionalTestBase {
 
     @Test(expected = IllegalArgumentException.class)
     public void testRemoveMemberDynamically_LeaderRemovesItself()
-            throws NoSuchMethodException, SecurityException, InterruptedException, ExecutionException, NoSuchFieldException, IllegalArgumentException, IllegalAccessException {
+            throws NoSuchMethodException, SecurityException, InterruptedException, ExecutionException, NoSuchFieldException, IllegalArgumentException, IllegalAccessException,
+            FileNotFoundException, SnapshotInstallException, IOException {
         int clusterSize = 5;
 
         RaftCluster cluster = new RaftCluster(clusterSize, clusterSize, clusterSize - 1, 300, 500);
@@ -144,7 +149,8 @@ public class RaftDynamicMembershipChangeTest extends RaftFunctionalTestBase {
 
     @Test(timeout = 60000)
     public void testRemoveMemberDynamically()
-            throws NoSuchMethodException, SecurityException, InterruptedException, ExecutionException, NoSuchFieldException, IllegalArgumentException, IllegalAccessException {
+            throws NoSuchMethodException, SecurityException, InterruptedException, ExecutionException, NoSuchFieldException, IllegalArgumentException, IllegalAccessException,
+            FileNotFoundException, SnapshotInstallException, IOException {
         int clusterSize = 5;
 
         RaftCluster cluster = new RaftCluster(clusterSize, clusterSize, clusterSize - 1, 300, 500);
