@@ -170,7 +170,8 @@ public class RaftImpl implements Raft {
     }
 
     private void snapshotSenderEventHandler(SnapshotTransferEvent x) {
-        // TODO
+        // TODO: implement active connections bookkeeping, coordinate new
+        // snapshot creation and transfer without disrupting existing transfers
     }
 
     private void initializeEventLoop() {
