@@ -41,4 +41,6 @@ public interface Log extends Closeable {
     void delete() throws IOException;
 
     void truncate(long toIndex) throws LogException;
+
+    void setFakeLogEntryAndCommit(long index, int term);
 }

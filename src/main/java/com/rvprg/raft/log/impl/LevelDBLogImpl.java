@@ -42,6 +42,9 @@ public class LevelDBLogImpl implements Log {
     private final ReentrantReadWriteLock stateLock = new ReentrantReadWriteLock();
     private volatile Configuration configuration;
 
+    private long fakeIndex = -1;
+    private int fakeTerm = -1;
+
     @Override
     public void close() throws IOException {
         if (database != null) {
@@ -203,6 +206,10 @@ public class LevelDBLogImpl implements Log {
     public LogEntry get(long index) throws LogException {
         stateLock.readLock().lock();
         try {
+            if (fakeIndex == index) {
+                return LogEntryFactory.create(fakeTerm);
+            }
+
             byte[] logEntry = database.get(ByteUtils.longToBytes(index));
             if (logEntry == null) {
                 return null;
@@ -343,6 +350,18 @@ public class LevelDBLogImpl implements Log {
             } catch (IOException e) {
                 throw new LogException(e);
             }
+        }
+    }
+
+    @Override
+    public void setFakeLogEntryAndCommit(long index, int term) {
+        stateLock.writeLock().lock();
+        try {
+            this.fakeIndex = index;
+            this.fakeTerm = term;
+            setCommitIndex(fakeIndex);
+        } finally {
+            stateLock.writeLock().unlock();
         }
     }
 

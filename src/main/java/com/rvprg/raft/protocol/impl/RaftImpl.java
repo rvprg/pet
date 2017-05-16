@@ -158,7 +158,7 @@ public class RaftImpl implements Raft {
         if (latestSnapshot != null) {
             try (InputStream inputStream = latestSnapshot.getInputStream()) {
                 this.stateMachine.installSnapshot(inputStream);
-                // TODO: update log index/term
+                this.log.setFakeLogEntryAndCommit(latestSnapshot.getIndex(), latestSnapshot.getTerm());
             }
         }
 
