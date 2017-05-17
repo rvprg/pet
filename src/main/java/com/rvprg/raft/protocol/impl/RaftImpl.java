@@ -56,7 +56,12 @@ import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.MessageReceiver;
 import com.rvprg.raft.transport.impl.SnapshotSender;
+import com.rvprg.raft.transport.impl.SnapshotTransferCompletedEvent;
+import com.rvprg.raft.transport.impl.SnapshotTransferConnectionClosedEvent;
+import com.rvprg.raft.transport.impl.SnapshotTransferConnectionOpenEvent;
 import com.rvprg.raft.transport.impl.SnapshotTransferEvent;
+import com.rvprg.raft.transport.impl.SnapshotTransferExceptionThrownEvent;
+import com.rvprg.raft.transport.impl.SnapshotTransferStartedEvent;
 
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoopGroup;
@@ -172,6 +177,17 @@ public class RaftImpl implements Raft {
     private void snapshotSenderEventHandler(SnapshotTransferEvent x) {
         // TODO: implement active connections bookkeeping, coordinate new
         // snapshot creation and transfer without disrupting existing transfers
+        if (x instanceof SnapshotTransferConnectionOpenEvent) {
+            SnapshotTransferConnectionOpenEvent event = (SnapshotTransferConnectionOpenEvent) x;
+        } else if (x instanceof SnapshotTransferStartedEvent) {
+            SnapshotTransferStartedEvent event = (SnapshotTransferStartedEvent) x;
+        } else if (x instanceof SnapshotTransferCompletedEvent) {
+            SnapshotTransferCompletedEvent event = (SnapshotTransferCompletedEvent) x;
+        } else if (x instanceof SnapshotTransferConnectionClosedEvent) {
+            SnapshotTransferConnectionClosedEvent event = (SnapshotTransferConnectionClosedEvent) x;
+        } else if (x instanceof SnapshotTransferExceptionThrownEvent) {
+            SnapshotTransferExceptionThrownEvent event = (SnapshotTransferExceptionThrownEvent) x;
+        }
     }
 
     private void initializeEventLoop() {
