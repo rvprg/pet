@@ -92,7 +92,9 @@ public class RaftImpl implements Raft {
     private final ConcurrentHashMap<MemberId, AtomicLong> nextIndexes = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<MemberId, AtomicLong> matchIndexes = new ConcurrentHashMap<>();
 
-    private final AtomicReference<SnapshotSender> snapshotSender = new AtomicReference<SnapshotSender>(null);
+    private final ConcurrentHashMap<MemberId, Channel> snapshotRecipients = new ConcurrentHashMap<>();
+
+    private final SnapshotSender snapshotSender;
 
     private final Object dynamicMembershipChangeLock = new Object();
     @GuardedBy("dynamicMembershipChangeLock")
@@ -146,6 +148,13 @@ public class RaftImpl implements Raft {
         this.stateMachine = stateMachine;
         this.votedFor = log.getVotedFor();
 
+        this.snapshotSender = new SnapshotSender(messageReceiver.getChannelPipelineInitializer(),
+                new MemberId(messageReceiver.getMemberId().getHostName(),
+                        configuration.getSnapshotSenderPort()),
+                x -> {
+                    snapshotSenderEventHandler(x);
+                });
+
         if (messageReceiver.getMemberId() != null) {
             initializeFromSnapshot(
                     messageReceiver.getChannelPipelineInitializer(),
@@ -167,26 +176,43 @@ public class RaftImpl implements Raft {
             }
         }
 
-        this.snapshotSender.set(new SnapshotSender(channelPipelineInitializer,
-                snapshotSenderMemberId, x -> {
-                    snapshotSenderEventHandler(x);
-                }));
-        this.snapshotSender.get().setSnapshotDescriptor(latestSnapshot);
+        this.snapshotSender.setSnapshotDescriptor(latestSnapshot);
+    }
+
+    private void cancelAllSnapshotTransfers() {
+        snapshotRecipients.forEach((memberId, channel) -> {
+            logger.info("MemberId: {}. Aborting snapshot transfer.");
+            channel.disconnect();
+        });
+        snapshotRecipients.clear();
     }
 
     private void snapshotSenderEventHandler(SnapshotTransferEvent x) {
-        // TODO: implement active connections bookkeeping, coordinate new
-        // snapshot creation and transfer without disrupting existing transfers
         if (x instanceof SnapshotTransferConnectionOpenEvent) {
             SnapshotTransferConnectionOpenEvent event = (SnapshotTransferConnectionOpenEvent) x;
+            logger.info("MemberId: {} connected to the snapshot sender. SnapshotDescriptor: {}.", event.getMemberId(), event.getSnapshotDescriptor());
+            Channel prevValue = snapshotRecipients.put(event.getMemberId(), event.getChannel());
+            if (prevValue != null) {
+                prevValue.close();
+            }
         } else if (x instanceof SnapshotTransferStartedEvent) {
             SnapshotTransferStartedEvent event = (SnapshotTransferStartedEvent) x;
+            logger.info("MemberId: {}. SnapshotDescriptor: {}. Snapshot transfer started.", event.getMemberId(), event.getSnapshotDescriptor());
         } else if (x instanceof SnapshotTransferCompletedEvent) {
             SnapshotTransferCompletedEvent event = (SnapshotTransferCompletedEvent) x;
+            logger.info("MemberId: {}. SnapshotDescriptor: {}. Snapshot transfer completed.", event.getMemberId(), event.getSnapshotDescriptor());
+            snapshotRecipients.remove(event.getMemberId());
         } else if (x instanceof SnapshotTransferConnectionClosedEvent) {
             SnapshotTransferConnectionClosedEvent event = (SnapshotTransferConnectionClosedEvent) x;
+            logger.info("MemberId: {}. SnapshotDescriptor: {}. Closing.", event.getMemberId(), event.getSnapshotDescriptor());
+            snapshotRecipients.remove(event.getMemberId());
         } else if (x instanceof SnapshotTransferExceptionThrownEvent) {
             SnapshotTransferExceptionThrownEvent event = (SnapshotTransferExceptionThrownEvent) x;
+            logger.info("MemberId: {}. SnapshotDescriptor: {}. Error occured.", event.getMemberId(), event.getSnapshotDescriptor(), event.getThrowable());
+            Channel prevValue = snapshotRecipients.remove(event.getMemberId());
+            if (prevValue != null) {
+                prevValue.close();
+            }
         }
     }
 
@@ -220,7 +246,9 @@ public class RaftImpl implements Raft {
         synchronized (stateLock) {
             cancelHeartbeatMonitorTask();
             cancelElectionTimeoutTask();
+            cancelAllSnapshotTransfers();
             messageReceiver.shutdown();
+            snapshotSender.shutdown();
             eventLoop.get().shutdownGracefully();
             started = false;
             observer.shutdown();
@@ -374,6 +402,7 @@ public class RaftImpl implements Raft {
                     });
 
             memberConnector.unregisterAllCatchingUpServers();
+            cancelAllSnapshotTransfers();
 
             replicationCompletableFutures.values().forEach(future -> future.complete(false));
             replicationCompletableFutures.clear();
@@ -452,7 +481,7 @@ public class RaftImpl implements Raft {
             log.truncate(commitIndex);
             logger.info("{} compaction finished.", log);
 
-            snapshotSender.get().setSnapshotDescriptor(descriptor);
+            snapshotSender.setSnapshotDescriptor(descriptor);
         } catch (Exception e) {
             logger.info("Error producing snapshot. SnapshotDescriptor={}.", descriptor, e);
         } finally {

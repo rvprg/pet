@@ -37,6 +37,8 @@ public class SnapshotSender {
     private final Consumer<SnapshotTransferEvent> eventCallback;
     private final ChannelPipelineInitializer channelPipelineInitializer;
 
+    private final MemberId memberId;
+
     private class SnapshotTransferInitiator extends SimpleChannelInboundHandler<RaftMessage> {
         private MemberId memberId;
         public static final String SnapshotTransferInitiator = "SnapshotTransferInitiator";
@@ -115,6 +117,7 @@ public class SnapshotSender {
         this.snapshot = new AtomicReference<SnapshotDescriptor>(null);
         this.eventCallback = eventCallback;
         this.channelPipelineInitializer = channelPipelineInitializer;
+        this.memberId = memberId;
 
         server.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)
@@ -128,7 +131,9 @@ public class SnapshotSender {
                 })
                 .option(ChannelOption.SO_BACKLOG, 128)
                 .childOption(ChannelOption.SO_KEEPALIVE, true);
+    }
 
+    public void start() throws InterruptedException {
         server.bind(memberId).sync();
     }
 

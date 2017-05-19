@@ -82,6 +82,7 @@ public class RaftTest {
         StateMachine stateMachine = mock(StateMachine.class);
         RaftObserver raftObserver = mock(RaftObserver.class);
         Log log = mock(Log.class);
+        Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("localhost", NetworkUtils.getRandomFreePort()));
 
         final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
 
@@ -205,6 +206,7 @@ public class RaftTest {
         Member member = mock(Member.class);
         Channel senderChannel = mock(Channel.class);
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
+        Mockito.when(messageReceiver.getMemberId()).thenReturn(configuration.getMemberId());
 
         final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
 
@@ -263,6 +265,7 @@ public class RaftTest {
         Member member = mock(Member.class);
         Channel senderChannel = mock(Channel.class);
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
+        Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("localhost", NetworkUtils.getRandomFreePort()));
 
         final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
 
@@ -311,6 +314,7 @@ public class RaftTest {
         Member member = mock(Member.class);
         Channel senderChannel = mock(Channel.class);
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
+        Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("localhost", NetworkUtils.getRandomFreePort()));
 
         final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
 
@@ -381,6 +385,7 @@ public class RaftTest {
         Member member = mock(Member.class);
         Channel senderChannel = mock(Channel.class);
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
+        Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("localhost", NetworkUtils.getRandomFreePort()));
 
         final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 2, Role.Follower, raftObserver);
 
@@ -432,6 +437,7 @@ public class RaftTest {
         Member member = mock(Member.class);
         Channel senderChannel = mock(Channel.class);
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
+        Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("localhost", NetworkUtils.getRandomFreePort()));
 
         final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 1, Role.Candidate, raftObserver);
 
@@ -486,6 +492,8 @@ public class RaftTest {
         assertEquals(4, votesReceived.get());
         assertEquals(1, votesRejected.get());
         assertEquals(Role.Leader, raft.getRole());
+
+        raft.shutdown();
     }
 
     @Test
@@ -502,6 +510,7 @@ public class RaftTest {
         Member member = mock(Member.class);
         Channel senderChannel = mock(Channel.class);
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
+        Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("localhost", NetworkUtils.getRandomFreePort()));
 
         final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 1, Role.Candidate, raftObserver);
 
@@ -551,6 +560,8 @@ public class RaftTest {
         Log log = new TransientLogImpl();
 
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
+        Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("localhost", NetworkUtils.getRandomFreePort()));
+
         StateMachine stateMachine = mock(StateMachine.class);
         RaftObserver raftObserver = new RaftObserverImpl() {
             @Override
@@ -573,7 +584,5 @@ public class RaftTest {
         for (CountDownLatch latch : latches.values()) {
             latch.await();
         }
-
-        raft.shutdown();
     }
 }

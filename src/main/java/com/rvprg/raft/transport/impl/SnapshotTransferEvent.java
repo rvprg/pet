@@ -18,7 +18,7 @@ public abstract class SnapshotTransferEvent {
         return channel;
     }
 
-    public SnapshotDescriptor getDescriptor() {
+    public SnapshotDescriptor getSnapshotDescriptor() {
         return descriptor;
     }
 
