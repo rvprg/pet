@@ -58,6 +58,7 @@ message AppendEntries {
     optional uint32 prevLogTerm = 4;
     optional uint64 leaderCommitIndex = 5;
     repeated LogEntry logEntries = 6;
+    optional SnapshotDownloadRequest installSnapshot = 7;
 }
 
 message AppendEntriesResponse {

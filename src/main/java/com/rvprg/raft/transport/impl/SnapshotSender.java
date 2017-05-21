@@ -141,9 +141,17 @@ public class SnapshotSender {
         this.snapshot.set(snapshot);
     }
 
+    public SnapshotDescriptor getSnapshotDescriptor() {
+        return this.snapshot.get();
+    }
+
     public void shutdown() {
         bossGroup.shutdownGracefully().awaitUninterruptibly();
         workerGroup.shutdownGracefully().awaitUninterruptibly();
+    }
+
+    public MemberId getMemberId() {
+        return memberId;
     }
 
 }

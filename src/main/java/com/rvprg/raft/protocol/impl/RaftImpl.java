@@ -46,6 +46,7 @@ import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage.MessageType
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVote;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse.Builder;
+import com.rvprg.raft.protocol.messages.ProtocolMessages.SnapshotDownloadRequest;
 import com.rvprg.raft.sm.SnapshotDescriptor;
 import com.rvprg.raft.sm.SnapshotInstallException;
 import com.rvprg.raft.sm.Snapshotable;
@@ -440,7 +441,9 @@ public class RaftImpl implements Raft {
         }
 
         try {
-            if (appendEntries.getLogEntriesCount() == 0) {
+            if (appendEntries.hasInstallSnapshot()) {
+                // TODO: process install snapshot request
+            } else if (appendEntries.getLogEntriesCount() == 0) {
                 processHeartbeat(appendEntries);
                 log.commit(appendEntries.getLeaderCommitIndex(), stateMachine);
             } else {
@@ -859,26 +862,35 @@ public class RaftImpl implements Raft {
             indexesLock.readLock().unlock();
         }
 
-        List<LogEntry> logEntries = log.get(nextIndex, configuration.getMaxNumberOfLogEntriesPerRequest());
-        if (logEntries.size() == 0) {
-            return getHeartbeatMessage();
-        }
-
-        long prevLogIndex = nextIndex - 1;
-        int prevLogTerm = log.get(prevLogIndex).getTerm();
-        long commitIndex = log.getCommitIndex();
-
+        AppendEntries.Builder req = AppendEntries.newBuilder();
         MemberId leaderMemberId = getLeaderMemberId();
 
-        AppendEntries.Builder req = AppendEntries.newBuilder()
-                .setTerm(getCurrentTerm())
-                .setPrevLogIndex(prevLogIndex)
-                .setPrevLogTerm(prevLogTerm)
-                .setLeaderCommitIndex(commitIndex)
-                .setLeaderId(leaderMemberId != null ? getLeaderMemberId().toString() : null);
+        if (log.getFirstIndex() > nextIndex) {
+            SnapshotDescriptor snapshot = snapshotSender.getSnapshotDescriptor();
+            req.setTerm(getCurrentTerm())
+                    .setLeaderId(leaderMemberId != null ? leaderMemberId.toString() : null)
+                    .setInstallSnapshot(SnapshotDownloadRequest.newBuilder()
+                            .setSnapshotId(snapshot.getSnapshotId())
+                            .setSize(snapshot.getSize())
+                            .setMemberId(snapshotSender.getMemberId().toString()));
+        } else {
+            List<LogEntry> logEntries = log.get(nextIndex, configuration.getMaxNumberOfLogEntriesPerRequest());
+            if (logEntries.size() == 0) {
+                return getHeartbeatMessage();
+            }
 
-        List<LogEntry> entries = log.get(nextIndex, configuration.getMaxNumberOfLogEntriesPerRequest());
-        req.addAllLogEntries(entries);
+            long prevLogIndex = nextIndex - 1;
+            int prevLogTerm = log.get(prevLogIndex).getTerm();
+            long commitIndex = log.getCommitIndex();
+
+            req.setTerm(getCurrentTerm())
+                    .setPrevLogIndex(prevLogIndex)
+                    .setPrevLogTerm(prevLogTerm)
+                    .setLeaderCommitIndex(commitIndex)
+                    .setLeaderId(leaderMemberId != null ? leaderMemberId.toString() : null);
+
+            req.addAllLogEntries(logEntries);
+        }
 
         RaftMessage requestVote = RaftMessage.newBuilder()
                 .setType(MessageType.AppendEntries)

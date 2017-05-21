@@ -150,4 +150,8 @@ public class SnapshotDescriptor {
     public File getFileName() {
         return this.fileName;
     }
+
+    public long getSize() {
+        return this.fileName.length();
+    }
 }
