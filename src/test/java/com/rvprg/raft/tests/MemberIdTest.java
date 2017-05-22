@@ -3,11 +3,8 @@ package com.rvprg.raft.tests;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import java.nio.charset.Charset;
-
 import org.junit.Test;
 
-import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.DynamicMembershipChangeCommand;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.DynamicMembershipChangeCommand.CommandType;
@@ -75,10 +72,10 @@ public class MemberIdTest {
         MemberId memberId0 = new MemberId("localhost", 12345);
         byte[] serializedData = DynamicMembershipChangeCommand.newBuilder()
                 .setType(CommandType.AddMember)
-                .setMemberId(ByteString.copyFrom(memberId0.toString().getBytes(Charset.forName("UTF-8"))))
+                .setMemberId(memberId0.toString())
                 .build().toByteArray();
         DynamicMembershipChangeCommand deserializedData = DynamicMembershipChangeCommand.parseFrom(serializedData);
-        MemberId memberId1 = MemberId.fromString(deserializedData.getMemberId().toString(Charset.forName("UTF-8")));
+        MemberId memberId1 = MemberId.fromString(deserializedData.getMemberId());
         assertEquals(memberId0, memberId1);
     }
 }

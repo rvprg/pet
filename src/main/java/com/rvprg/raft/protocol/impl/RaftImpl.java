@@ -1,5 +1,6 @@
 package com.rvprg.raft.protocol.impl;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,7 +27,6 @@ import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
 import com.google.inject.Inject;
-import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.log.Log;
@@ -56,6 +56,7 @@ import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.MessageReceiver;
+import com.rvprg.raft.transport.impl.SnapshotReceiver;
 import com.rvprg.raft.transport.impl.SnapshotSender;
 import com.rvprg.raft.transport.impl.SnapshotTransferCompletedEvent;
 import com.rvprg.raft.transport.impl.SnapshotTransferConnectionClosedEvent;
@@ -96,6 +97,7 @@ public class RaftImpl implements Raft {
     private final ConcurrentHashMap<MemberId, Channel> snapshotRecipients = new ConcurrentHashMap<>();
 
     private final SnapshotSender snapshotSender;
+    private final AtomicReference<SnapshotReceiver> snapshotReceiver = new AtomicReference<SnapshotReceiver>(null);
 
     private final Object dynamicMembershipChangeLock = new Object();
     @GuardedBy("dynamicMembershipChangeLock")
@@ -126,6 +128,7 @@ public class RaftImpl implements Raft {
     private final StateMachine stateMachine;
 
     private final AtomicBoolean catchingUpMember = new AtomicBoolean(false);
+    private final ChannelPipelineInitializer channelPipelineInitializer;
 
     @Inject
     public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine, RaftObserver observer)
@@ -149,7 +152,9 @@ public class RaftImpl implements Raft {
         this.stateMachine = stateMachine;
         this.votedFor = log.getVotedFor();
 
-        this.snapshotSender = new SnapshotSender(messageReceiver.getChannelPipelineInitializer(),
+        this.channelPipelineInitializer = messageReceiver.getChannelPipelineInitializer();
+
+        this.snapshotSender = new SnapshotSender(this.channelPipelineInitializer,
                 new MemberId(messageReceiver.getMemberId().getHostName(),
                         configuration.getSnapshotSenderPort()),
                 x -> {
@@ -163,7 +168,7 @@ public class RaftImpl implements Raft {
                             configuration.getSnapshotSenderPort()));
         }
 
-        memberConnectorObserver = new MemberConnectorObserverImpl(this, messageReceiver.getChannelPipelineInitializer());
+        memberConnectorObserver = new MemberConnectorObserverImpl(this, this.channelPipelineInitializer);
         configuration.getMemberIds().forEach(memberId -> memberConnector.register(memberId, memberConnectorObserver));
     }
 
@@ -442,7 +447,11 @@ public class RaftImpl implements Raft {
 
         try {
             if (appendEntries.hasInstallSnapshot()) {
-                // TODO: process install snapshot request
+                final MemberId snapshotSenderMemberId = MemberId.fromString(appendEntries.getInstallSnapshot().getMemberId());
+                final String snapshotId = appendEntries.getInstallSnapshot().getSnapshotId();
+                final File fileName = new File(configuration.getSnapshotFolderPath(), snapshotId);
+                final long fileSize = appendEntries.getInstallSnapshot().getSize();
+                // TODO:
             } else if (appendEntries.getLogEntriesCount() == 0) {
                 processHeartbeat(appendEntries);
                 log.commit(appendEntries.getLeaderCommitIndex(), stateMachine);
@@ -538,7 +547,7 @@ public class RaftImpl implements Raft {
         for (LogEntry le : raftCommands) {
             try {
                 DynamicMembershipChangeCommand command = DynamicMembershipChangeCommand.parseFrom(le.getEntry().toByteArray());
-                MemberId memberId = MemberId.fromString(command.getMemberId().toString(defaultCharsetForRaftCommands));
+                MemberId memberId = MemberId.fromString(command.getMemberId());
                 if (command.getType() == CommandType.AddMember) {
                     logger.info("Member: {}. Term: {}. Adding {} to the cluster.", selfId, getCurrentTerm(), memberId);
                     if (!memberId.equals(selfId)) {
@@ -1017,7 +1026,7 @@ public class RaftImpl implements Raft {
         return applyCommand(LogEntryType.RaftProtocolCommand,
                 DynamicMembershipChangeCommand.newBuilder()
                         .setType(type)
-                        .setMemberId(ByteString.copyFrom(memberId.toString().getBytes(defaultCharsetForRaftCommands)))
+                        .setMemberId(memberId.toString())
                         .build().toByteArray());
     }
 
