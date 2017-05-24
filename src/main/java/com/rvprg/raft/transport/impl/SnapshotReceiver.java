@@ -3,7 +3,8 @@ package com.rvprg.raft.transport.impl;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,10 +33,11 @@ public class SnapshotReceiver {
     private final Logger logger = LoggerFactory.getLogger(SnapshotReceiver.class);
 
     private final EventLoopGroup workerGroup;
-    private final CompletableFuture<Boolean> completionFuture = new CompletableFuture<Boolean>();
+    private final BiConsumer<File, Throwable> handler;
     private final Channel channel;
     private final MemberId selfId;
     private final ChannelPipelineInitializer channelPipelineInitializer;
+    private final AtomicBoolean done = new AtomicBoolean(false);
 
     private class SnapshotReceiveHandler extends SimpleChannelInboundHandler<ByteBuf> {
         private BufferedOutputStream out;
@@ -91,7 +93,8 @@ public class SnapshotReceiver {
             if (out != null) {
                 out.close();
             }
-            completionFuture.complete(true);
+            done.set(true);
+            handler.accept(fileName, null);
             if (received != size) {
                 logger.error("SnapshotId={}, download didn't finish, {}/{}.", snapshotId, received, size);
             } else {
@@ -102,7 +105,8 @@ public class SnapshotReceiver {
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
                 throws Exception {
-            completionFuture.completeExceptionally(cause);
+            done.set(true);
+            handler.accept(null, cause);
             if (out != null) {
                 out.close();
             }
@@ -112,10 +116,12 @@ public class SnapshotReceiver {
     }
 
     public SnapshotReceiver(ChannelPipelineInitializer channelPipelineInitializer,
-            MemberId selfId, MemberId memberId, String snapshotId, File fileName, long size) throws InterruptedException {
+            MemberId selfId, MemberId memberId, String snapshotId, File fileName, long size,
+            BiConsumer<File, Throwable> handler) throws InterruptedException {
         this.workerGroup = new NioEventLoopGroup();
         this.selfId = selfId;
         this.channelPipelineInitializer = channelPipelineInitializer;
+        this.handler = handler;
 
         if (size <= 0) {
             throw new IllegalArgumentException("Size must be positive.");
@@ -143,8 +149,7 @@ public class SnapshotReceiver {
         workerGroup.shutdownGracefully().awaitUninterruptibly();
     }
 
-    public CompletableFuture<Boolean> getCompletionFuture() {
-        return completionFuture;
+    public boolean isDone() {
+        return done.get();
     }
-
 }

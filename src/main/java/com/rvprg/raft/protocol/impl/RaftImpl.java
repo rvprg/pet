@@ -5,7 +5,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -74,7 +73,6 @@ import net.jcip.annotations.GuardedBy;
 public class RaftImpl implements Raft {
     private final Logger logger = LoggerFactory.getLogger(RaftImpl.class);
     private final static Marker severe = MarkerFactory.getMarker("SEVERE");
-    private final static Charset defaultCharsetForRaftCommands = Charset.forName("UTF-8");
 
     private final MemberId selfId;
     private final Configuration configuration;
@@ -97,7 +95,10 @@ public class RaftImpl implements Raft {
     private final ConcurrentHashMap<MemberId, Channel> snapshotRecipients = new ConcurrentHashMap<>();
 
     private final SnapshotSender snapshotSender;
-    private final AtomicReference<SnapshotReceiver> snapshotReceiver = new AtomicReference<SnapshotReceiver>(null);
+
+    private final Object snapshotInstallLock = new Object();
+    @GuardedBy("snapshotInstallLock")
+    private SnapshotReceiver snapshotReceiver = null;
 
     private final Object dynamicMembershipChangeLock = new Object();
     @GuardedBy("dynamicMembershipChangeLock")
@@ -447,11 +448,25 @@ public class RaftImpl implements Raft {
 
         try {
             if (appendEntries.hasInstallSnapshot()) {
-                final MemberId snapshotSenderMemberId = MemberId.fromString(appendEntries.getInstallSnapshot().getMemberId());
-                final String snapshotId = appendEntries.getInstallSnapshot().getSnapshotId();
-                final File fileName = new File(configuration.getSnapshotFolderPath(), snapshotId);
-                final long fileSize = appendEntries.getInstallSnapshot().getSize();
-                // TODO:
+                synchronized (snapshotInstallLock) {
+                    if (snapshotReceiver == null || snapshotReceiver.isDone()) {
+                        final MemberId snapshotSenderMemberId = MemberId.fromString(appendEntries.getInstallSnapshot().getMemberId());
+                        final String snapshotId = appendEntries.getInstallSnapshot().getSnapshotId();
+                        final File fileName = new File(configuration.getSnapshotFolderPath(), snapshotId);
+                        final long fileSize = appendEntries.getInstallSnapshot().getSize();
+                        try {
+                            snapshotReceiver = new SnapshotReceiver(channelPipelineInitializer,
+                                    selfId, snapshotSenderMemberId, snapshotId, fileName,
+                                    fileSize,
+                                    (File file, Throwable e) -> {
+                                        // TODO:
+                                    });
+                        } catch (Exception e) {
+                            logger.error(severe, "Member: {}. SnapshotId: {}. Receiver initialization failed.", snapshotSenderMemberId, snapshotId,
+                                    e);
+                        }
+                    }
+                }
             } else if (appendEntries.getLogEntriesCount() == 0) {
                 processHeartbeat(appendEntries);
                 log.commit(appendEntries.getLeaderCommitIndex(), stateMachine);

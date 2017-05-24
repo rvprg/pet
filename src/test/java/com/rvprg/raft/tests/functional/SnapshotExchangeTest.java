@@ -10,6 +10,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.commons.codec.digest.DigestUtils;
@@ -43,13 +44,17 @@ public class SnapshotExchangeTest {
 
         ChannelPipelineInitializerImpl pipelineInitializer = new ChannelPipelineInitializerImpl();
 
+        CountDownLatch downloadLatch = new CountDownLatch(1);
         SnapshotDescriptor snapshot = new SnapshotDescriptor(Files.createTempDir(), 1, 1);
         // @formatter:off
         SnapshotSender sender = new SnapshotSender(pipelineInitializer, memberId, (e) -> {  });
         sender.setSnapshotDescriptor(snapshot);
         // @formatter:on
-        SnapshotReceiver receiver = new SnapshotReceiver(pipelineInitializer, selfId, memberId, "test", destFile, java.nio.file.Files.size(origFile.toPath()));
-        receiver.getCompletionFuture().get();
+        SnapshotReceiver receiver = new SnapshotReceiver(pipelineInitializer, selfId, memberId, "test", destFile, java.nio.file.Files.size(origFile.toPath()),
+                (File f, Throwable e) -> {
+                    downloadLatch.countDown();
+                });
+        downloadLatch.await();
 
         receiver.shutdown();
         sender.shutdown();
