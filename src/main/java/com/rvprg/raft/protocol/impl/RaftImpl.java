@@ -152,9 +152,7 @@ public class RaftImpl implements Raft {
         this.observer = observer == null ? RaftObserver.getDefaultInstance() : observer;
         this.stateMachine = stateMachine;
         this.votedFor = log.getVotedFor();
-
         this.channelPipelineInitializer = messageReceiver.getChannelPipelineInitializer();
-
         this.snapshotSender = new SnapshotSender(this.channelPipelineInitializer,
                 new MemberId(messageReceiver.getMemberId().getHostName(),
                         configuration.getSnapshotSenderPort()),
@@ -163,27 +161,29 @@ public class RaftImpl implements Raft {
                 });
 
         if (messageReceiver.getMemberId() != null) {
-            initializeFromSnapshot(
-                    messageReceiver.getChannelPipelineInitializer(),
-                    new MemberId(messageReceiver.getMemberId().getHostName(),
-                            configuration.getSnapshotSenderPort()));
+            initializeFromTheLatestSnapshot();
         }
 
         memberConnectorObserver = new MemberConnectorObserverImpl(this, this.channelPipelineInitializer);
         configuration.getMemberIds().forEach(memberId -> memberConnector.register(memberId, memberConnectorObserver));
     }
 
-    private void initializeFromSnapshot(ChannelPipelineInitializer channelPipelineInitializer, MemberId snapshotSenderMemberId)
+    private void initializeFromTheLatestSnapshot()
             throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException {
         SnapshotDescriptor latestSnapshot = SnapshotDescriptor.getLatestSnapshotDescriptor(configuration.getSnapshotFolderPath());
         if (latestSnapshot != null) {
-            try (InputStream inputStream = latestSnapshot.getInputStream()) {
-                this.stateMachine.installSnapshot(inputStream);
-                this.log.setFakeLogEntryAndCommit(latestSnapshot.getIndex(), latestSnapshot.getTerm());
-            }
+            loadFromSnapshot(latestSnapshot);
+            this.snapshotSender.setSnapshotDescriptor(latestSnapshot);
         }
+    }
 
-        this.snapshotSender.setSnapshotDescriptor(latestSnapshot);
+    private void loadFromSnapshot(SnapshotDescriptor latestSnapshot)
+            throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException {
+        try (InputStream inputStream = latestSnapshot.getInputStream()) {
+            // FIXME: synchronization
+            this.stateMachine.installSnapshot(inputStream);
+            this.log.setFakeLogEntryAndCommit(latestSnapshot.getIndex(), latestSnapshot.getTerm());
+        }
     }
 
     private void cancelAllSnapshotTransfers() {
@@ -448,25 +448,7 @@ public class RaftImpl implements Raft {
 
         try {
             if (appendEntries.hasInstallSnapshot()) {
-                synchronized (snapshotInstallLock) {
-                    if (snapshotReceiver == null || snapshotReceiver.isDone()) {
-                        final MemberId snapshotSenderMemberId = MemberId.fromString(appendEntries.getInstallSnapshot().getMemberId());
-                        final String snapshotId = appendEntries.getInstallSnapshot().getSnapshotId();
-                        final File fileName = new File(configuration.getSnapshotFolderPath(), snapshotId);
-                        final long fileSize = appendEntries.getInstallSnapshot().getSize();
-                        try {
-                            snapshotReceiver = new SnapshotReceiver(channelPipelineInitializer,
-                                    selfId, snapshotSenderMemberId, snapshotId, fileName,
-                                    fileSize,
-                                    (File file, Throwable e) -> {
-                                        // TODO:
-                                    });
-                        } catch (Exception e) {
-                            logger.error(severe, "Member: {}. SnapshotId: {}. Receiver initialization failed.", snapshotSenderMemberId, snapshotId,
-                                    e);
-                        }
-                    }
-                }
+                processInstallSnapshot(appendEntries.getInstallSnapshot());
             } else if (appendEntries.getLogEntriesCount() == 0) {
                 processHeartbeat(appendEntries);
                 log.commit(appendEntries.getLeaderCommitIndex(), stateMachine);
@@ -553,6 +535,39 @@ public class RaftImpl implements Raft {
                 .setEndIndex(indexOfLastNewEntry)
                 .setLogLength(log.getLastIndex())
                 .build();
+    }
+
+    private void processInstallSnapshot(SnapshotDownloadRequest request) {
+        synchronized (snapshotInstallLock) {
+            if (snapshotReceiver == null || snapshotReceiver.isDone()) {
+                final MemberId snapshotSenderMemberId = MemberId.fromString(request.getMemberId());
+                final String snapshotId = request.getSnapshotId();
+                final File fileName = new File(configuration.getSnapshotFolderPath(), snapshotId);
+                try {
+                    snapshotReceiver = new SnapshotReceiver(channelPipelineInitializer,
+                            selfId, snapshotSenderMemberId, snapshotId, fileName,
+                            request.getSize(),
+                            (File file, Throwable e) -> {
+                                try {
+                                    if (e != null) {
+                                        throw new IllegalStateException(e);
+                                    }
+                                    loadFromSnapshot(new SnapshotDescriptor(file));
+                                } catch (Exception e1) {
+                                    logger.error(severe, "Member: {}. SnapshotId: {}. Installation failed.",
+                                            snapshotSenderMemberId,
+                                            snapshotId,
+                                            e1);
+                                }
+                            });
+                } catch (Exception e) {
+                    logger.error(severe, "Member: {}. SnapshotId: {}. Receiver initialization failed.",
+                            snapshotSenderMemberId,
+                            snapshotId,
+                            e);
+                }
+            }
+        }
     }
 
     private void processRaftCommands(List<LogEntry> logEntries) {
