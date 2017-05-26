@@ -1,5 +1,7 @@
 package com.rvprg.raft.sm;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -17,7 +19,7 @@ import org.apache.commons.codec.binary.Hex;
 
 import com.rvprg.raft.log.ByteUtils;
 
-public class SnapshotDescriptor {
+public class SnapshotDescriptor implements ReadableSnapshot {
     private final File fileName;
     private final String snapshotId;
     private final Random random = new Random();
@@ -85,11 +87,11 @@ public class SnapshotDescriptor {
     }
 
     public OutputStream getOutputStream() throws FileNotFoundException {
-        return new FileOutputStream(fileName, false);
+        return new BufferedOutputStream(new FileOutputStream(fileName, false));
     }
 
     public InputStream getInputStream() throws FileNotFoundException {
-        return new FileInputStream(fileName);
+        return new BufferedInputStream(new FileInputStream(fileName));
     }
 
     private final static Pattern snapshotFileNamePattern = Pattern.compile("snapshot-([A-Fa-f0-9]+)-([A-Fa-f0-9]+)-([A-Fa-f0-9]+)");
@@ -153,5 +155,10 @@ public class SnapshotDescriptor {
 
     public long getSize() {
         return this.fileName.length();
+    }
+
+    @Override
+    public InputStream read() throws FileNotFoundException {
+        return getInputStream();
     }
 }

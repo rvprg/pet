@@ -3,8 +3,6 @@ package com.rvprg.raft.protocol.impl;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -48,7 +46,6 @@ import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse.Bui
 import com.rvprg.raft.protocol.messages.ProtocolMessages.SnapshotDownloadRequest;
 import com.rvprg.raft.sm.SnapshotDescriptor;
 import com.rvprg.raft.sm.SnapshotInstallException;
-import com.rvprg.raft.sm.Snapshotable;
 import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.transport.ChannelPipelineInitializer;
 import com.rvprg.raft.transport.Member;
@@ -133,13 +130,13 @@ public class RaftImpl implements Raft {
 
     @Inject
     public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine, RaftObserver observer)
-            throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException {
+            throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException, LogException {
         this(configuration, memberConnector, messageReceiver, log, stateMachine, log.getTerm(), Role.Follower, observer);
     }
 
     public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine,
             int initTerm, Role initRole,
-            RaftObserver observer) throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException {
+            RaftObserver observer) throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException, LogException {
         this.memberConnector = new RaftMemberConnector(memberConnector);
         this.messageReceiver = messageReceiver;
         this.selfId = messageReceiver.getMemberId();
@@ -159,30 +156,17 @@ public class RaftImpl implements Raft {
                 x -> {
                     snapshotSenderEventHandler(x);
                 });
-
-        if (messageReceiver.getMemberId() != null) {
-            initializeFromTheLatestSnapshot();
-        }
-
+        initializeFromTheLatestSnapshot();
         memberConnectorObserver = new MemberConnectorObserverImpl(this, this.channelPipelineInitializer);
         configuration.getMemberIds().forEach(memberId -> memberConnector.register(memberId, memberConnectorObserver));
     }
 
     private void initializeFromTheLatestSnapshot()
-            throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException {
+            throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException, LogException {
         SnapshotDescriptor latestSnapshot = SnapshotDescriptor.getLatestSnapshotDescriptor(configuration.getSnapshotFolderPath());
         if (latestSnapshot != null) {
-            loadFromSnapshot(latestSnapshot);
+            log.installSnapshot(stateMachine, latestSnapshot);
             this.snapshotSender.setSnapshotDescriptor(latestSnapshot);
-        }
-    }
-
-    private void loadFromSnapshot(SnapshotDescriptor latestSnapshot)
-            throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException {
-        try (InputStream inputStream = latestSnapshot.getInputStream()) {
-            // FIXME: synchronization
-            this.stateMachine.installSnapshot(inputStream);
-            this.log.setFakeLogEntryAndCommit(latestSnapshot.getIndex(), latestSnapshot.getTerm());
         }
     }
 
@@ -469,35 +453,6 @@ public class RaftImpl implements Raft {
         }
     }
 
-    private void writeSnapshotAndCompactLog() throws FileNotFoundException, IOException, LogException {
-        if (!(stateMachine instanceof Snapshotable)) {
-            logger.info("{} doesn't support snapshots. ", stateMachine);
-            return;
-        }
-
-        Snapshotable snapshotable = (Snapshotable) stateMachine;
-        snapshotable.begin();
-        long commitIndex = log.getCommitIndex();
-        LogEntry logEntry = log.get(commitIndex);
-        int term = logEntry.getTerm();
-        SnapshotDescriptor descriptor = new SnapshotDescriptor(configuration.getSnapshotFolderPath(), commitIndex, term);
-        try (OutputStream outputStream = descriptor.getOutputStream()) {
-            logger.info("{} snapshot writing started. SnapshotDescriptor={}.", stateMachine, descriptor);
-            long fileSize = snapshotable.write(outputStream);
-            logger.info("{} snapshot writing finished. File size {} bytes.", stateMachine, fileSize);
-
-            logger.info("{} compaction started.", log);
-            log.truncate(commitIndex);
-            logger.info("{} compaction finished.", log);
-
-            snapshotSender.setSnapshotDescriptor(descriptor);
-        } catch (Exception e) {
-            logger.info("Error producing snapshot. SnapshotDescriptor={}.", descriptor, e);
-        } finally {
-            snapshotable.end();
-        }
-    }
-
     private void logCompaction() throws LogException {
         if (configuration.getLogCompactionThreshold() == 0 ||
                 log.getCommitIndex() - log.getFirstIndex() < configuration.getLogCompactionThreshold()) {
@@ -511,7 +466,7 @@ public class RaftImpl implements Raft {
 
             return CompletableFuture.runAsync(() -> {
                 try {
-                    writeSnapshotAndCompactLog();
+                    snapshotSender.setSnapshotDescriptor(log.getSnapshotAndTruncate(stateMachine));
                 } catch (Exception e) {
                     logger.error(severe, "{} Snapshot/Log Compaction failed.", log, e);
                 }
@@ -552,7 +507,7 @@ public class RaftImpl implements Raft {
                                     if (e != null) {
                                         throw new IllegalStateException(e);
                                     }
-                                    loadFromSnapshot(new SnapshotDescriptor(file));
+                                    log.installSnapshot(stateMachine, new SnapshotDescriptor(file));
                                 } catch (Exception e1) {
                                     logger.error(severe, "Member: {}. SnapshotId: {}. Installation failed.",
                                             snapshotSenderMemberId,

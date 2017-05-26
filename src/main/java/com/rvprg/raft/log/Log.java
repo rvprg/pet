@@ -6,6 +6,8 @@ import java.util.List;
 
 import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
+import com.rvprg.raft.sm.SnapshotDescriptor;
+import com.rvprg.raft.sm.SnapshotInstallException;
 import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.transport.MemberId;
 
@@ -43,4 +45,8 @@ public interface Log extends Closeable {
     void truncate(long toIndex) throws LogException;
 
     void setFakeLogEntryAndCommit(long index, int term);
+
+    SnapshotDescriptor getSnapshotAndTruncate(StateMachine stateMachine) throws LogException;
+
+    void installSnapshot(StateMachine stateMachine, SnapshotDescriptor snapshotDescriptor) throws LogException, SnapshotInstallException;
 }

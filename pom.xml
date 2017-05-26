@@ -347,6 +347,11 @@
    <version>1.9</version>
    <scope>test</scope>
   </dependency>
+  <dependency>
+   <groupId>com.github.andrewoma.dexx</groupId>
+   <artifactId>collection</artifactId>
+   <version>0.7</version>
+  </dependency>
  </dependencies>
 
 </project>

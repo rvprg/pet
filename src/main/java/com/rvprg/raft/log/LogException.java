@@ -7,6 +7,10 @@ public class LogException extends Exception {
         super(cause);
     }
 
+    public LogException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
     public LogException() {
     }
 

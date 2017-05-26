@@ -74,7 +74,7 @@ public class RaftTest {
     }
 
     @Test
-    public void checkHeartbeatTimeout() throws InterruptedException, FileNotFoundException, SnapshotInstallException, IOException {
+    public void checkHeartbeatTimeout() throws InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
         Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).logUri(URI.create("file:///test")).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
@@ -374,7 +374,7 @@ public class RaftTest {
     }
 
     @Test
-    public void testConsumeVoteRequest_DontGiveVoteIfTermIsOutdated() throws InterruptedException, FileNotFoundException, SnapshotInstallException, IOException {
+    public void testConsumeVoteRequest_DontGiveVoteIfTermIsOutdated() throws InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
         Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).logUri(URI.create("file:///test")).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
@@ -406,7 +406,7 @@ public class RaftTest {
     @Test
     public void testConsumeVoteRequestResponse_CheckMajorityRule()
             throws NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, InterruptedException,
-            FileNotFoundException, SnapshotInstallException, IOException {
+            FileNotFoundException, SnapshotInstallException, IOException, LogException {
         Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).logUri(URI.create("file:///test")).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
@@ -499,7 +499,7 @@ public class RaftTest {
     @Test
     public void testConsumeVoteRequestResponse_CheckSateTerm()
             throws NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, InterruptedException,
-            FileNotFoundException, SnapshotInstallException, IOException {
+            FileNotFoundException, SnapshotInstallException, IOException, LogException {
         Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).logUri(URI.create("file:///test")).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
@@ -533,7 +533,7 @@ public class RaftTest {
     @Test(timeout = 30000)
     public void testCheckReplicationRetryTask()
             throws InterruptedException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException,
-            FileNotFoundException, SnapshotInstallException, IOException {
+            FileNotFoundException, SnapshotInstallException, IOException, LogException {
         // Creates 3 members. Sends a command. Waits until a retry has been sent
         // to each of the three members three times.
         ConcurrentHashMap<MemberId, CountDownLatch> latches = new ConcurrentHashMap<>();

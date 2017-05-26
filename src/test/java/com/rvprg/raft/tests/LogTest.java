@@ -6,7 +6,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,8 +25,10 @@ import com.rvprg.raft.log.LogException;
 import com.rvprg.raft.log.impl.LevelDBLogImpl;
 import com.rvprg.raft.log.impl.TransientLogImpl;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
+import com.rvprg.raft.sm.ReadableSnapshot;
 import com.rvprg.raft.sm.SnapshotInstallException;
 import com.rvprg.raft.sm.StateMachine;
+import com.rvprg.raft.sm.WritableSnapshot;
 import com.rvprg.raft.transport.MemberId;
 
 @RunWith(Parameterized.class)
@@ -235,8 +236,17 @@ public class LogTest {
             }
 
             @Override
-            public void installSnapshot(InputStream snapshot) throws SnapshotInstallException {
+            public void installSnapshot(ReadableSnapshot snapshot) throws SnapshotInstallException {
+                // TODO Auto-generated method stub
+
             }
+
+            @Override
+            public WritableSnapshot getWritableSnapshot() {
+                // TODO Auto-generated method stub
+                return null;
+            }
+
         };
 
         assertEquals(1, log.getCommitIndex());
@@ -290,8 +300,17 @@ public class LogTest {
             }
 
             @Override
-            public void installSnapshot(InputStream snapshot) throws SnapshotInstallException {
+            public void installSnapshot(ReadableSnapshot snapshot) throws SnapshotInstallException {
+                // TODO Auto-generated method stub
+
             }
+
+            @Override
+            public WritableSnapshot getWritableSnapshot() {
+                // TODO Auto-generated method stub
+                return null;
+            }
+
         });
 
         log.truncate(4);

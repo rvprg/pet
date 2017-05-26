@@ -36,12 +36,12 @@ import com.rvprg.raft.transport.MessageReceiver;
 
 public class RaftFunctionalTestBase {
     public Raft getRaft(String host, int port, Set<MemberId> nodes, RaftObserver raftObserver)
-            throws InterruptedException, FileNotFoundException, SnapshotInstallException, IOException {
+            throws InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
         return getRaft(host, port, nodes, 150, 300, raftObserver);
     }
 
     public Raft getRaft(String host, int port, Set<MemberId> nodes, int electionMinTimeout, int electionMaxTimeout, RaftObserver raftObserver)
-            throws InterruptedException, FileNotFoundException, SnapshotInstallException, IOException {
+            throws InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
         Configuration configuration = Configuration.newBuilder().memberId(new MemberId(host, port)).addMemberIds(nodes).electionMinTimeout(electionMinTimeout)
                 .electionMaxTimeout(electionMaxTimeout).logUri(URI.create("file:///test")).build();
 
@@ -68,12 +68,13 @@ public class RaftFunctionalTestBase {
             return ImmutableSet.copyOf(members);
         }
 
-        public RaftCluster(int clusterSize) throws NoSuchMethodException, SecurityException, InterruptedException, FileNotFoundException, SnapshotInstallException, IOException {
+        public RaftCluster(int clusterSize)
+                throws NoSuchMethodException, SecurityException, InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
             this(clusterSize, clusterSize, clusterSize, 250, 300);
         }
 
         public RaftCluster(int clusterSize, int startCountDownLatchCount, int shutdownCountDownLatchCount, int electionMinTimeout, int electionMaxTimeout)
-                throws NoSuchMethodException, SecurityException, InterruptedException, FileNotFoundException, SnapshotInstallException, IOException {
+                throws NoSuchMethodException, SecurityException, InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
             startLatch = new CountDownLatch(startCountDownLatchCount);
             shutdownLatch = new CountDownLatch(shutdownCountDownLatchCount);
 
@@ -97,17 +98,18 @@ public class RaftFunctionalTestBase {
         }
 
         public RaftCluster(int clusterSize, final RaftObserver observer)
-                throws NoSuchMethodException, SecurityException, InterruptedException, FileNotFoundException, SnapshotInstallException, IOException {
+                throws NoSuchMethodException, SecurityException, InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
             this(clusterSize, 250, 300, observer);
         }
 
         public RaftCluster(int clusterSize, int electionMinTimeout, int electionMaxTimeout, final RaftObserver observer)
-                throws NoSuchMethodException, SecurityException, InterruptedException, FileNotFoundException, SnapshotInstallException, IOException {
+                throws NoSuchMethodException, SecurityException, InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
             this(clusterSize, clusterSize, clusterSize, electionMinTimeout, electionMaxTimeout, observer);
         }
 
         public RaftCluster(int clusterSize, int startCountDownLatchCount, int shutdownCountDownLatchCount, int electionMinTimeout, int electionMaxTimeout,
-                final RaftObserver observer) throws NoSuchMethodException, SecurityException, InterruptedException, FileNotFoundException, SnapshotInstallException, IOException {
+                final RaftObserver observer)
+                throws NoSuchMethodException, SecurityException, InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
             startLatch = new CountDownLatch(startCountDownLatchCount);
             shutdownLatch = new CountDownLatch(shutdownCountDownLatchCount);
 
@@ -253,7 +255,7 @@ public class RaftFunctionalTestBase {
         }
 
         public List<Raft> createRafts(Set<MemberId> members, int electionMinTimeout, int electionMaxTimeout, RaftObserver observer)
-                throws InterruptedException, FileNotFoundException, SnapshotInstallException, IOException {
+                throws InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
             List<Raft> rafts = new ArrayList<Raft>();
             for (MemberId member : members) {
                 Set<MemberId> peers = (new HashSet<MemberId>(members));

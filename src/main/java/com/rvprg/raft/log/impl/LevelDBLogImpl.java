@@ -4,6 +4,7 @@ import static org.fusesource.leveldbjni.JniDBFactory.factory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -23,7 +24,10 @@ import com.rvprg.raft.log.LogEntryFactory;
 import com.rvprg.raft.log.LogException;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
+import com.rvprg.raft.sm.SnapshotDescriptor;
+import com.rvprg.raft.sm.SnapshotInstallException;
 import com.rvprg.raft.sm.StateMachine;
+import com.rvprg.raft.sm.WritableSnapshot;
 import com.rvprg.raft.transport.MemberId;
 
 public class LevelDBLogImpl implements Log {
@@ -360,6 +364,62 @@ public class LevelDBLogImpl implements Log {
             this.fakeIndex = index;
             this.fakeTerm = term;
             setCommitIndex(fakeIndex);
+        } finally {
+            stateLock.writeLock().unlock();
+        }
+    }
+
+    @Override
+    public SnapshotDescriptor getSnapshotAndTruncate(StateMachine stateMachine) throws LogException {
+        stateLock.writeLock().lock();
+        OutputStream snapshotOutputStream = null;
+        SnapshotDescriptor snapshotDescriptor = null;
+        WritableSnapshot writableSnapshot = null;
+        long commitIndex = 0;
+        try {
+            commitIndex = getCommitIndex();
+            LogEntry logEntry = get(commitIndex);
+            int term = logEntry.getTerm();
+            snapshotDescriptor = new SnapshotDescriptor(configuration.getSnapshotFolderPath(), commitIndex, term);
+            writableSnapshot = stateMachine.getWritableSnapshot();
+        } catch (Exception e) {
+            logger.error("Error producing snapshot. ", e);
+            throw new LogException("Error producing snapshot. ", e);
+        } finally {
+            stateLock.writeLock().unlock();
+        }
+
+        try {
+            logger.info("{} snapshot writing started. SnapshotDescriptor={}.", stateMachine, snapshotDescriptor);
+            snapshotOutputStream = snapshotDescriptor.getOutputStream();
+            writableSnapshot.write(snapshotOutputStream);
+            logger.info("{} snapshot writing finished. File size {} bytes.", stateMachine, snapshotDescriptor.getSize());
+
+            logger.info("{} compaction started.", this);
+            truncate(commitIndex);
+            logger.info("{} compaction finished.", this);
+
+            return snapshotDescriptor;
+        } catch (Exception e) {
+            logger.error("Error producing snapshot. SnapshotDescriptor={}.", snapshotDescriptor, e);
+            throw new LogException("Error producing snapshot. ", e);
+        } finally {
+            if (snapshotOutputStream != null) {
+                try {
+                    snapshotOutputStream.close();
+                } catch (IOException e) {
+                    logger.error("Error closing outputStream.", e);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void installSnapshot(StateMachine stateMachine, SnapshotDescriptor snapshotDescriptor) throws LogException, SnapshotInstallException {
+        stateLock.writeLock().lock();
+        try {
+            stateMachine.installSnapshot(snapshotDescriptor);
+            setFakeLogEntryAndCommit(snapshotDescriptor.getIndex(), snapshotDescriptor.getTerm());
         } finally {
             stateLock.writeLock().unlock();
         }

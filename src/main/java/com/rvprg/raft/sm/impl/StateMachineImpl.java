@@ -1,9 +1,9 @@
 package com.rvprg.raft.sm.impl;
 
-import java.io.InputStream;
-
+import com.rvprg.raft.sm.ReadableSnapshot;
 import com.rvprg.raft.sm.SnapshotInstallException;
 import com.rvprg.raft.sm.StateMachine;
+import com.rvprg.raft.sm.WritableSnapshot;
 
 public class StateMachineImpl implements StateMachine {
 
@@ -13,7 +13,14 @@ public class StateMachineImpl implements StateMachine {
     }
 
     @Override
-    public void installSnapshot(InputStream snapshot) throws SnapshotInstallException {
-        // TODO Auto-generated method stub
+    public void installSnapshot(ReadableSnapshot snapshot) throws SnapshotInstallException {
+        // TODO
     }
+
+    @Override
+    public WritableSnapshot getWritableSnapshot() {
+        // TODO
+        return null;
+    }
+
 }

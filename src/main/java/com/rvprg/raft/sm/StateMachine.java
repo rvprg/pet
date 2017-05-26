@@ -1,7 +1,5 @@
 package com.rvprg.raft.sm;
 
-import java.io.InputStream;
-
 /**
  * All state machines implement this interface. The machines may implement
  * snapshot writing by implementing {@link Snapshotable}.
@@ -21,5 +19,12 @@ public interface StateMachine {
      *
      * @param snapshot
      */
-    void installSnapshot(InputStream snapshot) throws SnapshotInstallException;
+    void installSnapshot(ReadableSnapshot snapshot) throws SnapshotInstallException;
+
+    /**
+     * Returns a writable snapshot.
+     *
+     * @return snapshot
+     */
+    WritableSnapshot getWritableSnapshot();
 }

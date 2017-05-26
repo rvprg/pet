@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
 
 import com.rvprg.raft.log.LogEntryFactory;
+import com.rvprg.raft.log.LogException;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftObserver;
 import com.rvprg.raft.protocol.impl.RaftImpl;
@@ -27,7 +28,7 @@ public class RaftElectionSafetyTest extends RaftFunctionalTestBase {
     @Test(timeout = 60000)
     public void testElectionSafetyProperty_OneLeaderPerTerm()
             throws InterruptedException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException,
-            InvocationTargetException, FileNotFoundException, SnapshotInstallException, IOException {
+            InvocationTargetException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
         // This test creates a cluster containing clusterSize members. It then
         // starts all of them, and waits until a leader is elected. Then it
         // kills the leader by stopping heartbeating. A new leader is elected.
@@ -87,7 +88,7 @@ public class RaftElectionSafetyTest extends RaftFunctionalTestBase {
     @Test(timeout = 60000)
     public void testElectionSafetyProperty_MostUpToDateLogWins_Case1()
             throws InterruptedException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException,
-            FileNotFoundException, SnapshotInstallException, IOException {
+            FileNotFoundException, SnapshotInstallException, IOException, LogException {
         // This test creates a cluster containing clusterSize members. It then
         // creates a few entries in the log of the majority of the
         // candidates. Then it starts the election process and checks if a
@@ -127,7 +128,7 @@ public class RaftElectionSafetyTest extends RaftFunctionalTestBase {
     @Test(timeout = 60000)
     public void testElectionSafetyProperty_MostUpToDateLogWins_Case2()
             throws InterruptedException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException,
-            FileNotFoundException, SnapshotInstallException, IOException {
+            FileNotFoundException, SnapshotInstallException, IOException, LogException {
         // This test creates a cluster containing clusterSize members. It then
         // creates a few entries in the log of the majority of the
         // candidates. Then it starts the election process and checks if a

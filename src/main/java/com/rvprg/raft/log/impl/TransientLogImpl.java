@@ -11,6 +11,8 @@ import com.rvprg.raft.log.LogEntryFactory;
 import com.rvprg.raft.log.LogException;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
+import com.rvprg.raft.sm.SnapshotDescriptor;
+import com.rvprg.raft.sm.SnapshotInstallException;
 import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.transport.MemberId;
 
@@ -195,6 +197,16 @@ public class TransientLogImpl implements Log {
         this.fakeIndex = index;
         this.fakeTerm = term;
         commitIndex = (int) index;
+    }
+
+    @Override
+    public SnapshotDescriptor getSnapshotAndTruncate(StateMachine stateMachine) throws LogException {
+        throw new LogException("Not implemented");
+    }
+
+    @Override
+    public void installSnapshot(StateMachine stateMachine, SnapshotDescriptor snapshotDescriptor) throws LogException, SnapshotInstallException {
+        throw new LogException("Not implemented");
     }
 
 }
