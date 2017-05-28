@@ -12,9 +12,9 @@ import java.util.concurrent.TimeoutException;
 import org.junit.Test;
 
 import com.rvprg.raft.log.LogException;
+import com.rvprg.raft.protocol.ApplyCommandResult;
 import com.rvprg.raft.protocol.Raft;
-import com.rvprg.raft.protocol.impl.ApplyCommandResult;
-import com.rvprg.raft.protocol.impl.RaftImpl;
+import com.rvprg.raft.protocol.RaftImpl;
 import com.rvprg.raft.sm.SnapshotInstallException;
 
 public class RaftLogConsistencyTest extends RaftFunctionalTestBase {

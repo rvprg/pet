@@ -1,8 +1,4 @@
-package com.rvprg.raft.sm.impl;
-
-import com.rvprg.raft.sm.CommandDeserializer;
-import com.rvprg.raft.sm.CommandSerde;
-import com.rvprg.raft.sm.CommandSerializer;
+package com.rvprg.raft.sm;
 
 import net.jcip.annotations.ThreadSafe;
 

@@ -1,4 +1,4 @@
-package com.rvprg.raft.log.impl;
+package com.rvprg.raft.log;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -6,9 +6,6 @@ import java.util.List;
 
 import com.google.protobuf.ByteString;
 import com.rvprg.raft.configuration.Configuration;
-import com.rvprg.raft.log.Log;
-import com.rvprg.raft.log.LogEntryFactory;
-import com.rvprg.raft.log.LogException;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
 import com.rvprg.raft.sm.SnapshotDescriptor;

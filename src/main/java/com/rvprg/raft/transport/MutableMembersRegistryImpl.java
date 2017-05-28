@@ -1,13 +1,10 @@
-package com.rvprg.raft.transport.impl;
+package com.rvprg.raft.transport;
 
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.google.common.collect.ImmutableSet;
-import com.rvprg.raft.transport.MutableMembersRegistry;
-import com.rvprg.raft.transport.Member;
-import com.rvprg.raft.transport.MemberId;
 
 import net.jcip.annotations.ThreadSafe;
 

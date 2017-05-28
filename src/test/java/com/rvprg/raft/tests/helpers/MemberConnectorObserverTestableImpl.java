@@ -2,8 +2,8 @@ package com.rvprg.raft.tests.helpers;
 
 import java.util.concurrent.SynchronousQueue;
 
+import com.rvprg.raft.protocol.MemberConnectorObserverImpl;
 import com.rvprg.raft.protocol.MessageConsumer;
-import com.rvprg.raft.protocol.impl.MemberConnectorObserverImpl;
 import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.ChannelPipelineInitializer;

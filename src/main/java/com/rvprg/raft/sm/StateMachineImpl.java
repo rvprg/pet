@@ -1,9 +1,4 @@
-package com.rvprg.raft.sm.impl;
-
-import com.rvprg.raft.sm.ReadableSnapshot;
-import com.rvprg.raft.sm.SnapshotInstallException;
-import com.rvprg.raft.sm.StateMachine;
-import com.rvprg.raft.sm.WritableSnapshot;
+package com.rvprg.raft.sm;
 
 public class StateMachineImpl implements StateMachine {
 

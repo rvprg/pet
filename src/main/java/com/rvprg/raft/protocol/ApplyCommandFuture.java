@@ -1,4 +1,4 @@
-package com.rvprg.raft.protocol.impl;
+package com.rvprg.raft.protocol;
 
 import java.util.concurrent.CompletableFuture;
 

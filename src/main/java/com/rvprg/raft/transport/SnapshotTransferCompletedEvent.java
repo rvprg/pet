@@ -1,7 +1,6 @@
-package com.rvprg.raft.transport.impl;
+package com.rvprg.raft.transport;
 
 import com.rvprg.raft.sm.SnapshotDescriptor;
-import com.rvprg.raft.transport.MemberId;
 
 import io.netty.channel.Channel;
 

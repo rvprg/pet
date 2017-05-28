@@ -1,7 +1,5 @@
-package com.rvprg.raft.protocol.impl;
+package com.rvprg.raft.protocol;
 
-import com.rvprg.raft.protocol.Raft;
-import com.rvprg.raft.protocol.RaftObserver;
 import com.rvprg.raft.transport.MemberId;
 
 public class RaftObserverImpl implements RaftObserver {

@@ -1,11 +1,8 @@
-package com.rvprg.raft.transport.impl;
+package com.rvprg.raft.transport;
 
 import com.google.inject.Inject;
 import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.protocol.MessageConsumer;
-import com.rvprg.raft.transport.ChannelPipelineInitializer;
-import com.rvprg.raft.transport.MemberId;
-import com.rvprg.raft.transport.MessageReceiver;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelOption;

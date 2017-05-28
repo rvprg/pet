@@ -1,4 +1,4 @@
-package com.rvprg.raft.transport.impl;
+package com.rvprg.raft.transport;
 
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -11,12 +11,6 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.Inject;
 import com.rvprg.raft.configuration.Configuration;
-import com.rvprg.raft.transport.MutableMembersRegistry;
-import com.rvprg.raft.transport.Member;
-import com.rvprg.raft.transport.MemberConnector;
-import com.rvprg.raft.transport.MemberConnectorObserver;
-import com.rvprg.raft.transport.MemberId;
-import com.rvprg.raft.transport.MembersRegistry;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;

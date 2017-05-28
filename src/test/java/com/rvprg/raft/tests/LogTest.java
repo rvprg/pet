@@ -19,11 +19,11 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import com.rvprg.raft.configuration.Configuration;
+import com.rvprg.raft.log.LevelDBLogImpl;
 import com.rvprg.raft.log.Log;
 import com.rvprg.raft.log.LogEntryFactory;
 import com.rvprg.raft.log.LogException;
-import com.rvprg.raft.log.impl.LevelDBLogImpl;
-import com.rvprg.raft.log.impl.TransientLogImpl;
+import com.rvprg.raft.log.TransientLogImpl;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.sm.ReadableSnapshot;
 import com.rvprg.raft.sm.SnapshotInstallException;
@@ -321,5 +321,4 @@ public class LogTest {
         assertNull(log.get(3));
         assertNotNull(log.get(4));
     }
-
 }

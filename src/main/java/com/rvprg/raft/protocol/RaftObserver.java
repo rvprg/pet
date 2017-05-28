@@ -1,6 +1,5 @@
 package com.rvprg.raft.protocol;
 
-import com.rvprg.raft.protocol.impl.RaftObserverImpl;
 import com.rvprg.raft.transport.MemberId;
 
 public interface RaftObserver {

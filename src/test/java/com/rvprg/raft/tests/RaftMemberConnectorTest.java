@@ -14,7 +14,7 @@ import com.google.inject.Injector;
 import com.rvprg.raft.Module;
 import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.protocol.MessageConsumer;
-import com.rvprg.raft.protocol.impl.RaftMemberConnector;
+import com.rvprg.raft.protocol.RaftMemberConnector;
 import com.rvprg.raft.tests.helpers.EchoServer;
 import com.rvprg.raft.tests.helpers.MemberConnectorObserverTestableImpl;
 import com.rvprg.raft.transport.ChannelPipelineInitializer;

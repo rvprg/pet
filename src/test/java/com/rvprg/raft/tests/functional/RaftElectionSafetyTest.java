@@ -19,9 +19,9 @@ import org.junit.Test;
 import com.rvprg.raft.log.LogEntryFactory;
 import com.rvprg.raft.log.LogException;
 import com.rvprg.raft.protocol.Raft;
+import com.rvprg.raft.protocol.RaftImpl;
 import com.rvprg.raft.protocol.RaftObserver;
-import com.rvprg.raft.protocol.impl.RaftImpl;
-import com.rvprg.raft.protocol.impl.RaftObserverImpl;
+import com.rvprg.raft.protocol.RaftObserverImpl;
 import com.rvprg.raft.sm.SnapshotInstallException;
 
 public class RaftElectionSafetyTest extends RaftFunctionalTestBase {

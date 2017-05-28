@@ -1,4 +1,4 @@
-package com.rvprg.raft.log.impl;
+package com.rvprg.raft.log;
 
 import static org.fusesource.leveldbjni.JniDBFactory.factory;
 
@@ -18,10 +18,6 @@ import org.slf4j.LoggerFactory;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.rvprg.raft.configuration.Configuration;
-import com.rvprg.raft.log.ByteUtils;
-import com.rvprg.raft.log.Log;
-import com.rvprg.raft.log.LogEntryFactory;
-import com.rvprg.raft.log.LogException;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
 import com.rvprg.raft.sm.SnapshotDescriptor;

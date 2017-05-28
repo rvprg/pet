@@ -19,10 +19,10 @@ import org.junit.Test;
 import com.google.common.io.Files;
 import com.rvprg.raft.sm.SnapshotDescriptor;
 import com.rvprg.raft.tests.helpers.NetworkUtils;
+import com.rvprg.raft.transport.ChannelPipelineInitializerImpl;
 import com.rvprg.raft.transport.MemberId;
-import com.rvprg.raft.transport.impl.ChannelPipelineInitializerImpl;
-import com.rvprg.raft.transport.impl.SnapshotReceiver;
-import com.rvprg.raft.transport.impl.SnapshotSender;
+import com.rvprg.raft.transport.SnapshotReceiver;
+import com.rvprg.raft.transport.SnapshotSender;
 
 public class SnapshotExchangeTest {
     @Test(timeout = 60000)

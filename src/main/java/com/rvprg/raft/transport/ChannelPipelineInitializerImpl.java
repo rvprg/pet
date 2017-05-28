@@ -1,11 +1,10 @@
-package com.rvprg.raft.transport.impl;
+package com.rvprg.raft.transport;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import com.google.common.collect.ImmutableList;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage;
-import com.rvprg.raft.transport.ChannelPipelineInitializer;
 
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.protobuf.ProtobufDecoder;

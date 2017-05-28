@@ -1,4 +1,4 @@
-package com.rvprg.raft.transport.impl;
+package com.rvprg.raft.transport;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory;
 import com.google.inject.Inject;
 import com.rvprg.raft.protocol.MessageConsumer;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage;
-import com.rvprg.raft.transport.Member;
 
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;

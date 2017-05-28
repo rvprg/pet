@@ -1,4 +1,4 @@
-package com.rvprg.raft.transport.impl;
+package com.rvprg.raft.transport;
 
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -7,10 +7,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.inject.Inject;
-import com.rvprg.raft.transport.MutableMembersRegistry;
-import com.rvprg.raft.transport.Member;
-import com.rvprg.raft.transport.MemberConnector;
-import com.rvprg.raft.transport.MemberId;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;

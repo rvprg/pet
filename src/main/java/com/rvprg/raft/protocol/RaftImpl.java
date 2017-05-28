@@ -1,4 +1,4 @@
-package com.rvprg.raft.protocol.impl;
+package com.rvprg.raft.protocol;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -29,9 +29,6 @@ import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.log.Log;
 import com.rvprg.raft.log.LogEntryFactory;
 import com.rvprg.raft.log.LogException;
-import com.rvprg.raft.protocol.Raft;
-import com.rvprg.raft.protocol.RaftObserver;
-import com.rvprg.raft.protocol.Role;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntries;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntriesResponse;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.DynamicMembershipChangeCommand;
@@ -52,14 +49,14 @@ import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.MessageReceiver;
-import com.rvprg.raft.transport.impl.SnapshotReceiver;
-import com.rvprg.raft.transport.impl.SnapshotSender;
-import com.rvprg.raft.transport.impl.SnapshotTransferCompletedEvent;
-import com.rvprg.raft.transport.impl.SnapshotTransferConnectionClosedEvent;
-import com.rvprg.raft.transport.impl.SnapshotTransferConnectionOpenEvent;
-import com.rvprg.raft.transport.impl.SnapshotTransferEvent;
-import com.rvprg.raft.transport.impl.SnapshotTransferExceptionThrownEvent;
-import com.rvprg.raft.transport.impl.SnapshotTransferStartedEvent;
+import com.rvprg.raft.transport.SnapshotReceiver;
+import com.rvprg.raft.transport.SnapshotSender;
+import com.rvprg.raft.transport.SnapshotTransferCompletedEvent;
+import com.rvprg.raft.transport.SnapshotTransferConnectionClosedEvent;
+import com.rvprg.raft.transport.SnapshotTransferConnectionOpenEvent;
+import com.rvprg.raft.transport.SnapshotTransferEvent;
+import com.rvprg.raft.transport.SnapshotTransferExceptionThrownEvent;
+import com.rvprg.raft.transport.SnapshotTransferStartedEvent;
 
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoopGroup;

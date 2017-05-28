@@ -1,6 +1,5 @@
-package com.rvprg.raft.protocol.impl;
+package com.rvprg.raft.protocol;
 
-import com.rvprg.raft.protocol.SimpleCommandResult;
 import com.rvprg.raft.transport.MemberId;
 
 public class RemoveCatchingUpMemberResult extends SimpleCommandResult<Boolean> {

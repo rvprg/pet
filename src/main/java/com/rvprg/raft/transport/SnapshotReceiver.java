@@ -1,4 +1,4 @@
-package com.rvprg.raft.transport.impl;
+package com.rvprg.raft.transport;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -12,8 +12,6 @@ import org.slf4j.LoggerFactory;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage.MessageType;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.SnapshotDownloadRequest;
-import com.rvprg.raft.transport.ChannelPipelineInitializer;
-import com.rvprg.raft.transport.MemberId;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
