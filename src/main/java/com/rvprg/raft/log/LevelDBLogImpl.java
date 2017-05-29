@@ -20,11 +20,10 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
-import com.rvprg.raft.sm.SnapshotDescriptor;
-import com.rvprg.raft.sm.SnapshotInstallException;
 import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.sm.WritableSnapshot;
 import com.rvprg.raft.transport.MemberId;
+import com.rvprg.raft.transport.SnapshotDescriptor;
 
 public class LevelDBLogImpl implements Log {
     private final Logger logger = LoggerFactory.getLogger(LevelDBLogImpl.class);

@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage.MessageType;
-import com.rvprg.raft.sm.SnapshotDescriptor;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;

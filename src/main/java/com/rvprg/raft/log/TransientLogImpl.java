@@ -8,10 +8,9 @@ import com.google.protobuf.ByteString;
 import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
-import com.rvprg.raft.sm.SnapshotDescriptor;
-import com.rvprg.raft.sm.SnapshotInstallException;
 import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.transport.MemberId;
+import com.rvprg.raft.transport.SnapshotDescriptor;
 
 public class TransientLogImpl implements Log {
     private final ArrayList<LogEntry> log = new ArrayList<LogEntry>();

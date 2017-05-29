@@ -1,5 +1,7 @@
 package com.rvprg.raft.sm;
 
+import com.rvprg.raft.log.SnapshotInstallException;
+
 public class StateMachineImpl implements StateMachine {
 
     @Override

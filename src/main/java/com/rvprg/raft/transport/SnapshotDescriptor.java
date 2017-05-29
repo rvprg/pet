@@ -1,4 +1,4 @@
-package com.rvprg.raft.sm;
+package com.rvprg.raft.transport;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -18,6 +18,7 @@ import java.util.regex.Pattern;
 import org.apache.commons.codec.binary.Hex;
 
 import com.rvprg.raft.log.ByteUtils;
+import com.rvprg.raft.sm.ReadableSnapshot;
 
 public class SnapshotDescriptor implements ReadableSnapshot {
     private final File fileName;

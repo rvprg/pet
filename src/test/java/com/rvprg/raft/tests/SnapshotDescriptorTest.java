@@ -10,7 +10,7 @@ import java.util.Random;
 import org.junit.Test;
 
 import com.google.common.io.Files;
-import com.rvprg.raft.sm.SnapshotDescriptor;
+import com.rvprg.raft.transport.SnapshotDescriptor;
 
 public class SnapshotDescriptorTest {
     @Test

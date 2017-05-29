@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
 
 import com.rvprg.raft.log.LogException;
+import com.rvprg.raft.log.SnapshotInstallException;
 import com.rvprg.raft.protocol.AddCatchingUpMemberResult;
 import com.rvprg.raft.protocol.ApplyCommandResult;
 import com.rvprg.raft.protocol.Raft;
@@ -26,7 +27,6 @@ import com.rvprg.raft.protocol.RaftMemberConnector;
 import com.rvprg.raft.protocol.RaftObserver;
 import com.rvprg.raft.protocol.RaftObserverImpl;
 import com.rvprg.raft.protocol.Role;
-import com.rvprg.raft.sm.SnapshotInstallException;
 import com.rvprg.raft.tests.helpers.NetworkUtils;
 import com.rvprg.raft.transport.MemberId;
 
