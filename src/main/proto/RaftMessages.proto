@@ -26,6 +26,9 @@ message SnapshotDownloadRequest {
     required string memberId = 1;
     required string snapshotId = 2;
     required uint64 size = 3;
+    required uint32 term = 4;
+    required uint64 index = 5;
+    repeated string members = 6;
 }
 
 message RequestVote {
