@@ -60,7 +60,7 @@ public class SnapshotSender {
                 ctx.channel().close();
                 return;
             }
-            eventCallback.accept(new SnapshotTransferConnectionOpenEvent(memberId, ctx.channel(), snapshot));
+            eventCallback.accept(new SnapshotTransferConnectionOpenedEvent(memberId, ctx.channel(), snapshot));
         }
 
         @Override

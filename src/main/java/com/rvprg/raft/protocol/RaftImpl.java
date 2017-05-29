@@ -53,7 +53,7 @@ import com.rvprg.raft.transport.SnapshotReceiver;
 import com.rvprg.raft.transport.SnapshotSender;
 import com.rvprg.raft.transport.SnapshotTransferCompletedEvent;
 import com.rvprg.raft.transport.SnapshotTransferConnectionClosedEvent;
-import com.rvprg.raft.transport.SnapshotTransferConnectionOpenEvent;
+import com.rvprg.raft.transport.SnapshotTransferConnectionOpenedEvent;
 import com.rvprg.raft.transport.SnapshotTransferEvent;
 import com.rvprg.raft.transport.SnapshotTransferExceptionThrownEvent;
 import com.rvprg.raft.transport.SnapshotTransferStartedEvent;
@@ -176,8 +176,8 @@ public class RaftImpl implements Raft {
     }
 
     private void snapshotSenderEventHandler(SnapshotTransferEvent x) {
-        if (x instanceof SnapshotTransferConnectionOpenEvent) {
-            SnapshotTransferConnectionOpenEvent event = (SnapshotTransferConnectionOpenEvent) x;
+        if (x instanceof SnapshotTransferConnectionOpenedEvent) {
+            SnapshotTransferConnectionOpenedEvent event = (SnapshotTransferConnectionOpenedEvent) x;
             logger.info("MemberId: {} connected to the snapshot sender. SnapshotDescriptor: {}.", event.getMemberId(), event.getSnapshotDescriptor());
             Channel prevValue = snapshotRecipients.put(event.getMemberId(), event.getChannel());
             if (prevValue != null) {
