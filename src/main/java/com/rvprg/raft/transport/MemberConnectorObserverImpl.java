@@ -1,11 +1,7 @@
-package com.rvprg.raft.protocol;
+package com.rvprg.raft.transport;
 
 import com.google.inject.Inject;
-import com.rvprg.raft.transport.ChannelPipelineInitializer;
-import com.rvprg.raft.transport.Member;
-import com.rvprg.raft.transport.MemberConnectorObserver;
-import com.rvprg.raft.transport.MemberId;
-import com.rvprg.raft.transport.MessageDispatcher;
+import com.rvprg.raft.protocol.MessageConsumer;
 
 import net.jcip.annotations.Immutable;
 

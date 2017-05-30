@@ -45,6 +45,7 @@ import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.transport.ChannelPipelineInitializer;
 import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnector;
+import com.rvprg.raft.transport.MemberConnectorObserverImpl;
 import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.MessageReceiver;
 import com.rvprg.raft.transport.SnapshotDescriptor;

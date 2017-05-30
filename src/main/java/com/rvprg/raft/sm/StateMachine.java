@@ -3,8 +3,7 @@ package com.rvprg.raft.sm;
 import com.rvprg.raft.log.SnapshotInstallException;
 
 /**
- * All state machines implement this interface. The machines may implement
- * snapshot writing by implementing {@link Snapshotable}.
+ * All state machines implement this interface.
  */
 public interface StateMachine {
     /**
