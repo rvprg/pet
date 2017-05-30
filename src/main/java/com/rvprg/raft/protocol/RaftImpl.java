@@ -45,7 +45,7 @@ import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.transport.ChannelPipelineInitializer;
 import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnector;
-import com.rvprg.raft.transport.MemberConnectorObserverImpl;
+import com.rvprg.raft.transport.MemberConnectorListenerImpl;
 import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.MessageReceiver;
 import com.rvprg.raft.transport.SnapshotDescriptor;
@@ -99,7 +99,7 @@ public class RaftImpl implements Raft {
     @GuardedBy("dynamicMembershipChangeLock")
     private ApplyCommandResult dynamicMembershipChangeInProgress = null;
 
-    private final RaftObserver observer;
+    private final RaftListener listener;
 
     private final Object stateLock = new Object();
     @GuardedBy("stateLock")
@@ -117,7 +117,7 @@ public class RaftImpl implements Raft {
     @GuardedBy("stateLock")
     private AtomicReference<EventLoopGroup> eventLoop = new AtomicReference<EventLoopGroup>(null);
 
-    private final MemberConnectorObserverImpl memberConnectorObserver;
+    private final MemberConnectorListenerImpl memberConnectorListener;
 
     private final Random random;
 
@@ -127,14 +127,14 @@ public class RaftImpl implements Raft {
     private final ChannelPipelineInitializer channelPipelineInitializer;
 
     @Inject
-    public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine, RaftObserver observer)
+    public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine, RaftListener listener)
             throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException, LogException {
-        this(configuration, memberConnector, messageReceiver, log, stateMachine, log.getTerm(), Role.Follower, observer);
+        this(configuration, memberConnector, messageReceiver, log, stateMachine, log.getTerm(), Role.Follower, listener);
     }
 
     public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine,
             int initTerm, Role initRole,
-            RaftObserver observer) throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException, LogException {
+            RaftListener listener) throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException, LogException {
         this.memberConnector = new RaftMemberConnector(memberConnector);
         this.messageReceiver = messageReceiver;
         this.selfId = messageReceiver.getMemberId();
@@ -144,7 +144,7 @@ public class RaftImpl implements Raft {
         this.leader = null;
         this.configuration = configuration;
         this.random = new Random();
-        this.observer = observer == null ? RaftObserver.getDefaultInstance() : observer;
+        this.listener = listener == null ? RaftListener.getDefaultInstance() : listener;
         this.stateMachine = stateMachine;
         this.votedFor = log.getVotedFor();
         this.channelPipelineInitializer = messageReceiver.getChannelPipelineInitializer();
@@ -155,8 +155,8 @@ public class RaftImpl implements Raft {
                     snapshotSenderEventHandler(x);
                 });
         initializeFromTheLatestSnapshot();
-        memberConnectorObserver = new MemberConnectorObserverImpl(this, this.channelPipelineInitializer);
-        configuration.getMemberIds().forEach(memberId -> memberConnector.register(memberId, memberConnectorObserver));
+        memberConnectorListener = new MemberConnectorListenerImpl(this, this.channelPipelineInitializer);
+        configuration.getMemberIds().forEach(memberId -> memberConnector.register(memberId, memberConnectorListener));
     }
 
     private void initializeFromTheLatestSnapshot()
@@ -224,7 +224,7 @@ public class RaftImpl implements Raft {
                 scheduleHeartbeatMonitorTask();
             }
             started = true;
-            observer.started();
+            listener.started();
             memberConnector.getRegisteredMemberIds().forEach(
                     memberId -> replicationRetryTasks.put(memberId, new AtomicReference<ScheduledFuture<?>>(null)));
         }
@@ -240,7 +240,7 @@ public class RaftImpl implements Raft {
             snapshotSender.shutdown();
             eventLoop.get().shutdownGracefully();
             started = false;
-            observer.shutdown();
+            listener.shutdown();
         }
     }
 
@@ -283,7 +283,7 @@ public class RaftImpl implements Raft {
     public void consumeRequestVoteResponse(Member member, RequestVoteResponse requestVoteResponse) {
         boolean ignoreMessage = checkTermRecency(requestVoteResponse.getTerm());
         if (ignoreMessage) {
-            observer.voteRejected();
+            listener.voteRejected();
             return;
         }
 
@@ -295,11 +295,11 @@ public class RaftImpl implements Raft {
             boolean sameTerm = requestVoteResponse.getTerm() == getCurrentTerm();
 
             if (sameTerm && requestVoteResponse.getVoteGranted()) {
-                observer.voteReceived();
+                listener.voteReceived();
                 ++votesReceived;
                 logger.debug("Member: {}. Term: {}. Votes received: {}.", selfId, getCurrentTerm(), votesReceived);
             } else {
-                observer.voteRejected();
+                listener.voteRejected();
             }
 
             if (votesReceived >= getMajority()) {
@@ -347,7 +347,7 @@ public class RaftImpl implements Raft {
                     });
         }
         applyNoOperationCommand();
-        observer.electionWon(getCurrentTerm(), this);
+        listener.electionWon(getCurrentTerm(), this);
     }
 
     private void updateMemberIdRelatedBookkeeping(MemberId memberId) {
@@ -532,7 +532,7 @@ public class RaftImpl implements Raft {
                 if (command.getType() == CommandType.AddMember) {
                     logger.info("Member: {}. Term: {}. Adding {} to the cluster.", selfId, getCurrentTerm(), memberId);
                     if (!memberId.equals(selfId)) {
-                        memberConnector.register(memberId, memberConnectorObserver);
+                        memberConnector.register(memberId, memberConnectorListener);
                         memberConnector.connect(memberId);
                     }
                 } else {
@@ -616,7 +616,7 @@ public class RaftImpl implements Raft {
     }
 
     private void processHeartbeat(AppendEntries heartbeat) {
-        observer.heartbeatReceived();
+        listener.heartbeatReceived();
         scheduleHeartbeatMonitorTask();
     }
 
@@ -643,7 +643,7 @@ public class RaftImpl implements Raft {
     }
 
     private ScheduledFuture<?> getNextElectionTask() {
-        observer.nextElectionScheduled();
+        listener.nextElectionScheduled();
         final int timeout = random.nextInt(configuration.getElectionMaxTimeout() - configuration.getElectionMinTimeout()) + configuration.getElectionMinTimeout();
         return eventLoop.get().schedule(() -> RaftImpl.this.heartbeatTimedout(), timeout, TimeUnit.MILLISECONDS);
     }
@@ -722,7 +722,7 @@ public class RaftImpl implements Raft {
 
     private void scheduleAppendEntriesRetry(MemberId memberId) {
         try {
-            observer.appendEntriesRetryScheduled(memberId);
+            listener.appendEntriesRetryScheduled(memberId);
             ScheduledFuture<?> future = eventLoop.get().schedule(() -> this.scheduleAppendEntries(memberId), configuration.getReplicationRetryInterval(), TimeUnit.MILLISECONDS);
             cancelTask(replicationRetryTasks.get(memberId).getAndSet(future));
         } catch (RejectedExecutionException e) {
@@ -776,13 +776,13 @@ public class RaftImpl implements Raft {
     }
 
     private void electionTimedout() {
-        observer.electionTimedout();
+        listener.electionTimedout();
         logger.debug("Member: {}. Term: {}. Election timedout.", selfId, getCurrentTerm());
         initiateElection();
     }
 
     private void heartbeatTimedout() {
-        observer.heartbeatTimedout();
+        listener.heartbeatTimedout();
         initiateElection();
     }
 
@@ -986,7 +986,7 @@ public class RaftImpl implements Raft {
             throw new IllegalArgumentException("Member has already been added");
         }
 
-        memberConnector.registerAsCatchingUpMember(memberId, memberConnectorObserver);
+        memberConnector.registerAsCatchingUpMember(memberId, memberConnectorListener);
         memberConnector.connect(memberId);
 
         updateMemberIdRelatedBookkeeping(memberId);

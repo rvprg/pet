@@ -16,7 +16,7 @@ import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.protocol.MessageConsumer;
 import com.rvprg.raft.protocol.RaftMemberConnector;
 import com.rvprg.raft.tests.helpers.EchoServer;
-import com.rvprg.raft.tests.helpers.MemberConnectorObserverTestableImpl;
+import com.rvprg.raft.tests.helpers.MemberConnectorListenerTestableImpl;
 import com.rvprg.raft.transport.ChannelPipelineInitializer;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberId;
@@ -36,19 +36,19 @@ public class RaftMemberConnectorTest {
 
         assertEquals(0, connector.getRegisteredMemberIds().size());
 
-        MemberConnectorObserverTestableImpl observer1 = new MemberConnectorObserverTestableImpl(mock(MessageConsumer.class), pipelineInitializer);
+        MemberConnectorListenerTestableImpl listener1 = new MemberConnectorListenerTestableImpl(mock(MessageConsumer.class), pipelineInitializer);
         MemberId member1 = new MemberId("localhost", server1.getPort());
-        connector.register(member1, observer1);
+        connector.register(member1, listener1);
         assertEquals(1, connector.getRegisteredMemberIds().size());
         assertEquals(0, connector.getAllActiveMembersCount());
         connector.connect(member1);
-        observer1.awaitForConnectEvent();
+        listener1.awaitForConnectEvent();
 
-        MemberConnectorObserverTestableImpl observer2 = new MemberConnectorObserverTestableImpl(mock(MessageConsumer.class), pipelineInitializer);
+        MemberConnectorListenerTestableImpl listener2 = new MemberConnectorListenerTestableImpl(mock(MessageConsumer.class), pipelineInitializer);
         MemberId member2 = new MemberId("localhost", server2.getPort());
-        connector.registerAsCatchingUpMember(member2, observer2);
+        connector.registerAsCatchingUpMember(member2, listener2);
         connector.connect(member2);
-        observer2.awaitForConnectEvent();
+        listener2.awaitForConnectEvent();
 
         assertEquals(1, connector.getAllCatchingUpMemberIds().size());
         assertEquals(1, connector.getVotingMembersCount());

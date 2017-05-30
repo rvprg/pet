@@ -4,12 +4,12 @@ import java.util.concurrent.SynchronousQueue;
 
 import com.rvprg.raft.protocol.MessageConsumer;
 import com.rvprg.raft.transport.Member;
-import com.rvprg.raft.transport.MemberConnectorObserverImpl;
+import com.rvprg.raft.transport.MemberConnectorListenerImpl;
 import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.ChannelPipelineInitializer;
 
-public class MemberConnectorObserverTestableImpl extends MemberConnectorObserverImpl {
-    public MemberConnectorObserverTestableImpl(MessageConsumer messageConsumer, ChannelPipelineInitializer pipelineInitializer) {
+public class MemberConnectorListenerTestableImpl extends MemberConnectorListenerImpl {
+    public MemberConnectorListenerTestableImpl(MessageConsumer messageConsumer, ChannelPipelineInitializer pipelineInitializer) {
         super(messageConsumer, pipelineInitializer);
     }
 

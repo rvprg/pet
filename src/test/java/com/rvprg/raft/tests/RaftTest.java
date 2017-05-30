@@ -41,8 +41,8 @@ import com.rvprg.raft.log.SnapshotInstallException;
 import com.rvprg.raft.log.TransientLogImpl;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftImpl;
-import com.rvprg.raft.protocol.RaftObserver;
-import com.rvprg.raft.protocol.RaftObserverImpl;
+import com.rvprg.raft.protocol.RaftListener;
+import com.rvprg.raft.protocol.RaftListenerImpl;
 import com.rvprg.raft.protocol.Role;
 import com.rvprg.raft.protocol.messages.ProtocolMessages;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntries;
@@ -80,11 +80,11 @@ public class RaftTest {
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
         StateMachine stateMachine = mock(StateMachine.class);
-        RaftObserver raftObserver = mock(RaftObserver.class);
+        RaftListener raftListener = mock(RaftListener.class);
         Log log = mock(Log.class);
         Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("localhost", NetworkUtils.getRandomFreePort()));
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftListener);
 
         final AtomicLong lastHeartbeatTime = new AtomicLong();
         final AtomicLong requestVotesInitiatedTime = new AtomicLong();
@@ -100,7 +100,7 @@ public class RaftTest {
                 lastHeartbeatTime.set(System.currentTimeMillis());
                 return null;
             }
-        }).when(raftObserver).heartbeatReceived();
+        }).when(raftListener).heartbeatReceived();
 
         // Set a latch on a new election event.
         final CountDownLatch electionInitiatedLatch = new CountDownLatch(1);
@@ -111,7 +111,7 @@ public class RaftTest {
                 electionInitiatedLatch.countDown();
                 return null;
             }
-        }).when(raftObserver).heartbeatTimedout();
+        }).when(raftListener).heartbeatTimedout();
 
         // This will wait until an absence of heartbeats is detected. This
         // event triggers a schedule of the next election. Therefore we
@@ -128,7 +128,7 @@ public class RaftTest {
                 }
                 return null;
             }
-        }).when(raftObserver).nextElectionScheduled();
+        }).when(raftListener).nextElectionScheduled();
 
         raft.start();
 
@@ -142,8 +142,8 @@ public class RaftTest {
 
         assertTrue(raft.getCurrentTerm() > 0);
 
-        verify(raftObserver, atLeast(1)).heartbeatReceived();
-        verify(raftObserver, atLeast(1)).heartbeatTimedout();
+        verify(raftListener, atLeast(1)).heartbeatReceived();
+        verify(raftListener, atLeast(1)).heartbeatTimedout();
         assertTrue(requestVotesInitiatedTime.get() - lastHeartbeatTime.get() >= configuration.getElectionMinTimeout());
     }
 
@@ -160,13 +160,13 @@ public class RaftTest {
         Mockito.when(memberConnector.getActiveMembers()).thenReturn(memberRegistry);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
         Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("localhost", port));
-        RaftObserver raftObserver = mock(RaftObserver.class);
+        RaftListener raftListener = mock(RaftListener.class);
         Log log = mock(Log.class);
         LogEntry logEntry = LogEntryFactory.create(0);
         Mockito.when(log.getLast()).thenReturn(logEntry);
         Mockito.when(log.getLastIndex()).thenReturn(0L);
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftListener);
         // Start as a follower with term set to 0.
         assertEquals(Role.Follower, raft.getRole());
         assertEquals(0, raft.getCurrentTerm());
@@ -181,7 +181,7 @@ public class RaftTest {
                 electionTimedoutLatch.countDown();
                 return null;
             }
-        }).when(raftObserver).electionTimedout();
+        }).when(raftListener).electionTimedout();
 
         raft.start();
 
@@ -201,14 +201,14 @@ public class RaftTest {
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
         StateMachine stateMachine = mock(StateMachine.class);
-        RaftObserver raftObserver = mock(RaftObserver.class);
+        RaftListener raftListener = mock(RaftListener.class);
         Log log = mock(Log.class);
         Member member = mock(Member.class);
         Channel senderChannel = mock(Channel.class);
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
         Mockito.when(messageReceiver.getMemberId()).thenReturn(configuration.getMemberId());
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftListener);
 
         assertEquals(0, raft.getCurrentTerm());
         assertEquals(0, log.getCommitIndex());
@@ -260,14 +260,14 @@ public class RaftTest {
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
         StateMachine stateMachine = mock(StateMachine.class);
-        RaftObserver raftObserver = mock(RaftObserver.class);
+        RaftListener raftListener = mock(RaftListener.class);
         Log log = mock(Log.class);
         Member member = mock(Member.class);
         Channel senderChannel = mock(Channel.class);
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
         Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("localhost", NetworkUtils.getRandomFreePort()));
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftListener);
 
         assertEquals(0, raft.getCurrentTerm());
         assertEquals(0, log.getCommitIndex());
@@ -309,14 +309,14 @@ public class RaftTest {
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
         StateMachine stateMachine = mock(StateMachine.class);
-        RaftObserver raftObserver = mock(RaftObserver.class);
+        RaftListener raftListener = mock(RaftListener.class);
         Log log = mock(Log.class);
         Member member = mock(Member.class);
         Channel senderChannel = mock(Channel.class);
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
         Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("localhost", NetworkUtils.getRandomFreePort()));
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftListener);
 
         Method initializeEventLoop = RaftImpl.class.getDeclaredMethod("initializeEventLoop", new Class[] {});
         initializeEventLoop.setAccessible(true);
@@ -380,14 +380,14 @@ public class RaftTest {
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
         StateMachine stateMachine = mock(StateMachine.class);
-        RaftObserver raftObserver = mock(RaftObserver.class);
+        RaftListener raftListener = mock(RaftListener.class);
         Log log = mock(Log.class);
         Member member = mock(Member.class);
         Channel senderChannel = mock(Channel.class);
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
         Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("localhost", NetworkUtils.getRandomFreePort()));
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 2, Role.Follower, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 2, Role.Follower, raftListener);
 
         assertEquals(2, raft.getCurrentTerm());
 
@@ -415,7 +415,7 @@ public class RaftTest {
         AtomicInteger votesReceived = new AtomicInteger(0);
         AtomicInteger votesRejected = new AtomicInteger(0);
         AtomicBoolean electionWon = new AtomicBoolean();
-        RaftObserver raftObserver = new RaftObserverImpl() {
+        RaftListener raftListener = new RaftListenerImpl() {
 
             @Override
             public void voteReceived() {
@@ -439,7 +439,7 @@ public class RaftTest {
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
         Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("localhost", NetworkUtils.getRandomFreePort()));
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 1, Role.Candidate, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 1, Role.Candidate, raftListener);
 
         Method initializeEventLoop = RaftImpl.class.getDeclaredMethod("initializeEventLoop", new Class[] {});
         initializeEventLoop.setAccessible(true);
@@ -505,14 +505,14 @@ public class RaftTest {
         MemberConnector memberConnector = mock(MemberConnector.class);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
         StateMachine stateMachine = mock(StateMachine.class);
-        RaftObserver raftObserver = mock(RaftObserver.class);
+        RaftListener raftListener = mock(RaftListener.class);
         Log log = mock(Log.class);
         Member member = mock(Member.class);
         Channel senderChannel = mock(Channel.class);
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
         Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("localhost", NetworkUtils.getRandomFreePort()));
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 1, Role.Candidate, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 1, Role.Candidate, raftListener);
 
         Method initializeEventLoop = RaftImpl.class.getDeclaredMethod("initializeEventLoop", new Class[] {});
         initializeEventLoop.setAccessible(true);
@@ -563,14 +563,14 @@ public class RaftTest {
         Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("localhost", NetworkUtils.getRandomFreePort()));
 
         StateMachine stateMachine = mock(StateMachine.class);
-        RaftObserver raftObserver = new RaftObserverImpl() {
+        RaftListener raftListener = new RaftListenerImpl() {
             @Override
             public void appendEntriesRetryScheduled(MemberId memberId) {
                 latches.get(memberId).countDown();
             }
         };
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 0, Role.Candidate, raftObserver);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 0, Role.Candidate, raftListener);
         Method initializeEventLoop = RaftImpl.class.getDeclaredMethod("initializeEventLoop", new Class[] {});
         initializeEventLoop.setAccessible(true);
         initializeEventLoop.invoke(raft, new Object[] {});

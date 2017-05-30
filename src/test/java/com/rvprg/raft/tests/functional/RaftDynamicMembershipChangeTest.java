@@ -24,8 +24,8 @@ import com.rvprg.raft.protocol.ApplyCommandResult;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftImpl;
 import com.rvprg.raft.protocol.RaftMemberConnector;
-import com.rvprg.raft.protocol.RaftObserver;
-import com.rvprg.raft.protocol.RaftObserverImpl;
+import com.rvprg.raft.protocol.RaftListener;
+import com.rvprg.raft.protocol.RaftListenerImpl;
 import com.rvprg.raft.protocol.Role;
 import com.rvprg.raft.tests.helpers.NetworkUtils;
 import com.rvprg.raft.transport.MemberId;
@@ -63,7 +63,7 @@ public class RaftDynamicMembershipChangeTest extends RaftFunctionalTestBase {
         CountDownLatch newMemberStartLatch = new CountDownLatch(1);
         CountDownLatch newMemberShutdownLatch = new CountDownLatch(1);
 
-        RaftObserver newMemberObserver = new RaftObserverImpl() {
+        RaftListener newMemberListener = new RaftListenerImpl() {
             @Override
             public void started() {
                 newMemberStartLatch.countDown();
@@ -82,7 +82,7 @@ public class RaftDynamicMembershipChangeTest extends RaftFunctionalTestBase {
             // Expected
         }
 
-        Raft newRaftMember = getRaft(newMemberId.getHostName(), newMemberId.getPort(), peers, 9000, 10000, newMemberObserver);
+        Raft newRaftMember = getRaft(newMemberId.getHostName(), newMemberId.getPort(), peers, 9000, 10000, newMemberListener);
         newRaftMember.becomeCatchingUpMember();
         newRaftMember.start();
 

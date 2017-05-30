@@ -2,7 +2,7 @@ package com.rvprg.raft.protocol;
 
 import com.rvprg.raft.transport.MemberId;
 
-public interface RaftObserver {
+public interface RaftListener {
     void heartbeatTimedout();
 
     void nextElectionScheduled();
@@ -23,7 +23,7 @@ public interface RaftObserver {
 
     void appendEntriesRetryScheduled(MemberId memberId);
 
-    static RaftObserver getDefaultInstance() {
-        return new RaftObserverImpl();
+    static RaftListener getDefaultInstance() {
+        return new RaftListenerImpl();
     }
 }

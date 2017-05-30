@@ -21,8 +21,8 @@ import com.rvprg.raft.log.LogException;
 import com.rvprg.raft.log.SnapshotInstallException;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftImpl;
-import com.rvprg.raft.protocol.RaftObserver;
-import com.rvprg.raft.protocol.RaftObserverImpl;
+import com.rvprg.raft.protocol.RaftListener;
+import com.rvprg.raft.protocol.RaftListenerImpl;
 
 public class RaftElectionSafetyTest extends RaftFunctionalTestBase {
     @Test(timeout = 60000)
@@ -42,7 +42,7 @@ public class RaftElectionSafetyTest extends RaftFunctionalTestBase {
         final SynchronousQueue<Raft> leaderBlockingQueue = new SynchronousQueue<>();
         final AtomicBoolean trackLeader = new AtomicBoolean(true);
 
-        RaftObserver observer = new RaftObserverImpl() {
+        RaftListener listener = new RaftListenerImpl() {
             @Override
             public synchronized void electionWon(int term, Raft leader) {
                 if (termsAndLeaders.containsKey(term)) {
@@ -60,7 +60,7 @@ public class RaftElectionSafetyTest extends RaftFunctionalTestBase {
             }
         };
 
-        RaftCluster cluster = new RaftCluster(clusterSize, observer);
+        RaftCluster cluster = new RaftCluster(clusterSize, listener);
         cluster.start();
 
         Method cancelHeartBeat = RaftImpl.class.getDeclaredMethod("cancelPeriodicHeartbeatTask", new Class[] {});
@@ -98,7 +98,7 @@ public class RaftElectionSafetyTest extends RaftFunctionalTestBase {
 
         final SynchronousQueue<Raft> leaderBlockingQueue = new SynchronousQueue<>();
 
-        RaftObserver observer = new RaftObserverImpl() {
+        RaftListener listener = new RaftListenerImpl() {
             @Override
             public synchronized void electionWon(int term, Raft leader) {
                 try {
@@ -109,7 +109,7 @@ public class RaftElectionSafetyTest extends RaftFunctionalTestBase {
             }
         };
 
-        RaftCluster cluster = new RaftCluster(clusterSize, observer);
+        RaftCluster cluster = new RaftCluster(clusterSize, listener);
 
         Set<Raft> majority = new HashSet<Raft>();
 
@@ -138,7 +138,7 @@ public class RaftElectionSafetyTest extends RaftFunctionalTestBase {
 
         final SynchronousQueue<Raft> leaderBlockingQueue = new SynchronousQueue<>();
 
-        RaftObserver observer = new RaftObserverImpl() {
+        RaftListener listener = new RaftListenerImpl() {
             @Override
             public synchronized void electionWon(int term, Raft leader) {
                 try {
@@ -149,7 +149,7 @@ public class RaftElectionSafetyTest extends RaftFunctionalTestBase {
             }
         };
 
-        RaftCluster cluster = new RaftCluster(clusterSize, observer);
+        RaftCluster cluster = new RaftCluster(clusterSize, listener);
         Set<Raft> majority = new HashSet<Raft>();
 
         for (int i = 0; i < clusterSize; ++i) {

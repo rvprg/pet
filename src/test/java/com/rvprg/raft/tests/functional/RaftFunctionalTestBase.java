@@ -24,8 +24,8 @@ import com.rvprg.raft.log.SnapshotInstallException;
 import com.rvprg.raft.log.TransientLogImpl;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftImpl;
-import com.rvprg.raft.protocol.RaftObserver;
-import com.rvprg.raft.protocol.RaftObserverImpl;
+import com.rvprg.raft.protocol.RaftListener;
+import com.rvprg.raft.protocol.RaftListenerImpl;
 import com.rvprg.raft.protocol.Role;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.sm.StateMachine;
@@ -35,12 +35,12 @@ import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.MessageReceiver;
 
 public class RaftFunctionalTestBase {
-    public Raft getRaft(String host, int port, Set<MemberId> nodes, RaftObserver raftObserver)
+    public Raft getRaft(String host, int port, Set<MemberId> nodes, RaftListener raftListener)
             throws InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
-        return getRaft(host, port, nodes, 150, 300, raftObserver);
+        return getRaft(host, port, nodes, 150, 300, raftListener);
     }
 
-    public Raft getRaft(String host, int port, Set<MemberId> nodes, int electionMinTimeout, int electionMaxTimeout, RaftObserver raftObserver)
+    public Raft getRaft(String host, int port, Set<MemberId> nodes, int electionMinTimeout, int electionMaxTimeout, RaftListener raftListener)
             throws InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
         Configuration configuration = Configuration.newBuilder().memberId(new MemberId(host, port)).addMemberIds(nodes).electionMinTimeout(electionMinTimeout)
                 .electionMaxTimeout(electionMaxTimeout).logUri(URI.create("file:///test")).build();
@@ -51,7 +51,7 @@ public class RaftFunctionalTestBase {
         MessageReceiver messageReceiver = injector.getInstance(MessageReceiver.class);
 
         Log log = new TransientLogImpl();
-        return new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftObserver);
+        return new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftListener);
     }
 
     public class RaftCluster {
@@ -59,7 +59,7 @@ public class RaftFunctionalTestBase {
 
         private final CountDownLatch startLatch;
         private final CountDownLatch shutdownLatch;
-        private final RaftObserver observer;
+        private final RaftListener listener;
         private final Set<MemberId> members;
 
         private final Method cancelHeartBeat;
@@ -78,7 +78,7 @@ public class RaftFunctionalTestBase {
             startLatch = new CountDownLatch(startCountDownLatchCount);
             shutdownLatch = new CountDownLatch(shutdownCountDownLatchCount);
 
-            observer = new RaftObserverImpl() {
+            listener = new RaftListenerImpl() {
                 @Override
                 public void started() {
                     startLatch.countDown();
@@ -91,24 +91,24 @@ public class RaftFunctionalTestBase {
             };
 
             members = createMembers(clusterSize);
-            rafts = createRafts(members, electionMinTimeout, electionMaxTimeout, observer);
+            rafts = createRafts(members, electionMinTimeout, electionMaxTimeout, listener);
 
             cancelHeartBeat = RaftImpl.class.getDeclaredMethod("cancelPeriodicHeartbeatTask", new Class[] {});
             cancelHeartBeat.setAccessible(true);
         }
 
-        public RaftCluster(int clusterSize, final RaftObserver observer)
+        public RaftCluster(int clusterSize, final RaftListener listener)
                 throws NoSuchMethodException, SecurityException, InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
-            this(clusterSize, 250, 300, observer);
+            this(clusterSize, 250, 300, listener);
         }
 
-        public RaftCluster(int clusterSize, int electionMinTimeout, int electionMaxTimeout, final RaftObserver observer)
+        public RaftCluster(int clusterSize, int electionMinTimeout, int electionMaxTimeout, final RaftListener listener)
                 throws NoSuchMethodException, SecurityException, InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
-            this(clusterSize, clusterSize, clusterSize, electionMinTimeout, electionMaxTimeout, observer);
+            this(clusterSize, clusterSize, clusterSize, electionMinTimeout, electionMaxTimeout, listener);
         }
 
         public RaftCluster(int clusterSize, int startCountDownLatchCount, int shutdownCountDownLatchCount, int electionMinTimeout, int electionMaxTimeout,
-                final RaftObserver observer)
+                final RaftListener listener)
                 throws NoSuchMethodException, SecurityException, InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
             startLatch = new CountDownLatch(startCountDownLatchCount);
             shutdownLatch = new CountDownLatch(shutdownCountDownLatchCount);
@@ -116,62 +116,62 @@ public class RaftFunctionalTestBase {
             cancelHeartBeat = RaftImpl.class.getDeclaredMethod("cancelPeriodicHeartbeatTask", new Class[] {});
             cancelHeartBeat.setAccessible(true);
 
-            this.observer = new RaftObserver() {
+            this.listener = new RaftListener() {
                 @Override
                 public void started() {
                     startLatch.countDown();
-                    observer.started();
+                    listener.started();
                 }
 
                 @Override
                 public void shutdown() {
                     shutdownLatch.countDown();
-                    observer.shutdown();
+                    listener.shutdown();
                 }
 
                 @Override
                 public void heartbeatTimedout() {
-                    observer.heartbeatTimedout();
+                    listener.heartbeatTimedout();
                 }
 
                 @Override
                 public void nextElectionScheduled() {
-                    observer.nextElectionScheduled();
+                    listener.nextElectionScheduled();
                 }
 
                 @Override
                 public void heartbeatReceived() {
-                    observer.heartbeatReceived();
+                    listener.heartbeatReceived();
                 }
 
                 @Override
                 public void voteReceived() {
-                    observer.voteReceived();
+                    listener.voteReceived();
                 }
 
                 @Override
                 public void voteRejected() {
-                    observer.voteRejected();
+                    listener.voteRejected();
                 }
 
                 @Override
                 public void electionWon(int term, Raft leader) {
-                    observer.electionWon(term, leader);
+                    listener.electionWon(term, leader);
                 }
 
                 @Override
                 public void electionTimedout() {
-                    observer.electionTimedout();
+                    listener.electionTimedout();
                 }
 
                 @Override
                 public void appendEntriesRetryScheduled(MemberId memberId) {
-                    observer.appendEntriesRetryScheduled(memberId);
+                    listener.appendEntriesRetryScheduled(memberId);
                 }
             };
 
             members = createMembers(clusterSize);
-            rafts = createRafts(members, electionMinTimeout, electionMaxTimeout, this.observer);
+            rafts = createRafts(members, electionMinTimeout, electionMaxTimeout, this.listener);
 
         }
 
@@ -254,13 +254,13 @@ public class RaftFunctionalTestBase {
             return members;
         }
 
-        public List<Raft> createRafts(Set<MemberId> members, int electionMinTimeout, int electionMaxTimeout, RaftObserver observer)
+        public List<Raft> createRafts(Set<MemberId> members, int electionMinTimeout, int electionMaxTimeout, RaftListener listener)
                 throws InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
             List<Raft> rafts = new ArrayList<Raft>();
             for (MemberId member : members) {
                 Set<MemberId> peers = (new HashSet<MemberId>(members));
                 peers.remove(member);
-                rafts.add(getRaft(member.getHostName(), member.getPort(), peers, electionMinTimeout, electionMaxTimeout, observer));
+                rafts.add(getRaft(member.getHostName(), member.getPort(), peers, electionMinTimeout, electionMaxTimeout, listener));
             }
             return rafts;
         }

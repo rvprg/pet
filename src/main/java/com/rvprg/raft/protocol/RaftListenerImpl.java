@@ -2,7 +2,7 @@ package com.rvprg.raft.protocol;
 
 import com.rvprg.raft.transport.MemberId;
 
-public class RaftObserverImpl implements RaftObserver {
+public class RaftListenerImpl implements RaftListener {
 
     @Override
     public void heartbeatTimedout() {

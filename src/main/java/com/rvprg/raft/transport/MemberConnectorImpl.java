@@ -26,7 +26,7 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 public class MemberConnectorImpl implements MemberConnector {
     private final static Logger logger = LoggerFactory.getLogger(MemberConnectorImpl.class);
 
-    private final ConcurrentHashMap<MemberId, MemberConnectorObserver> registered = new ConcurrentHashMap<MemberId, MemberConnectorObserver>();
+    private final ConcurrentHashMap<MemberId, MemberConnectorListener> registered = new ConcurrentHashMap<MemberId, MemberConnectorListener>();
     private final ConcurrentHashMap<MemberId, Channel> registeredChannels = new ConcurrentHashMap<MemberId, Channel>();
 
     private ImmutableSet<MemberId> immutableMemberIdSet = ImmutableSet.of();
@@ -72,10 +72,10 @@ public class MemberConnectorImpl implements MemberConnector {
     }
 
     @Override
-    public void register(final MemberId member, final MemberConnectorObserver observer) {
+    public void register(final MemberId member, final MemberConnectorListener listener) {
         stateLock.writeLock().lock();
         try {
-            registered.putIfAbsent(member, observer == null ? MemberConnectorObserver.getDefaultInstance() : observer);
+            registered.putIfAbsent(member, listener == null ? MemberConnectorListener.getDefaultInstance() : listener);
             immutableMemberIdSet = ImmutableSet.copyOf(registered.keySet());
         } finally {
             stateLock.writeLock().unlock();
@@ -137,34 +137,34 @@ public class MemberConnectorImpl implements MemberConnector {
     }
 
     private void memberActivated(Member member, Channel channel) {
-        MemberConnectorObserver observer = registered.get(member.getMemberId());
+        MemberConnectorListener listener = registered.get(member.getMemberId());
         registeredChannels.put(member.getMemberId(), channel);
-        if (observer != null) {
-            observer.connected(member);
+        if (listener != null) {
+            listener.connected(member);
         }
     }
 
     private void memberScheduledReconnect(MemberId memberId) {
-        MemberConnectorObserver observer = registered.get(memberId);
+        MemberConnectorListener listener = registered.get(memberId);
         registeredChannels.remove(memberId);
-        if (observer != null) {
-            observer.scheduledReconnect(memberId);
+        if (listener != null) {
+            listener.scheduledReconnect(memberId);
         }
     }
 
     private void memberDeactivated(MemberId memberId) {
-        MemberConnectorObserver observer = registered.get(memberId);
+        MemberConnectorListener listener = registered.get(memberId);
         registeredChannels.remove(memberId);
-        if (observer != null) {
-            observer.disconnected(memberId);
+        if (listener != null) {
+            listener.disconnected(memberId);
         }
     }
 
     private void memberExceptionCaught(MemberId memberId, Throwable cause) {
-        MemberConnectorObserver observer = registered.get(memberId);
+        MemberConnectorListener listener = registered.get(memberId);
         registeredChannels.remove(memberId);
-        if (observer != null) {
-            observer.exceptionCaught(memberId, cause);
+        if (listener != null) {
+            listener.exceptionCaught(memberId, cause);
         }
     }
 

@@ -27,7 +27,7 @@ import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage.MessageType
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVote;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse;
 import com.rvprg.raft.tests.helpers.EchoServer;
-import com.rvprg.raft.tests.helpers.MemberConnectorObserverTestableImpl;
+import com.rvprg.raft.tests.helpers.MemberConnectorListenerTestableImpl;
 import com.rvprg.raft.transport.ChannelPipelineInitializer;
 import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnector;
@@ -167,16 +167,16 @@ public class MessageDispatcherTest {
         ChannelPipelineInitializer pipelineInitializer = injector.getInstance(ChannelPipelineInitializer.class);
 
         MessageConsumer messageConsumer = mock(MessageConsumer.class);
-        MemberConnectorObserverTestableImpl observer = new MemberConnectorObserverTestableImpl(messageConsumer, pipelineInitializer);
+        MemberConnectorListenerTestableImpl listener = new MemberConnectorListenerTestableImpl(messageConsumer, pipelineInitializer);
 
         EchoServer server = new EchoServer(pipelineInitializer);
         server.start().awaitUninterruptibly();
 
         MemberId member = new MemberId("localhost", server.getPort());
-        connector.register(member, observer);
+        connector.register(member, listener);
         connector.connect(member);
 
-        observer.awaitForConnectEvent();
+        listener.awaitForConnectEvent();
 
         checkRequestVoteDispatch(messageConsumer, connector.getActiveMembers().get(member).getChannel());
         checkRequestVoteResponseDispatch(messageConsumer, connector.getActiveMembers().get(member).getChannel());

@@ -8,7 +8,7 @@ import com.rvprg.raft.log.TransientLogImpl;
 import com.rvprg.raft.protocol.MessageConsumer;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftImpl;
-import com.rvprg.raft.protocol.RaftObserver;
+import com.rvprg.raft.protocol.RaftListener;
 import com.rvprg.raft.sm.CommandSerde;
 import com.rvprg.raft.sm.CommandSerdeImpl;
 import com.rvprg.raft.sm.StateMachine;
@@ -19,8 +19,8 @@ import com.rvprg.raft.transport.MutableMembersRegistry;
 import com.rvprg.raft.transport.MutableMembersRegistryImpl;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberConnectorImpl;
-import com.rvprg.raft.transport.MemberConnectorObserver;
-import com.rvprg.raft.transport.MemberConnectorObserverImpl;
+import com.rvprg.raft.transport.MemberConnectorListener;
+import com.rvprg.raft.transport.MemberConnectorListenerImpl;
 import com.rvprg.raft.transport.MembersRegistry;
 import com.rvprg.raft.transport.MessageReceiver;
 import com.rvprg.raft.transport.MessageReceiverImpl;
@@ -46,7 +46,7 @@ public class Module extends AbstractModule {
         bind(MemberConnector.class).to(MemberConnectorImpl.class);
         bind(MessageReceiver.class).to(MessageReceiverImpl.class);
 
-        bind(MemberConnectorObserver.class).to(MemberConnectorObserverImpl.class);
+        bind(MemberConnectorListener.class).to(MemberConnectorListenerImpl.class);
         bind(ChannelPipelineInitializer.class).to(ChannelPipelineInitializerImpl.class);
 
         bind(RaftImpl.class).in(Singleton.class);
@@ -57,7 +57,7 @@ public class Module extends AbstractModule {
 
         bind(CommandSerde.class).to(CommandSerdeImpl.class);
 
-        bind(RaftObserver.class).toInstance(RaftObserver.getDefaultInstance());
+        bind(RaftListener.class).toInstance(RaftListener.getDefaultInstance());
     }
 
 }

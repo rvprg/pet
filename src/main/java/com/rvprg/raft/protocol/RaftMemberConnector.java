@@ -8,7 +8,7 @@ import java.util.stream.Collectors;
 import com.google.common.collect.ImmutableSet;
 import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnector;
-import com.rvprg.raft.transport.MemberConnectorObserver;
+import com.rvprg.raft.transport.MemberConnectorListener;
 import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.MembersRegistry;
 
@@ -23,8 +23,8 @@ public class RaftMemberConnector implements MemberConnector {
     }
 
     @Override
-    public void register(final MemberId member, final MemberConnectorObserver observer) {
-        memberConnector.register(member, observer);
+    public void register(final MemberId member, final MemberConnectorListener listener) {
+        memberConnector.register(member, listener);
     }
 
     @Override
@@ -116,11 +116,11 @@ public class RaftMemberConnector implements MemberConnector {
         }
     }
 
-    public void registerAsCatchingUpMember(final MemberId memberId, final MemberConnectorObserver observer) {
+    public void registerAsCatchingUpMember(final MemberId memberId, final MemberConnectorListener listener) {
         stateLock.writeLock().lock();
         try {
             catchingUpMembers.add(memberId);
-            register(memberId, observer);
+            register(memberId, listener);
         } finally {
             stateLock.writeLock().unlock();
         }

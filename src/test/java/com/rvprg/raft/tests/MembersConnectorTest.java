@@ -14,7 +14,7 @@ import com.rvprg.raft.Module;
 import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.protocol.MessageConsumer;
 import com.rvprg.raft.tests.helpers.EchoServer;
-import com.rvprg.raft.tests.helpers.MemberConnectorObserverTestableImpl;
+import com.rvprg.raft.tests.helpers.MemberConnectorListenerTestableImpl;
 import com.rvprg.raft.transport.ChannelPipelineInitializer;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberId;
@@ -39,13 +39,13 @@ public class MembersConnectorTest {
         assertEquals(0, connector.getRegisteredMemberIds().size());
         assertEquals(0, connector.getActiveMembers().getAll().size());
 
-        MemberConnectorObserverTestableImpl observer = new MemberConnectorObserverTestableImpl(mock(MessageConsumer.class), pipelineInitializer);
-        connector.register(member, observer);
+        MemberConnectorListenerTestableImpl listener = new MemberConnectorListenerTestableImpl(mock(MessageConsumer.class), pipelineInitializer);
+        connector.register(member, listener);
         assertEquals(1, connector.getRegisteredMemberIds().size());
         assertEquals(0, connector.getActiveMembers().getAll().size());
 
         connector.connect(member);
-        observer.awaitForReconnectEvent();
+        listener.awaitForReconnectEvent();
 
         connector.unregister(member);
         assertEquals(0, connector.getRegisteredMemberIds().size());
@@ -64,28 +64,28 @@ public class MembersConnectorTest {
         EchoServer server2 = new EchoServer(pipelineInitializer);
         server2.start().awaitUninterruptibly();
 
-        MemberConnectorObserverTestableImpl observer1 = new MemberConnectorObserverTestableImpl(mock(MessageConsumer.class), pipelineInitializer);
-        MemberConnectorObserverTestableImpl observer2 = new MemberConnectorObserverTestableImpl(mock(MessageConsumer.class), pipelineInitializer);
+        MemberConnectorListenerTestableImpl listener1 = new MemberConnectorListenerTestableImpl(mock(MessageConsumer.class), pipelineInitializer);
+        MemberConnectorListenerTestableImpl listener2 = new MemberConnectorListenerTestableImpl(mock(MessageConsumer.class), pipelineInitializer);
 
         MemberId member1 = new MemberId("localhost", server1.getPort());
         MemberId member2 = new MemberId("localhost", server2.getPort());
 
-        connector.register(member1, observer1);
-        connector.register(member2, observer2);
+        connector.register(member1, listener1);
+        connector.register(member2, listener2);
 
         connector.connect(member1);
-        observer1.awaitForConnectEvent();
+        listener1.awaitForConnectEvent();
 
         connector.connect(member2);
-        observer2.awaitForConnectEvent();
+        listener2.awaitForConnectEvent();
 
         assertEquals(2, connector.getActiveMembers().getAll().size());
 
         int server2Port = server2.getPort();
         server2.shutdown();
 
-        observer2.awaitForDisconnectEvent();
-        observer2.awaitForReconnectEvent();
+        listener2.awaitForDisconnectEvent();
+        listener2.awaitForReconnectEvent();
 
         assertEquals(1, connector.getActiveMembers().getAll().size());
         assertNotNull(connector.getActiveMembers().get(member1));
@@ -94,7 +94,7 @@ public class MembersConnectorTest {
         server2 = new EchoServer(pipelineInitializer);
         server2.start(server2Port).awaitUninterruptibly();
 
-        observer2.awaitForConnectEvent();
+        listener2.awaitForConnectEvent();
 
         assertEquals(2, connector.getActiveMembers().getAll().size());
 
@@ -103,8 +103,8 @@ public class MembersConnectorTest {
         server1.shutdown();
         server2.shutdown();
 
-        observer1.awaitForDisconnectEvent();
-        observer2.awaitForDisconnectEvent();
+        listener1.awaitForDisconnectEvent();
+        listener2.awaitForDisconnectEvent();
 
         assertEquals(0, connector.getActiveMembers().getAll().size());
     }

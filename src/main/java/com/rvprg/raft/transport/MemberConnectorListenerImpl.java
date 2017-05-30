@@ -6,12 +6,12 @@ import com.rvprg.raft.protocol.MessageConsumer;
 import net.jcip.annotations.Immutable;
 
 @Immutable
-public class MemberConnectorObserverImpl implements MemberConnectorObserver {
+public class MemberConnectorListenerImpl implements MemberConnectorListener {
     private final MessageConsumer messageConsumer;
     private final ChannelPipelineInitializer pipelineInitializer;
 
     @Inject
-    public MemberConnectorObserverImpl(MessageConsumer messageConsumer, ChannelPipelineInitializer pipelineInitializer) {
+    public MemberConnectorListenerImpl(MessageConsumer messageConsumer, ChannelPipelineInitializer pipelineInitializer) {
         this.messageConsumer = messageConsumer;
         this.pipelineInitializer = pipelineInitializer;
     }
