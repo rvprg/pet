@@ -237,13 +237,10 @@ public class LogTest {
 
             @Override
             public void installSnapshot(ReadableSnapshot snapshot) throws SnapshotInstallException {
-                // TODO Auto-generated method stub
-
             }
 
             @Override
             public WritableSnapshot getWritableSnapshot() {
-                // TODO Auto-generated method stub
                 return null;
             }
 
@@ -301,13 +298,10 @@ public class LogTest {
 
             @Override
             public void installSnapshot(ReadableSnapshot snapshot) throws SnapshotInstallException {
-                // TODO Auto-generated method stub
-
             }
 
             @Override
             public WritableSnapshot getWritableSnapshot() {
-                // TODO Auto-generated method stub
                 return null;
             }
 
