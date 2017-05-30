@@ -5,8 +5,10 @@ import static org.fusesource.leveldbjni.JniDBFactory.factory;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.commons.io.FileUtils;
@@ -24,6 +26,8 @@ import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.sm.WritableSnapshot;
 import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.SnapshotDescriptor;
+import com.rvprg.raft.transport.SnapshotMetadata;
+import com.rvprg.raft.transport.SnapshotMetadata.Builder;
 
 public class LevelDBLogImpl implements Log {
     private final Logger logger = LoggerFactory.getLogger(LevelDBLogImpl.class);
@@ -375,7 +379,13 @@ public class LevelDBLogImpl implements Log {
             commitIndex = getCommitIndex();
             LogEntry logEntry = get(commitIndex);
             int term = logEntry.getTerm();
-            snapshotDescriptor = new SnapshotDescriptor(configuration.getSnapshotFolderPath(), commitIndex, term);
+
+            SnapshotMetadata.Builder metadata = new Builder();
+            metadata.index(commitIndex);
+            metadata.term(term);
+            metadata.snapshotId(UUID.randomUUID().toString());
+
+            snapshotDescriptor = new SnapshotDescriptor(configuration.getSnapshotFolderPath(), metadata.build());
             writableSnapshot = stateMachine.getWritableSnapshot();
         } catch (Exception e) {
             logger.error("Error producing snapshot. ", e);
@@ -388,7 +398,7 @@ public class LevelDBLogImpl implements Log {
             logger.info("{} snapshot writing started. SnapshotDescriptor={}.", stateMachine, snapshotDescriptor);
             snapshotOutputStream = snapshotDescriptor.getOutputStream();
             writableSnapshot.write(snapshotOutputStream);
-            logger.info("{} snapshot writing finished. File size {} bytes.", stateMachine, snapshotDescriptor.getSize());
+            logger.info("{} snapshot writing finished. File size {} bytes.", stateMachine, Files.size(snapshotDescriptor.getSnapshotFile().toPath()));
 
             logger.info("{} compaction started.", this);
             truncate(commitIndex);
@@ -414,7 +424,7 @@ public class LevelDBLogImpl implements Log {
         stateLock.writeLock().lock();
         try {
             stateMachine.installSnapshot(snapshotDescriptor);
-            setFakeLogEntryAndCommit(snapshotDescriptor.getIndex(), snapshotDescriptor.getTerm());
+            setFakeLogEntryAndCommit(snapshotDescriptor.getMetadata().getIndex(), snapshotDescriptor.getMetadata().getTerm());
         } finally {
             stateLock.writeLock().unlock();
         }

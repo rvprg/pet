@@ -4,40 +4,35 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.util.Random;
+import java.util.UUID;
 
 import org.junit.Test;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.google.common.io.Files;
 import com.rvprg.raft.transport.SnapshotDescriptor;
+import com.rvprg.raft.transport.SnapshotMetadata;
 
 public class SnapshotDescriptorTest {
-    @Test
-    public void testBasic() {
-        Random random = new Random();
-        File tempDir = Files.createTempDir();
-        SnapshotDescriptor snapshotDescriptor1 = new SnapshotDescriptor(tempDir, random.nextLong(), random.nextInt());
-        SnapshotDescriptor snapshotDescriptor2 = new SnapshotDescriptor(snapshotDescriptor1.getSnapshotId());
-        assertEquals(snapshotDescriptor1, snapshotDescriptor2);
-    }
 
     @Test
-    public void testCompare() {
-        File tempDir = Files.createTempDir();
+    public void testCompare() throws JsonParseException, JsonMappingException, IOException {
         long index = 10;
         int term = 1;
-        SnapshotDescriptor snapshotDescriptor1 = new SnapshotDescriptor(tempDir, index, term);
-        SnapshotDescriptor snapshotDescriptor2 = new SnapshotDescriptor(tempDir, index + 1, term);
-        assertEquals(-1, SnapshotDescriptor.compare(snapshotDescriptor1, snapshotDescriptor2));
 
-        snapshotDescriptor1 = new SnapshotDescriptor(tempDir, index, term);
-        snapshotDescriptor2 = new SnapshotDescriptor(tempDir, index, term);
-        assertEquals(0, SnapshotDescriptor.compare(snapshotDescriptor1, snapshotDescriptor2));
+        SnapshotMetadata m1 = new SnapshotMetadata.Builder().index(index).term(term).build();
+        SnapshotMetadata m2 = new SnapshotMetadata.Builder().index(index + 1).term(term).build();
 
-        snapshotDescriptor1 = new SnapshotDescriptor(tempDir, index, term + 1);
-        snapshotDescriptor2 = new SnapshotDescriptor(tempDir, index, term);
-        assertEquals(1, SnapshotDescriptor.compare(snapshotDescriptor1, snapshotDescriptor2));
+        assertEquals(-1, SnapshotMetadata.compare(m1, m2));
+
+        m1 = new SnapshotMetadata.Builder().index(index).term(term).build();
+        m2 = new SnapshotMetadata.Builder().index(index).term(term).build();
+        assertEquals(0, SnapshotMetadata.compare(m1, m2));
+
+        m1 = new SnapshotMetadata.Builder().index(index).term(term + 1).build();
+        m2 = new SnapshotMetadata.Builder().index(index).term(term).build();
+        assertEquals(1, SnapshotMetadata.compare(m1, m2));
     }
 
     @Test
@@ -45,14 +40,14 @@ public class SnapshotDescriptorTest {
         File tempDir = Files.createTempDir();
         long index = 10;
         int term = 1;
-        SnapshotDescriptor snapshot1 = new SnapshotDescriptor(tempDir, index, term);
-        OutputStream out1 = snapshot1.getOutputStream();
-        out1.close();
-        SnapshotDescriptor snapshot2 = new SnapshotDescriptor(tempDir, index, term + 1);
-        OutputStream out2 = snapshot2.getOutputStream();
-        out2.close();
+
+        SnapshotMetadata m1 = new SnapshotMetadata.Builder().index(index).term(term).build();
+        SnapshotMetadata m2 = new SnapshotMetadata.Builder().index(index).term(term + 1).build();
+
+        m1.toFile(new File(tempDir, UUID.randomUUID() + SnapshotMetadata.FILE_EXTENTION));
+        m2.toFile(new File(tempDir, UUID.randomUUID() + SnapshotMetadata.FILE_EXTENTION));
 
         SnapshotDescriptor latest = SnapshotDescriptor.getLatestSnapshotDescriptor(tempDir);
-        assertEquals(latest, snapshot2);
+        assertEquals(latest.getMetadata(), m2);
     }
 }

@@ -1,8 +1,6 @@
 package com.rvprg.raft.transport;
 
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
+import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 
@@ -31,33 +29,34 @@ public class SnapshotReceiver {
     private final Logger logger = LoggerFactory.getLogger(SnapshotReceiver.class);
 
     private final EventLoopGroup workerGroup;
-    private final BiConsumer<File, Throwable> handler;
+    private final BiConsumer<SnapshotDescriptor, Throwable> handler;
     private final Channel channel;
     private final MemberId selfId;
     private final ChannelPipelineInitializer channelPipelineInitializer;
     private final AtomicBoolean done = new AtomicBoolean(false);
 
     private class SnapshotReceiveHandler extends SimpleChannelInboundHandler<ByteBuf> {
-        private BufferedOutputStream out;
-        private final File fileName;
-        private final String snapshotId;
-        private final long size;
+        private OutputStream out;
         private long received;
         private long lastLogStatusTime;
         private final static long logStatusInterval = 1000;
+        private final SnapshotDescriptor snapshotDescriptor;
 
-        public SnapshotReceiveHandler(String snapshotId, File fileName, long size) {
-            this.fileName = fileName;
-            this.snapshotId = snapshotId;
-            this.size = size;
+        public SnapshotReceiveHandler(SnapshotDescriptor snapshotDescriptor) {
+            this.snapshotDescriptor = snapshotDescriptor;
         }
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) throws Exception {
-            logger.info("SnapshotId={}, requesting download. Size={}.", snapshotId, size);
+            logger.info("Snapshot={}, requesting download. ", snapshotDescriptor);
             ctx.channel().writeAndFlush(RaftMessage.newBuilder().setType(MessageType.SnapshotDownloadRequest)
                     .setSnapshotDownloadRequest(
-                            SnapshotDownloadRequest.newBuilder().setMemberId(selfId.toString()).setSnapshotId(snapshotId).setSize(size))
+                            SnapshotDownloadRequest.newBuilder()
+                                    .setMemberId(selfId.toString())
+                                    .setSnapshotId(snapshotDescriptor.getMetadata().getSnapshotId())
+                                    .setTerm(snapshotDescriptor.getMetadata().getTerm())
+                                    .setIndex(snapshotDescriptor.getMetadata().getIndex())
+                                    .setSize(snapshotDescriptor.getMetadata().getSize()))
                     .build()).addListener(new ChannelFutureListener() {
                         @Override
                         public void operationComplete(ChannelFuture future) throws Exception {
@@ -66,7 +65,7 @@ public class SnapshotReceiver {
                             }
                         }
                     });
-            out = new BufferedOutputStream(new FileOutputStream(fileName));
+            out = this.snapshotDescriptor.getOutputStream();
         }
 
         @Override
@@ -74,10 +73,11 @@ public class SnapshotReceiver {
             received += msg.readableBytes();
             msg.readBytes(out, msg.readableBytes());
 
+            int size = snapshotDescriptor.getMetadata().getSize();
             boolean isFinished = received == size;
 
             if (System.currentTimeMillis() - lastLogStatusTime > logStatusInterval || isFinished) {
-                logger.info("SnapshotId={}, download progress={}%, {}/{}.", snapshotId, ((int) (((double) received / (double) size) * 100.0)), received, size);
+                logger.info("Snapshot={}, download progress={}%, {}/{}.", snapshotDescriptor, ((int) ((received / (double) size) * 100.0)), received, size);
                 lastLogStatusTime = System.currentTimeMillis();
             }
 
@@ -92,11 +92,13 @@ public class SnapshotReceiver {
                 out.close();
             }
             done.set(true);
-            handler.accept(fileName, null);
-            if (received != size) {
-                logger.error("SnapshotId={}, download didn't finish, {}/{}.", snapshotId, received, size);
+            if (received != snapshotDescriptor.getMetadata().getSize()) {
+                logger.error("Snapshot={}, download didn't finish, {}/{}.", snapshotDescriptor, received,
+                        snapshotDescriptor.getMetadata().getSize());
+                handler.accept(null, new IllegalStateException("Download didn't finish"));
             } else {
-                logger.info("SnapshotId={}, download finished. Stored in {}.", snapshotId, fileName);
+                logger.info("Snapshot={}, download finished. Stored in {}.", snapshotDescriptor, snapshotDescriptor.getSnapshotFile().getPath());
+                handler.accept(snapshotDescriptor, null);
             }
         }
 
@@ -109,19 +111,19 @@ public class SnapshotReceiver {
                 out.close();
             }
             ctx.channel().close();
-            logger.error("SnapshotId={}, download has not finished due to an error.", snapshotId, cause);
+            logger.error("Snapshot={}, download has not finished due to an error.", snapshotDescriptor, cause);
         }
     }
 
     public SnapshotReceiver(ChannelPipelineInitializer channelPipelineInitializer,
-            MemberId selfId, MemberId memberId, String snapshotId, File fileName, long size,
-            BiConsumer<File, Throwable> handler) throws InterruptedException {
+            MemberId selfId, MemberId memberId, SnapshotDescriptor snapshotDescriptor,
+            BiConsumer<SnapshotDescriptor, Throwable> handler) throws InterruptedException {
         this.workerGroup = new NioEventLoopGroup();
         this.selfId = selfId;
         this.channelPipelineInitializer = channelPipelineInitializer;
         this.handler = handler;
 
-        if (size <= 0) {
+        if (snapshotDescriptor.getMetadata().getSize() <= 0) {
             throw new IllegalArgumentException("Size must be positive.");
         }
 
@@ -131,7 +133,7 @@ public class SnapshotReceiver {
                     @Override
                     public void initChannel(SocketChannel ch) throws Exception {
                         channelPipelineInitializer.initialize(ch.pipeline())
-                                .addLast(new SnapshotReceiveHandler(snapshotId, fileName, size));
+                                .addLast(new SnapshotReceiveHandler(snapshotDescriptor));
                     }
                 })
                 .option(ChannelOption.SO_KEEPALIVE, true)

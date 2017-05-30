@@ -1,6 +1,5 @@
 package com.rvprg.raft.protocol;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -49,6 +48,7 @@ import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.MessageReceiver;
 import com.rvprg.raft.transport.SnapshotDescriptor;
+import com.rvprg.raft.transport.SnapshotMetadata;
 import com.rvprg.raft.transport.SnapshotReceiver;
 import com.rvprg.raft.transport.SnapshotSender;
 import com.rvprg.raft.transport.SnapshotTransferCompletedEvent;
@@ -492,30 +492,28 @@ public class RaftImpl implements Raft {
     private void processInstallSnapshot(SnapshotDownloadRequest request) {
         synchronized (snapshotInstallLock) {
             if (snapshotReceiver == null || snapshotReceiver.isDone()) {
+                final SnapshotDescriptor snapshotDescriptor = new SnapshotDescriptor(configuration.getSnapshotFolderPath(), SnapshotMetadata.fromRequest(request));
                 final MemberId snapshotSenderMemberId = MemberId.fromString(request.getMemberId());
-                final String snapshotId = request.getSnapshotId();
-                final File fileName = new File(configuration.getSnapshotFolderPath(), snapshotId);
                 try {
                     snapshotReceiver = new SnapshotReceiver(channelPipelineInitializer,
-                            selfId, snapshotSenderMemberId, snapshotId, fileName,
-                            request.getSize(),
-                            (File file, Throwable e) -> {
+                            selfId, snapshotSenderMemberId, snapshotDescriptor,
+                            (SnapshotDescriptor sd, Throwable e) -> {
                                 try {
                                     if (e != null) {
                                         throw new IllegalStateException(e);
                                     }
-                                    log.installSnapshot(stateMachine, new SnapshotDescriptor(file));
+                                    log.installSnapshot(stateMachine, sd);
                                 } catch (Exception e1) {
-                                    logger.error(severe, "Member: {}. SnapshotId: {}. Installation failed.",
+                                    logger.error(severe, "Member: {}. Snapshot: {}. Installation failed.",
                                             snapshotSenderMemberId,
-                                            snapshotId,
+                                            sd,
                                             e1);
                                 }
                             });
                 } catch (Exception e) {
-                    logger.error(severe, "Member: {}. SnapshotId: {}. Receiver initialization failed.",
+                    logger.error(severe, "Member: {}. Snapshot: {}. Receiver initialization failed.",
                             snapshotSenderMemberId,
-                            snapshotId,
+                            snapshotDescriptor,
                             e);
                 }
             }
@@ -861,9 +859,12 @@ public class RaftImpl implements Raft {
             req.setTerm(getCurrentTerm())
                     .setLeaderId(leaderMemberId != null ? leaderMemberId.toString() : null)
                     .setInstallSnapshot(SnapshotDownloadRequest.newBuilder()
-                            .setSnapshotId(snapshot.getSnapshotId())
-                            .setSize(snapshot.getSize())
-                            .setMemberId(snapshotSender.getMemberId().toString()));
+                            .setSnapshotId(snapshot.getMetadata().getSnapshotId())
+                            .setSize(snapshot.getMetadata().getSize())
+                            .setMemberId(snapshotSender.getMemberId().toString())
+                            .setTerm(snapshot.getMetadata().getTerm())
+                            .setIndex(snapshot.getMetadata().getIndex())
+                            .addAllMembers(snapshot.getMetadata().getMembers().stream().map(x -> x.toString()).collect(Collectors.toSet())));
         } else {
             List<LogEntry> logEntries = log.get(nextIndex, configuration.getMaxNumberOfLogEntriesPerRequest());
             if (logEntries.size() == 0) {

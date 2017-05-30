@@ -21,14 +21,22 @@ import com.rvprg.raft.tests.helpers.NetworkUtils;
 import com.rvprg.raft.transport.ChannelPipelineInitializerImpl;
 import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.SnapshotDescriptor;
+import com.rvprg.raft.transport.SnapshotMetadata;
 import com.rvprg.raft.transport.SnapshotReceiver;
 import com.rvprg.raft.transport.SnapshotSender;
 
 public class SnapshotExchangeTest {
     @Test(timeout = 60000)
     public void testSenderReceiver() throws InterruptedException, ExecutionException, IOException {
-        File origFile = File.createTempFile(UUID.randomUUID().toString(), ".tmp");
-        File destFile = File.createTempFile(UUID.randomUUID().toString(), ".tmp");
+        File folder = Files.createTempDir();
+        File srcFolder = new File(folder, "src");
+        File dstFolder = new File(folder, "dst");
+
+        String snapshotId = UUID.randomUUID().toString();
+        File origFile = new File(srcFolder, snapshotId);
+        File destFile = new File(dstFolder, snapshotId);
+        Files.createParentDirs(origFile);
+        Files.createParentDirs(destFile);
 
         BufferedOutputStream file = new BufferedOutputStream(new FileOutputStream(origFile));
         Random r = new Random();
@@ -45,13 +53,16 @@ public class SnapshotExchangeTest {
         ChannelPipelineInitializerImpl pipelineInitializer = new ChannelPipelineInitializerImpl();
 
         CountDownLatch downloadLatch = new CountDownLatch(1);
-        SnapshotDescriptor snapshot = new SnapshotDescriptor(Files.createTempDir(), 1, 1);
+        SnapshotMetadata metadata = new SnapshotMetadata.Builder().term(1).index(1).size(1024 * 1024).snapshotId(snapshotId).build();
+        SnapshotDescriptor snapshot1 = new SnapshotDescriptor(srcFolder, metadata);
+        SnapshotDescriptor snapshot2 = new SnapshotDescriptor(dstFolder, metadata);
         // @formatter:off
         SnapshotSender sender = new SnapshotSender(pipelineInitializer, memberId, (e) -> {  });
-        sender.setSnapshotDescriptor(snapshot);
+        sender.setSnapshotDescriptor(snapshot1);
+        sender.start();
         // @formatter:on
-        SnapshotReceiver receiver = new SnapshotReceiver(pipelineInitializer, selfId, memberId, "test", destFile, java.nio.file.Files.size(origFile.toPath()),
-                (File f, Throwable e) -> {
+        SnapshotReceiver receiver = new SnapshotReceiver(pipelineInitializer, selfId, memberId, snapshot2,
+                (SnapshotDescriptor f, Throwable e) -> {
                     downloadLatch.countDown();
                 });
         downloadLatch.await();

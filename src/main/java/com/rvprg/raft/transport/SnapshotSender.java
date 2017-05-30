@@ -30,7 +30,7 @@ public class SnapshotSender {
     private final EventLoopGroup workerGroup;
     private final ServerBootstrap server;
 
-    private final AtomicReference<SnapshotDescriptor> snapshot;
+    private final AtomicReference<SnapshotDescriptor> snapshotDescriptor;
     private final Consumer<SnapshotTransferEvent> eventCallback;
     private final ChannelPipelineInitializer channelPipelineInitializer;
 
@@ -55,7 +55,7 @@ public class SnapshotSender {
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) throws Exception {
-            snapshot = SnapshotSender.this.snapshot.get();
+            snapshot = SnapshotSender.this.snapshotDescriptor.get();
             if (snapshot == null) {
                 ctx.channel().close();
                 return;
@@ -81,8 +81,9 @@ public class SnapshotSender {
             }
 
             String snapshotId = msg.getSnapshotDownloadRequest().getSnapshotId();
-            if (!snapshot.getSnapshotId().equalsIgnoreCase(snapshotId)) {
-                logger.info("MemberId={}. Requested snapshotId={}, but we are serving snapshotId={}. Closing connection.", memberIdStr, snapshotId, snapshot.getSnapshotId());
+            if (!snapshot.getMetadata().getSnapshotId().equalsIgnoreCase(snapshotId)) {
+                logger.info("MemberId={}. Requested SnapshotId={}, but we are serving snapshotId={}. Closing connection.", memberIdStr, snapshotId,
+                        snapshot.getMetadata().getSnapshotId());
                 ctx.channel().close();
                 return;
             }
@@ -92,7 +93,7 @@ public class SnapshotSender {
             }
             ctx.pipeline().addBefore(SnapshotTransferInitiator, ChunkedWriteHandler, new ChunkedWriteHandler());
 
-            final ChunkedFile chunkedFile = new ChunkedFile(snapshot.getFileName());
+            final ChunkedFile chunkedFile = new ChunkedFile(snapshot.getSnapshotFile());
             ctx.channel().writeAndFlush(chunkedFile).addListener(ChannelFutureListener.CLOSE).addListener(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
@@ -111,7 +112,7 @@ public class SnapshotSender {
         this.bossGroup = new NioEventLoopGroup();
         this.workerGroup = new NioEventLoopGroup();
         this.server = new ServerBootstrap();
-        this.snapshot = new AtomicReference<SnapshotDescriptor>(null);
+        this.snapshotDescriptor = new AtomicReference<SnapshotDescriptor>(null);
         this.eventCallback = eventCallback;
         this.channelPipelineInitializer = channelPipelineInitializer;
         this.memberId = memberId;
@@ -135,11 +136,11 @@ public class SnapshotSender {
     }
 
     public void setSnapshotDescriptor(SnapshotDescriptor snapshot) {
-        this.snapshot.set(snapshot);
+        this.snapshotDescriptor.set(snapshot);
     }
 
     public SnapshotDescriptor getSnapshotDescriptor() {
-        return this.snapshot.get();
+        return this.snapshotDescriptor.get();
     }
 
     public void shutdown() {
