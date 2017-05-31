@@ -38,7 +38,7 @@ import com.rvprg.raft.log.Log;
 import com.rvprg.raft.log.LogEntryFactory;
 import com.rvprg.raft.log.LogException;
 import com.rvprg.raft.log.SnapshotInstallException;
-import com.rvprg.raft.log.TransientLogImpl;
+import com.rvprg.raft.log.InMemoryLogImpl;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftImpl;
 import com.rvprg.raft.protocol.RaftListener;
@@ -433,7 +433,7 @@ public class RaftTest {
             }
         };
 
-        Log log = new TransientLogImpl();
+        Log log = new InMemoryLogImpl();
         Member member = mock(Member.class);
         Channel senderChannel = mock(Channel.class);
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
@@ -557,7 +557,7 @@ public class RaftTest {
         Injector injector = Guice.createInjector(new Module(configuration));
 
         MemberConnector memberConnector = injector.getInstance(MemberConnector.class);
-        Log log = new TransientLogImpl();
+        Log log = new InMemoryLogImpl();
 
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
         Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("localhost", NetworkUtils.getRandomFreePort()));

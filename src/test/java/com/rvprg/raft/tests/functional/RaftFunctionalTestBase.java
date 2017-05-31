@@ -21,7 +21,7 @@ import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.log.Log;
 import com.rvprg.raft.log.LogException;
 import com.rvprg.raft.log.SnapshotInstallException;
-import com.rvprg.raft.log.TransientLogImpl;
+import com.rvprg.raft.log.InMemoryLogImpl;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftImpl;
 import com.rvprg.raft.protocol.RaftListener;
@@ -50,7 +50,7 @@ public class RaftFunctionalTestBase {
         StateMachine stateMachine = injector.getInstance(StateMachine.class);
         MessageReceiver messageReceiver = injector.getInstance(MessageReceiver.class);
 
-        Log log = new TransientLogImpl();
+        Log log = new InMemoryLogImpl();
         return new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftListener);
     }
 

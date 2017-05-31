@@ -24,7 +24,7 @@ import com.rvprg.raft.log.Log;
 import com.rvprg.raft.log.LogEntryFactory;
 import com.rvprg.raft.log.LogException;
 import com.rvprg.raft.log.SnapshotInstallException;
-import com.rvprg.raft.log.TransientLogImpl;
+import com.rvprg.raft.log.InMemoryLogImpl;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.sm.ReadableSnapshot;
 import com.rvprg.raft.sm.StateMachine;
@@ -41,7 +41,7 @@ public class LogTest {
 
     @Parameterized.Parameters(name = "{0}")
     public static Iterable<? extends Object> data() {
-        return Arrays.asList(new TransientLogImpl(), new LevelDBLogImpl());
+        return Arrays.asList(new InMemoryLogImpl(), new LevelDBLogImpl());
     }
 
     @Before

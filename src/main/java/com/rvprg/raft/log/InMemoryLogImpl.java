@@ -12,7 +12,7 @@ import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.SnapshotDescriptor;
 
-public class TransientLogImpl implements Log {
+public class InMemoryLogImpl implements Log {
     private final ArrayList<LogEntry> log = new ArrayList<LogEntry>();
     private int commitIndex = 0;
     private long firstIndex = 0;
@@ -22,7 +22,7 @@ public class TransientLogImpl implements Log {
     private long fakeIndex;
     private int fakeTerm;
 
-    public TransientLogImpl() {
+    public InMemoryLogImpl() {
         initialize(null);
     }
 

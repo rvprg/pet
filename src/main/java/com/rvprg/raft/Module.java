@@ -4,7 +4,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Singleton;
 import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.log.Log;
-import com.rvprg.raft.log.TransientLogImpl;
+import com.rvprg.raft.log.InMemoryLogImpl;
 import com.rvprg.raft.protocol.MessageConsumer;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftImpl;
@@ -52,7 +52,7 @@ public class Module extends AbstractModule {
         bind(RaftImpl.class).in(Singleton.class);
         bind(MessageConsumer.class).to(RaftImpl.class);
         bind(Raft.class).to(RaftImpl.class);
-        bind(Log.class).to(TransientLogImpl.class);
+        bind(Log.class).to(InMemoryLogImpl.class);
         bind(StateMachine.class).to(StateMachineImpl.class);
 
         bind(CommandSerde.class).to(CommandSerdeImpl.class);
