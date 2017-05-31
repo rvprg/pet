@@ -179,25 +179,25 @@ public class RaftImpl implements Raft {
     private void snapshotSenderEventHandler(SnapshotTransferEvent x) {
         if (x instanceof SnapshotTransferConnectionOpenedEvent) {
             SnapshotTransferConnectionOpenedEvent event = (SnapshotTransferConnectionOpenedEvent) x;
-            logger.info("MemberId: {} connected to the snapshot sender. SnapshotDescriptor: {}.", event.getMemberId(), event.getSnapshotDescriptor());
+            logger.info("MemberId: {} connected to the snapshot sender. Snapshot: {}.", event.getMemberId(), event.getSnapshotDescriptor());
             Channel prevValue = snapshotRecipients.put(event.getMemberId(), event.getChannel());
             if (prevValue != null) {
                 prevValue.close();
             }
         } else if (x instanceof SnapshotTransferStartedEvent) {
             SnapshotTransferStartedEvent event = (SnapshotTransferStartedEvent) x;
-            logger.info("MemberId: {}. SnapshotDescriptor: {}. Snapshot transfer started.", event.getMemberId(), event.getSnapshotDescriptor());
+            logger.info("MemberId: {}. Snapshot: {}. Snapshot transfer started.", event.getMemberId(), event.getSnapshotDescriptor());
         } else if (x instanceof SnapshotTransferCompletedEvent) {
             SnapshotTransferCompletedEvent event = (SnapshotTransferCompletedEvent) x;
-            logger.info("MemberId: {}. SnapshotDescriptor: {}. Snapshot transfer completed.", event.getMemberId(), event.getSnapshotDescriptor());
+            logger.info("MemberId: {}. Snapshot: {}. Snapshot transfer completed.", event.getMemberId(), event.getSnapshotDescriptor());
             snapshotRecipients.remove(event.getMemberId());
         } else if (x instanceof SnapshotTransferConnectionClosedEvent) {
             SnapshotTransferConnectionClosedEvent event = (SnapshotTransferConnectionClosedEvent) x;
-            logger.info("MemberId: {}. SnapshotDescriptor: {}. Closing.", event.getMemberId(), event.getSnapshotDescriptor());
+            logger.info("MemberId: {}. Snapshot: {}. Closing.", event.getMemberId(), event.getSnapshotDescriptor());
             snapshotRecipients.remove(event.getMemberId());
         } else if (x instanceof SnapshotTransferExceptionThrownEvent) {
             SnapshotTransferExceptionThrownEvent event = (SnapshotTransferExceptionThrownEvent) x;
-            logger.info("MemberId: {}. SnapshotDescriptor: {}. Error occured.", event.getMemberId(), event.getSnapshotDescriptor(), event.getThrowable());
+            logger.info("MemberId: {}. Snapshot: {}. Error occured.", event.getMemberId(), event.getSnapshotDescriptor(), event.getThrowable());
             Channel prevValue = snapshotRecipients.remove(event.getMemberId());
             if (prevValue != null) {
                 prevValue.close();
