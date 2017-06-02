@@ -154,6 +154,7 @@ public class RaftImpl implements Raft {
                 x -> {
                     snapshotSenderEventHandler(x);
                 });
+        this.snapshotSender.start();
         initializeFromTheLatestSnapshot();
         memberConnectorListener = new MemberConnectorListenerImpl(this, this.channelPipelineInitializer);
         configuration.getMemberIds().forEach(memberId -> memberConnector.register(memberId, memberConnectorListener));
@@ -163,6 +164,7 @@ public class RaftImpl implements Raft {
             throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException, LogException {
         SnapshotDescriptor latestSnapshot = SnapshotDescriptor.getLatestSnapshotDescriptor(configuration.getSnapshotFolderPath());
         if (latestSnapshot != null) {
+            logger.info("Initializing from the snapshot: {}.", latestSnapshot);
             log.installSnapshot(stateMachine, latestSnapshot);
             this.snapshotSender.setSnapshotDescriptor(latestSnapshot);
         }
@@ -430,7 +432,8 @@ public class RaftImpl implements Raft {
 
         try {
             if (appendEntries.hasInstallSnapshot()) {
-                processInstallSnapshot(appendEntries.getInstallSnapshot());
+                logger.info("{} Install snapshot request received", selfId);
+                processInstallSnapshot(member, appendEntries.getInstallSnapshot());
             } else if (appendEntries.getLogEntriesCount() == 0) {
                 processHeartbeat(appendEntries);
                 log.commit(appendEntries.getLeaderCommitIndex(), stateMachine);
@@ -456,7 +459,10 @@ public class RaftImpl implements Raft {
                 log.getCommitIndex() - log.getFirstIndex() < configuration.getLogCompactionThreshold()) {
             return;
         }
+        scheduleLogCompactionTask();
+    }
 
+    private void scheduleLogCompactionTask() {
         logCompactionTask.updateAndGet(compactionTask -> {
             if (!compactionTask.isDone()) {
                 return compactionTask;
@@ -490,7 +496,18 @@ public class RaftImpl implements Raft {
                 .build();
     }
 
-    private void processInstallSnapshot(SnapshotDownloadRequest request) {
+    private AppendEntriesResponse getAppendEntriesFromSnapshotResponse(long index) {
+        AppendEntriesResponse.Builder appendEntriesResponse = AppendEntriesResponse.newBuilder();
+        return appendEntriesResponse
+                .setSuccess(true)
+                .setTerm(getCurrentTerm())
+                .setEndIndex(index)
+                .setLogLength(log.getLastIndex())
+                .setSnapshotInstalled(true)
+                .build();
+    }
+
+    private void processInstallSnapshot(final Member member, SnapshotDownloadRequest request) {
         synchronized (snapshotInstallLock) {
             if (snapshotReceiver == null || snapshotReceiver.isDone()) {
                 final SnapshotDescriptor snapshotDescriptor = new SnapshotDescriptor(configuration.getSnapshotFolderPath(), SnapshotMetadata.fromRequest(request));
@@ -501,19 +518,19 @@ public class RaftImpl implements Raft {
                             (SnapshotDescriptor sd, Throwable e) -> {
                                 try {
                                     if (e != null) {
-                                        throw new IllegalStateException(e);
+                                        throw e;
                                     }
                                     log.installSnapshot(stateMachine, sd);
-                                } catch (Exception e1) {
-                                    logger.error(severe, "Member: {}. Snapshot: {}. Installation failed.",
-                                            snapshotSenderMemberId,
-                                            sd,
-                                            e1);
+                                    logger.info("Member: {}. Snapshot: {}. Installation successfull.", selfId, sd);
+                                    listener.snapshotInstalled(sd);
+                                    sendAppendEntriesSnapshotInstalledResponse(member, getAppendEntriesFromSnapshotResponse(request.getIndex()));
+                                } catch (Throwable e1) {
+                                    logger.error(severe, "Member: {}. Snapshot: {}. Installation failed.", selfId, snapshotDescriptor, e1);
                                 }
                             });
                 } catch (Exception e) {
                     logger.error(severe, "Member: {}. Snapshot: {}. Receiver initialization failed.",
-                            snapshotSenderMemberId,
+                            selfId,
                             snapshotDescriptor,
                             e);
                 }
@@ -575,8 +592,9 @@ public class RaftImpl implements Raft {
         try {
             AtomicLong nextIndexRef = nextIndexes.get(member.getMemberId());
             AtomicLong matchIndexRef = matchIndexes.get(member.getMemberId());
+            boolean fromSnapshot = appendEntriesResponse.hasSnapshotInstalled() && appendEntriesResponse.getSnapshotInstalled();
 
-            if (nextIndexRef.get() != appendEntriesResponse.getStartIndex()) {
+            if (!fromSnapshot && nextIndexRef.get() != appendEntriesResponse.getStartIndex()) {
                 return;
             }
 
@@ -820,6 +838,13 @@ public class RaftImpl implements Raft {
 
     private void scheduleSendMessageToEachVotingMember(RaftMessage msg) {
         memberConnector.getAllActiveVotingMembers().forEach(member -> scheduleSendMessageToMember(member, msg));
+    }
+
+    private void sendAppendEntriesSnapshotInstalledResponse(Member member, AppendEntriesResponse appendEntriesResponse) {
+        RaftMessage responseMessage = RaftMessage.newBuilder()
+                .setType(MessageType.AppendEntriesResponse)
+                .setAppendEntriesResponse(appendEntriesResponse).build();
+        scheduleSendMessageToMember(member, responseMessage);
     }
 
     private ScheduledFuture<?> scheduleSendMessageToMember(Member member, RaftMessage msg) {

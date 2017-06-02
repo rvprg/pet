@@ -1,11 +1,11 @@
 package com.rvprg.raft.tests.functional;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Set;
@@ -25,18 +25,25 @@ import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftImpl;
 import com.rvprg.raft.protocol.RaftListener;
 import com.rvprg.raft.protocol.RaftListenerImpl;
-import com.rvprg.raft.protocol.RaftMemberConnector;
-import com.rvprg.raft.protocol.Role;
 import com.rvprg.raft.tests.helpers.NetworkUtils;
 import com.rvprg.raft.transport.MemberId;
 
-public class RaftDynamicMembershipChangeTest extends RaftFunctionalTestBase {
+public class RaftSnapshotInstallTest extends RaftFunctionalTestBase {
 
-    @Test(timeout = 60000)
-    public void testAddMemberDynamically()
-            throws NoSuchMethodException, SecurityException, InterruptedException, ExecutionException, LogException, FileNotFoundException, SnapshotInstallException, IOException {
-        int clusterSize = 5;
-        int logSize = 5;
+    @Test
+    public void testInstallSnapshot()
+            throws InterruptedException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, LogException,
+            FileNotFoundException, SnapshotInstallException, IOException {
+        // This test creates a cluster of clusterSize members. Then it applies
+        // applyCount different commands. Then it adds a catching up member.
+        // Catching up member should receive a snapshot. Once the snapshot is
+        // installed on the catching up member, it issues more SM commands, and
+        // verifies all SMs and logs are consistent.
+        int clusterSize = 3;
+        int logSize = 4;
+
+        Method scheduleLogCompactionTask = RaftImpl.class.getDeclaredMethod("scheduleLogCompactionTask", new Class[] {});
+        scheduleLogCompactionTask.setAccessible(true);
 
         RaftCluster cluster = new RaftCluster(clusterSize, clusterSize, clusterSize, 9000, 10000);
         cluster.start();
@@ -52,7 +59,26 @@ public class RaftDynamicMembershipChangeTest extends RaftFunctionalTestBase {
                     // fine
                 }
             }
-            ;
+        }
+
+        cluster.waitUntilCommitAdvances();
+        cluster.waitUntilFollowersAdvance();
+
+        // Take a snapshot
+        for (Raft r : cluster.getRafts()) {
+            scheduleLogCompactionTask.invoke(r, new Object[] {});
+        }
+
+        for (int i = 0; i < logSize; ++i) {
+            byte[] buff = ByteBuffer.allocate(4).putInt(i).array();
+            ApplyCommandResult applyCommandResult = currentLeader.applyCommand(buff);
+            if (applyCommandResult.getResult() != null) {
+                try {
+                    applyCommandResult.getResult().get(3000, TimeUnit.MILLISECONDS);
+                } catch (TimeoutException | InterruptedException | ExecutionException e) {
+                    // fine
+                }
+            }
         }
 
         cluster.waitUntilCommitAdvances();
@@ -74,13 +100,6 @@ public class RaftDynamicMembershipChangeTest extends RaftFunctionalTestBase {
                 newMemberShutdownLatch.countDown();
             }
         };
-
-        try {
-            currentLeader.addMemberDynamically(new MemberId("localhost", 12345));
-            assertTrue(false);
-        } catch (IllegalArgumentException e) {
-            // Expected
-        }
 
         Raft newRaftMember = getRaft(newMemberId.getHostName(), newMemberId.getPort(), peers, 9000, 10000, newMemberListener);
         newRaftMember.becomeCatchingUpMember();
@@ -126,63 +145,7 @@ public class RaftDynamicMembershipChangeTest extends RaftFunctionalTestBase {
         assertTrue(addSuccess.get());
 
         cluster.checkLastIndexes();
+        cluster.checkFirstIndexes();
         cluster.checkLogConsistency();
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void testRemoveMemberDynamically_LeaderRemovesItself()
-            throws NoSuchMethodException, SecurityException, InterruptedException, ExecutionException, NoSuchFieldException, IllegalArgumentException, IllegalAccessException,
-            FileNotFoundException, SnapshotInstallException, IOException, LogException {
-        int clusterSize = 5;
-
-        RaftCluster cluster = new RaftCluster(clusterSize, clusterSize, clusterSize - 1, 300, 500);
-        cluster.start();
-        Raft currentLeader = cluster.getLeader();
-
-        // Try to remove the leader.
-        try {
-            currentLeader.removeMemberDynamically(currentLeader.getMemberId());
-        } finally {
-            cluster.shutdown();
-        }
-    }
-
-    @Test(timeout = 60000)
-    public void testRemoveMemberDynamically()
-            throws NoSuchMethodException, SecurityException, InterruptedException, ExecutionException, NoSuchFieldException, IllegalArgumentException, IllegalAccessException,
-            FileNotFoundException, SnapshotInstallException, IOException, LogException {
-        int clusterSize = 5;
-
-        RaftCluster cluster = new RaftCluster(clusterSize, clusterSize, clusterSize - 1, 300, 500);
-        cluster.start();
-        Raft memberToRemove = cluster.getLeader();
-
-        memberToRemove.becomeCatchingUpMember();
-        while (memberToRemove.getRole() == Role.Leader) {
-            Thread.sleep(100);
-        }
-
-        Raft currentLeader = cluster.getLeader();
-
-        // Remove a member.
-        ApplyCommandResult removeCatchingUpMemberResult = currentLeader.removeMemberDynamically(memberToRemove.getMemberId());
-        assertTrue(removeCatchingUpMemberResult.getResult() != null);
-        assertTrue(removeCatchingUpMemberResult.getResult().get());
-
-        cluster.waitUntilCommitAdvances();
-        cluster.getRafts().remove(memberToRemove);
-        cluster.waitUntilFollowersAdvance();
-
-        Field memberConnectorField = RaftImpl.class.getDeclaredField("memberConnector");
-        memberConnectorField.setAccessible(true);
-
-        for (Raft raft : cluster.getRafts()) {
-            RaftMemberConnector raftMemberConnector = (RaftMemberConnector) memberConnectorField.get(raft);
-            // Additional -1 because raftMemberConnector excludes itself.
-            assertEquals(clusterSize - 1 - 1, raftMemberConnector.getVotingMembersCount());
-        }
-
-        currentLeader.shutdown();
-        cluster.shutdown();
     }
 }

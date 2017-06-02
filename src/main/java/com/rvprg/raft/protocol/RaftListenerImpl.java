@@ -1,6 +1,7 @@
 package com.rvprg.raft.protocol;
 
 import com.rvprg.raft.transport.MemberId;
+import com.rvprg.raft.transport.SnapshotDescriptor;
 
 public class RaftListenerImpl implements RaftListener {
 
@@ -51,6 +52,11 @@ public class RaftListenerImpl implements RaftListener {
 
     @Override
     public void appendEntriesRetryScheduled(MemberId memberId) {
+        // nop
+    }
+
+    @Override
+    public void snapshotInstalled(SnapshotDescriptor descriptor) {
         // nop
     }
 

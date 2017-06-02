@@ -1,12 +1,17 @@
 package com.rvprg.raft.transport;
 
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 
 public class MemberId extends InetSocketAddress {
     private static final long serialVersionUID = -8840089459612603760L;
 
     public MemberId(InetSocketAddress s) {
         super(s.getAddress(), s.getPort());
+    }
+
+    public MemberId(SocketAddress s) {
+        this((InetSocketAddress) s);
     }
 
     public MemberId(String ip, int port) {

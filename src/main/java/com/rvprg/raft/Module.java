@@ -3,8 +3,8 @@ package com.rvprg.raft;
 import com.google.inject.AbstractModule;
 import com.google.inject.Singleton;
 import com.rvprg.raft.configuration.Configuration;
-import com.rvprg.raft.log.Log;
 import com.rvprg.raft.log.InMemoryLogImpl;
+import com.rvprg.raft.log.Log;
 import com.rvprg.raft.protocol.MessageConsumer;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftImpl;
@@ -15,8 +15,6 @@ import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.sm.StateMachineImpl;
 import com.rvprg.raft.transport.ChannelPipelineInitializer;
 import com.rvprg.raft.transport.ChannelPipelineInitializerImpl;
-import com.rvprg.raft.transport.MutableMembersRegistry;
-import com.rvprg.raft.transport.MutableMembersRegistryImpl;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberConnectorImpl;
 import com.rvprg.raft.transport.MemberConnectorListener;
@@ -24,6 +22,8 @@ import com.rvprg.raft.transport.MemberConnectorListenerImpl;
 import com.rvprg.raft.transport.MembersRegistry;
 import com.rvprg.raft.transport.MessageReceiver;
 import com.rvprg.raft.transport.MessageReceiverImpl;
+import com.rvprg.raft.transport.MutableMembersRegistry;
+import com.rvprg.raft.transport.MutableMembersRegistryImpl;
 
 public class Module extends AbstractModule {
 

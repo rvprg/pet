@@ -2,9 +2,10 @@ package com.rvprg.raft.log;
 
 import static org.fusesource.leveldbjni.JniDBFactory.factory;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,6 +19,7 @@ import org.iq80.leveldb.WriteBatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.inject.Inject;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
@@ -26,7 +28,6 @@ import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.sm.WritableSnapshot;
 import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.SnapshotDescriptor;
-import com.rvprg.raft.transport.SnapshotMetadata;
 import com.rvprg.raft.transport.SnapshotMetadata.Builder;
 
 public class LevelDBLogImpl implements Log {
@@ -264,6 +265,14 @@ public class LevelDBLogImpl implements Log {
         }
     }
 
+    @Inject
+    public LevelDBLogImpl(Configuration configuration) throws IOException {
+        initialize(configuration);
+    }
+
+    public LevelDBLogImpl() {
+    }
+
     @Override
     public void initialize(Configuration configuration) throws IOException {
         if (database != null) {
@@ -360,9 +369,10 @@ public class LevelDBLogImpl implements Log {
     public void setFakeLogEntryAndCommit(long index, int term) {
         stateLock.writeLock().lock();
         try {
-            this.fakeIndex = index;
-            this.fakeTerm = term;
-            setCommitIndex(fakeIndex);
+            setLastIndex(index - 1);
+            setFirstIndex(index);
+            append(LogEntryFactory.create(term));
+            setCommitIndex(index);
         } finally {
             stateLock.writeLock().unlock();
         }
@@ -371,21 +381,16 @@ public class LevelDBLogImpl implements Log {
     @Override
     public SnapshotDescriptor getSnapshotAndTruncate(StateMachine stateMachine) throws LogException {
         stateLock.writeLock().lock();
-        OutputStream snapshotOutputStream = null;
         SnapshotDescriptor snapshotDescriptor = null;
         WritableSnapshot writableSnapshot = null;
+
         long commitIndex = 0;
+        int term = 0;
+
         try {
             commitIndex = getCommitIndex();
             LogEntry logEntry = get(commitIndex);
-            int term = logEntry.getTerm();
-
-            SnapshotMetadata.Builder metadata = new Builder();
-            metadata.index(commitIndex);
-            metadata.term(term);
-            metadata.snapshotId(UUID.randomUUID().toString());
-
-            snapshotDescriptor = new SnapshotDescriptor(configuration.getSnapshotFolderPath(), metadata.build());
+            term = logEntry.getTerm();
             writableSnapshot = stateMachine.getWritableSnapshot();
         } catch (Exception e) {
             logger.error("Error producing snapshot. ", e);
@@ -394,11 +399,25 @@ public class LevelDBLogImpl implements Log {
             stateLock.writeLock().unlock();
         }
 
+        BufferedOutputStream snapshotOutputStream = null;
         try {
-            logger.info("{} snapshot writing started. SnapshotDescriptor={}.", stateMachine, snapshotDescriptor);
-            snapshotOutputStream = snapshotDescriptor.getOutputStream();
+            String snapshotId = UUID.randomUUID().toString();
+
+            logger.info("{} snapshot writing started. SnapshotId={}.", stateMachine, snapshotId);
+            File snapshotFile = new File(configuration.getSnapshotFolderPath(), snapshotId);
+            snapshotOutputStream = new BufferedOutputStream(new FileOutputStream(snapshotFile, false));
             writableSnapshot.write(snapshotOutputStream);
-            logger.info("{} snapshot writing finished. File size {} bytes.", stateMachine, Files.size(snapshotDescriptor.getSnapshotFile().toPath()));
+            snapshotOutputStream.flush();
+
+            long fileSize = Files.size(snapshotFile.toPath());
+            snapshotDescriptor = new SnapshotDescriptor(configuration.getSnapshotFolderPath(),
+                    new Builder()
+                            .index(commitIndex)
+                            .term(term)
+                            .snapshotId(snapshotId)
+                            .size(fileSize).build());
+
+            logger.info("{} snapshot writing finished. File size {} bytes.", stateMachine, fileSize);
 
             logger.info("{} compaction started.", this);
             truncate(commitIndex);

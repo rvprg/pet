@@ -1,5 +1,7 @@
 package com.rvprg.raft.transport;
 
+import java.io.BufferedOutputStream;
+import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
@@ -65,7 +67,7 @@ public class SnapshotReceiver {
                             }
                         }
                     });
-            out = this.snapshotDescriptor.getOutputStream();
+            out = new BufferedOutputStream(new FileOutputStream(snapshotDescriptor.getSnapshotFile(), false));
         }
 
         @Override
@@ -73,7 +75,7 @@ public class SnapshotReceiver {
             received += msg.readableBytes();
             msg.readBytes(out, msg.readableBytes());
 
-            int size = snapshotDescriptor.getMetadata().getSize();
+            long size = snapshotDescriptor.getMetadata().getSize();
             boolean isFinished = received == size;
 
             if (System.currentTimeMillis() - lastLogStatusTime > logStatusInterval || isFinished) {
@@ -146,6 +148,7 @@ public class SnapshotReceiver {
         if (channel != null) {
             channel.close();
         }
+        // FIXME:
         workerGroup.shutdownGracefully().awaitUninterruptibly();
     }
 

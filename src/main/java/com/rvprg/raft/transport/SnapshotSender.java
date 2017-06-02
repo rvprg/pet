@@ -34,22 +34,30 @@ public class SnapshotSender {
     private final Consumer<SnapshotTransferEvent> eventCallback;
     private final ChannelPipelineInitializer channelPipelineInitializer;
 
-    private final MemberId memberId;
+    private final MemberId selfId;
 
     private class SnapshotTransferInitiator extends SimpleChannelInboundHandler<RaftMessage> {
-        private MemberId memberId;
+        private volatile MemberId memberId;
         public static final String SnapshotTransferInitiator = "SnapshotTransferInitiator";
         private static final String ChunkedWriteHandler = "ChunkedWriteHandler";
         private SnapshotDescriptor snapshot;
 
+        private void initMember(ChannelHandlerContext ctx) {
+            if (memberId == null) {
+                memberId = new MemberId(ctx.channel().remoteAddress());
+            }
+        }
+
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
                 throws Exception {
+            initMember(ctx);
             eventCallback.accept(new SnapshotTransferExceptionThrownEvent(memberId, ctx.channel(), snapshot, cause));
         }
 
         @Override
         public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+            initMember(ctx);
             eventCallback.accept(new SnapshotTransferConnectionClosedEvent(memberId, ctx.channel(), snapshot));
         }
 
@@ -60,6 +68,7 @@ public class SnapshotSender {
                 ctx.channel().close();
                 return;
             }
+            initMember(ctx);
             eventCallback.accept(new SnapshotTransferConnectionOpenedEvent(memberId, ctx.channel(), snapshot));
         }
 
@@ -82,7 +91,7 @@ public class SnapshotSender {
 
             String snapshotId = msg.getSnapshotDownloadRequest().getSnapshotId();
             if (!snapshot.getMetadata().getSnapshotId().equalsIgnoreCase(snapshotId)) {
-                logger.info("MemberId={}. Requested SnapshotId={}, but we are serving snapshotId={}. Closing connection.", memberIdStr, snapshotId,
+                logger.info("MemberId={} (as reported). Requested SnapshotId={}, but we are serving snapshotId={}. Closing connection.", memberIdStr, snapshotId,
                         snapshot.getMetadata().getSnapshotId());
                 ctx.channel().close();
                 return;
@@ -107,7 +116,7 @@ public class SnapshotSender {
     }
 
     public SnapshotSender(ChannelPipelineInitializer channelPipelineInitializer,
-            MemberId memberId,
+            MemberId selfId,
             Consumer<SnapshotTransferEvent> eventCallback) throws InterruptedException {
         this.bossGroup = new NioEventLoopGroup();
         this.workerGroup = new NioEventLoopGroup();
@@ -115,7 +124,7 @@ public class SnapshotSender {
         this.snapshotDescriptor = new AtomicReference<SnapshotDescriptor>(null);
         this.eventCallback = eventCallback;
         this.channelPipelineInitializer = channelPipelineInitializer;
-        this.memberId = memberId;
+        this.selfId = selfId;
 
         server.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)
@@ -132,7 +141,7 @@ public class SnapshotSender {
     }
 
     public void start() throws InterruptedException {
-        server.bind(memberId).sync();
+        server.bind(selfId).sync();
     }
 
     public void setSnapshotDescriptor(SnapshotDescriptor snapshot) {
@@ -144,12 +153,13 @@ public class SnapshotSender {
     }
 
     public void shutdown() {
-        bossGroup.shutdownGracefully().awaitUninterruptibly();
-        workerGroup.shutdownGracefully().awaitUninterruptibly();
+        // FIXME:
+        bossGroup.shutdownGracefully();
+        workerGroup.shutdownGracefully();
     }
 
     public MemberId getMemberId() {
-        return memberId;
+        return selfId;
     }
 
 }

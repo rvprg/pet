@@ -1,13 +1,10 @@
 package com.rvprg.raft.transport;
 
 import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.Optional;
 
@@ -28,10 +25,6 @@ public class SnapshotDescriptor implements ReadableSnapshot {
 
     public File getSnapshotFile() {
         return new File(folder, metadata.getSnapshotId());
-    }
-
-    public OutputStream getOutputStream() throws FileNotFoundException {
-        return new BufferedOutputStream(new FileOutputStream(getSnapshotFile(), false));
     }
 
     public InputStream getInputStream() throws FileNotFoundException {

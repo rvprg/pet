@@ -7,10 +7,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInput;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -19,6 +21,10 @@ import com.github.andrewoma.dexx.collection.Pair;
 
 public class KeyValueStore implements Externalizable {
     private AtomicReference<HashMap<Data, Data>> map = new AtomicReference<>(HashMap.<Data, Data> empty());
+
+    public KeyValueStore(KeyValueStore s) {
+        this.map.set(s.map.get());
+    }
 
     @Override
     public String toString() {
@@ -131,5 +137,17 @@ public class KeyValueStore implements Externalizable {
                 }
             }
         }
+    }
+
+    public void write(OutputStream outputStream) throws IOException {
+        ObjectOutputStream objectOutputStream = null;
+        objectOutputStream = new ObjectOutputStream(outputStream);
+        objectOutputStream.writeObject(this);
+    }
+
+    public static KeyValueStore read(InputStream inputStream) throws IOException, ClassNotFoundException {
+        ObjectInputStream objectInputStream = null;
+        objectInputStream = new ObjectInputStream(inputStream);
+        return (KeyValueStore) objectInputStream.readObject();
     }
 }

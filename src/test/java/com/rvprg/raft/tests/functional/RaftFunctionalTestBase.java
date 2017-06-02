@@ -2,11 +2,11 @@ package com.rvprg.raft.tests.functional;
 
 import static org.junit.Assert.assertTrue;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -14,14 +14,15 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.io.Files;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import com.google.inject.util.Modules;
 import com.rvprg.raft.Module;
 import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.log.Log;
 import com.rvprg.raft.log.LogException;
 import com.rvprg.raft.log.SnapshotInstallException;
-import com.rvprg.raft.log.InMemoryLogImpl;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftImpl;
 import com.rvprg.raft.protocol.RaftListener;
@@ -33,6 +34,7 @@ import com.rvprg.raft.tests.helpers.NetworkUtils;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.MessageReceiver;
+import com.rvprg.raft.transport.SnapshotDescriptor;
 
 public class RaftFunctionalTestBase {
     public Raft getRaft(String host, int port, Set<MemberId> nodes, RaftListener raftListener)
@@ -42,15 +44,24 @@ public class RaftFunctionalTestBase {
 
     public Raft getRaft(String host, int port, Set<MemberId> nodes, int electionMinTimeout, int electionMaxTimeout, RaftListener raftListener)
             throws InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
-        Configuration configuration = Configuration.newBuilder().memberId(new MemberId(host, port)).addMemberIds(nodes).electionMinTimeout(electionMinTimeout)
-                .electionMaxTimeout(electionMaxTimeout).logUri(URI.create("file:///test")).build();
+        File tempDir = Files.createTempDir();
+        File snapshotFolderPath = Files.createTempDir();
+        Configuration configuration = Configuration.newBuilder()
+                .memberId(new MemberId(host, port))
+                .addMemberIds(nodes)
+                .electionMinTimeout(electionMinTimeout)
+                .electionMaxTimeout(electionMaxTimeout)
+                .logUri(tempDir.toURI())
+                .snapshotFolderPath(snapshotFolderPath)
+                .snapshotSenderPort(NetworkUtils.getRandomFreePort())
+                .build();
 
-        Injector injector = Guice.createInjector(new Module(configuration));
+        Injector injector = Guice.createInjector(Modules.override(new Module(configuration)).with(new TestModule()));
         MemberConnector memberConnector = injector.getInstance(MemberConnector.class);
         StateMachine stateMachine = injector.getInstance(StateMachine.class);
         MessageReceiver messageReceiver = injector.getInstance(MessageReceiver.class);
 
-        Log log = new InMemoryLogImpl();
+        Log log = injector.getInstance(Log.class);
         return new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftListener);
     }
 
@@ -168,11 +179,15 @@ public class RaftFunctionalTestBase {
                 public void appendEntriesRetryScheduled(MemberId memberId) {
                     listener.appendEntriesRetryScheduled(memberId);
                 }
+
+                @Override
+                public void snapshotInstalled(SnapshotDescriptor descriptor) {
+
+                }
             };
 
             members = createMembers(clusterSize);
             rafts = createRafts(members, electionMinTimeout, electionMaxTimeout, this.listener);
-
         }
 
         public void start() throws InterruptedException {
@@ -232,7 +247,7 @@ public class RaftFunctionalTestBase {
             for (long i = firstIndex; i <= lastIndex; ++i) {
                 LogEntry le = firstRaftLog.get(i);
                 for (Raft raft : rafts) {
-                    assertTrue(raft.getLog().get(i).equals(le));
+                    assertTrue(raft.getLog().get(i).getTerm() == le.getTerm());
                 }
             }
         }
@@ -240,6 +255,14 @@ public class RaftFunctionalTestBase {
         public void checkLastIndexes() {
             long lastIndex = rafts.get(0).getLog().getLastIndex();
             assertTrue(rafts.stream().map(x -> x.getLog().getLastIndex()).allMatch((x) -> lastIndex == x));
+        }
+
+        public void checkFirstIndexes() {
+            long firstIndex = rafts.get(0).getLog().getFirstIndex();
+            for (Raft r : rafts) {
+                System.out.println(r.getLog().getFirstIndex());
+            }
+            assertTrue(rafts.stream().map(x -> x.getLog().getFirstIndex()).allMatch((x) -> firstIndex == x));
         }
 
         public List<Raft> getRafts() {

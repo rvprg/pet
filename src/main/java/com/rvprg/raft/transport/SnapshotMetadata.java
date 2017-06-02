@@ -31,7 +31,16 @@ public class SnapshotMetadata {
         @JsonProperty("members")
         private Set<MemberId> members = new HashSet<MemberId>();
         @JsonProperty("size")
-        private int size;
+        private long size;
+
+        public static Builder from(SnapshotMetadata metadata) {
+            Builder b = new Builder();
+            b.index = metadata.index;
+            b.size = metadata.size;
+            b.snapshotId = metadata.snapshotId;
+            b.members = ImmutableSet.copyOf(metadata.members);
+            return b;
+        }
 
         public Builder index(long index) {
             this.index = index;
@@ -43,7 +52,7 @@ public class SnapshotMetadata {
             return this;
         }
 
-        public Builder size(int size) {
+        public Builder size(long size) {
             this.size = size;
             return this;
         }
@@ -89,7 +98,7 @@ public class SnapshotMetadata {
     @JsonProperty("members")
     private final Set<MemberId> members;
     @JsonProperty("size")
-    private final int size;
+    private final long size;
 
     public long getIndex() {
         return index;
@@ -107,7 +116,7 @@ public class SnapshotMetadata {
         return members;
     }
 
-    public int getSize() {
+    public long getSize() {
         return size;
     }
 
@@ -116,6 +125,7 @@ public class SnapshotMetadata {
         builder.index = request.getIndex();
         builder.term = request.getTerm();
         builder.snapshotId = request.getSnapshotId();
+        builder.size = request.getSize();
         Set<MemberId> m = new HashSet<MemberId>();
         for (int i = 0; i < request.getMembersCount(); ++i) {
             m.add(MemberId.fromString(request.getMembers(i)));
@@ -130,7 +140,7 @@ public class SnapshotMetadata {
         int result = 1;
         result = prime * result + (int) (index ^ (index >>> 32));
         result = prime * result + ((members == null) ? 0 : members.hashCode());
-        result = prime * result + size;
+        result = prime * result + (int) (size ^ (size >>> 32));
         result = prime * result + ((snapshotId == null) ? 0 : snapshotId.hashCode());
         result = prime * result + term;
         return result;
