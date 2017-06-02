@@ -128,7 +128,7 @@ public class InMemoryLogImpl implements Log {
 
     @Override
     public String toString() {
-        return "Transient log";
+        return "In-Memory log";
     }
 
     @Override

@@ -102,7 +102,7 @@ public class LevelDBLogImpl implements Log {
         try {
             byte[] value = database.get(key);
             if (value == null) {
-                throw new IllegalArgumentException("Key not found");
+                throw new IllegalArgumentException("Key not found.");
             }
             return ByteUtils.longFromBytes(value);
         } finally {
@@ -276,7 +276,7 @@ public class LevelDBLogImpl implements Log {
     @Override
     public void initialize(Configuration configuration) throws IOException {
         if (database != null) {
-            throw new IllegalStateException("Already initialized");
+            throw new IllegalStateException("Already initialized.");
         }
         this.configuration = configuration;
 
@@ -286,7 +286,7 @@ public class LevelDBLogImpl implements Log {
         database = factory.open(databaseFile, options);
 
         if (isDatabaseInitialized()) {
-            logger.info("{}: FirstIndex={}, LastIndex={}, CommitIndex={}, votedFor={}, term={}",
+            logger.info("{}: FirstIndex={}, LastIndex={}, CommitIndex={}, votedFor={}, term={}.",
                     this, getFirstIndex(), getLastIndex(), getCommitIndex(), getVotedFor(), getTerm());
         } else {
             initializeDatabase();
@@ -380,13 +380,12 @@ public class LevelDBLogImpl implements Log {
 
     @Override
     public SnapshotDescriptor getSnapshotAndTruncate(StateMachine stateMachine) throws LogException {
-        stateLock.writeLock().lock();
         SnapshotDescriptor snapshotDescriptor = null;
         WritableSnapshot writableSnapshot = null;
-
         long commitIndex = 0;
         int term = 0;
 
+        stateLock.writeLock().lock();
         try {
             commitIndex = getCommitIndex();
             LogEntry logEntry = get(commitIndex);
