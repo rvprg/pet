@@ -9,6 +9,7 @@ import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
 import com.rvprg.raft.sm.StateMachine;
+import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.SnapshotDescriptor;
 
@@ -196,12 +197,12 @@ public class InMemoryLogImpl implements Log {
     }
 
     @Override
-    public SnapshotDescriptor getSnapshotAndTruncate(StateMachine stateMachine) throws LogException {
+    public void installSnapshot(StateMachine stateMachine, MemberConnector memberConnector, SnapshotDescriptor snapshotDescriptor) throws LogException, SnapshotInstallException {
         throw new LogException("Not implemented");
     }
 
     @Override
-    public void installSnapshot(StateMachine stateMachine, SnapshotDescriptor snapshotDescriptor) throws LogException, SnapshotInstallException {
+    public SnapshotDescriptor getSnapshotAndTruncate(StateMachine stateMachine, MemberConnector memberConnector) throws LogException {
         throw new LogException("Not implemented");
     }
 

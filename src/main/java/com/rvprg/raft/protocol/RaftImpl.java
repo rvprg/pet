@@ -135,7 +135,6 @@ public class RaftImpl implements Raft {
     public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine,
             int initTerm, Role initRole,
             RaftListener listener) throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException, LogException {
-        this.memberConnector = new RaftMemberConnector(memberConnector);
         this.messageReceiver = messageReceiver;
         this.selfId = messageReceiver.getMemberId();
         this.log = log;
@@ -154,10 +153,10 @@ public class RaftImpl implements Raft {
                 x -> {
                     snapshotSenderEventHandler(x);
                 });
-        this.snapshotSender.start();
-        initializeFromTheLatestSnapshot();
-        memberConnectorListener = new MemberConnectorListenerImpl(this, this.channelPipelineInitializer);
+        this.memberConnectorListener = new MemberConnectorListenerImpl(this, this.channelPipelineInitializer);
+        this.memberConnector = new RaftMemberConnector(memberConnector, memberConnectorListener);
         configuration.getMemberIds().forEach(memberId -> memberConnector.register(memberId, memberConnectorListener));
+        initializeFromTheLatestSnapshot();
     }
 
     private void initializeFromTheLatestSnapshot()
@@ -165,7 +164,7 @@ public class RaftImpl implements Raft {
         SnapshotDescriptor latestSnapshot = SnapshotDescriptor.getLatestSnapshotDescriptor(configuration.getSnapshotFolderPath());
         if (latestSnapshot != null) {
             logger.info("Initializing from the snapshot: {}.", latestSnapshot);
-            log.installSnapshot(stateMachine, latestSnapshot);
+            log.installSnapshot(stateMachine, memberConnector, latestSnapshot);
             this.snapshotSender.setSnapshotDescriptor(latestSnapshot);
         }
     }
@@ -220,6 +219,7 @@ public class RaftImpl implements Raft {
     public void start() throws InterruptedException {
         synchronized (stateLock) {
             initializeEventLoop();
+            snapshotSender.start();
             messageReceiver.start(this);
             memberConnector.connectAllRegistered();
             if (isVotingMember()) {
@@ -470,7 +470,7 @@ public class RaftImpl implements Raft {
 
             return CompletableFuture.runAsync(() -> {
                 try {
-                    snapshotSender.setSnapshotDescriptor(log.getSnapshotAndTruncate(stateMachine));
+                    snapshotSender.setSnapshotDescriptor(log.getSnapshotAndTruncate(stateMachine, memberConnector));
                 } catch (Exception e) {
                     logger.error(severe, "{} Snapshot/Log Compaction failed.", log, e);
                 }
@@ -520,7 +520,7 @@ public class RaftImpl implements Raft {
                                     if (e != null) {
                                         throw e;
                                     }
-                                    log.installSnapshot(stateMachine, sd);
+                                    log.installSnapshot(stateMachine, memberConnector, sd);
                                     logger.info("Member: {}. Snapshot: {}. Installation successfull.", selfId, sd);
                                     listener.snapshotInstalled(sd);
                                     sendAppendEntriesSnapshotInstalledResponse(member, getAppendEntriesFromSnapshotResponse(request.getIndex()));

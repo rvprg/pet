@@ -9,6 +9,7 @@ import com.google.common.collect.ImmutableSet;
 import com.rvprg.raft.transport.Member;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberConnectorListener;
+import com.rvprg.raft.transport.MemberConnectorListenerImpl;
 import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.MembersRegistry;
 
@@ -18,8 +19,15 @@ public class RaftMemberConnector implements MemberConnector {
     private final ReentrantReadWriteLock stateLock = new ReentrantReadWriteLock();
     private final Set<MemberId> catchingUpMembers = new HashSet<>();
 
-    public RaftMemberConnector(MemberConnector memberConnector) {
+    private final MemberConnectorListenerImpl memberConnectorListener;
+
+    public RaftMemberConnector(MemberConnector memberConnector, MemberConnectorListenerImpl memberConnectorListener) {
         this.memberConnector = memberConnector;
+        this.memberConnectorListener = memberConnectorListener;
+    }
+
+    public RaftMemberConnector(MemberConnector memberConnector) {
+        this(memberConnector, null);
     }
 
     @Override
@@ -29,7 +37,11 @@ public class RaftMemberConnector implements MemberConnector {
 
     @Override
     public void register(MemberId member) {
-        memberConnector.register(member);
+        if (memberConnectorListener != null) {
+            memberConnector.register(member, this.memberConnectorListener);
+        } else {
+            memberConnector.register(member);
+        }
     }
 
     @Override

@@ -8,7 +8,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -26,6 +28,7 @@ import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
 import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.sm.WritableSnapshot;
+import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.SnapshotDescriptor;
 import com.rvprg.raft.transport.SnapshotMetadata.Builder;
@@ -379,11 +382,12 @@ public class LevelDBLogImpl implements Log {
     }
 
     @Override
-    public SnapshotDescriptor getSnapshotAndTruncate(StateMachine stateMachine) throws LogException {
+    public SnapshotDescriptor getSnapshotAndTruncate(StateMachine stateMachine, MemberConnector memberConnector) throws LogException {
         SnapshotDescriptor snapshotDescriptor = null;
         WritableSnapshot writableSnapshot = null;
         long commitIndex = 0;
         int term = 0;
+        Set<MemberId> members = null;
 
         stateLock.writeLock().lock();
         try {
@@ -391,6 +395,7 @@ public class LevelDBLogImpl implements Log {
             LogEntry logEntry = get(commitIndex);
             term = logEntry.getTerm();
             writableSnapshot = stateMachine.getWritableSnapshot();
+            members = memberConnector.getRegisteredMemberIds();
         } catch (Exception e) {
             logger.error("Error producing snapshot. ", e);
             throw new LogException("Error producing snapshot. ", e);
@@ -414,6 +419,7 @@ public class LevelDBLogImpl implements Log {
                             .index(commitIndex)
                             .term(term)
                             .snapshotId(snapshotId)
+                            .members(members)
                             .size(fileSize).build());
 
             logger.info("{} snapshot writing finished. File size {} bytes.", stateMachine, fileSize);
@@ -438,11 +444,20 @@ public class LevelDBLogImpl implements Log {
     }
 
     @Override
-    public void installSnapshot(StateMachine stateMachine, SnapshotDescriptor snapshotDescriptor) throws LogException, SnapshotInstallException {
+    public void installSnapshot(StateMachine stateMachine, MemberConnector memberConnector, SnapshotDescriptor snapshotDescriptor) throws LogException, SnapshotInstallException {
         stateLock.writeLock().lock();
         try {
             stateMachine.installSnapshot(snapshotDescriptor);
             setFakeLogEntryAndCommit(snapshotDescriptor.getMetadata().getIndex(), snapshotDescriptor.getMetadata().getTerm());
+
+            Set<MemberId> snapshotMembers = snapshotDescriptor.getMetadata().getMembers();
+            Set<MemberId> currentMembers = new HashSet<MemberId>(memberConnector.getRegisteredMemberIds());
+            currentMembers.removeAll(snapshotMembers);
+            currentMembers.forEach(x -> memberConnector.unregister(x));
+            snapshotMembers.forEach(x -> {
+                memberConnector.register(x);
+                memberConnector.connect(x);
+            });
         } finally {
             stateLock.writeLock().unlock();
         }
