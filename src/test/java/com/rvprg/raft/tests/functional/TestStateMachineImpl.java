@@ -3,8 +3,10 @@ package com.rvprg.raft.tests.functional;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import com.rvprg.raft.log.ByteUtils;
 import com.rvprg.raft.log.SnapshotInstallException;
 import com.rvprg.raft.sm.KeyValueStore;
+import com.rvprg.raft.sm.KeyValueStore.Data;
 import com.rvprg.raft.sm.ReadableSnapshot;
 import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.sm.WritableSnapshot;
@@ -14,8 +16,8 @@ public class TestStateMachineImpl implements StateMachine {
 
     @Override
     public void apply(byte[] command) {
-        // TODO Auto-generated method stub
-
+        int key = ByteUtils.intFromBytes(command);
+        store.put(new Data(command), new Data(command));
     }
 
     @Override
@@ -23,7 +25,6 @@ public class TestStateMachineImpl implements StateMachine {
         try {
             store = KeyValueStore.read(snapshot.read());
         } catch (Exception e) {
-            // FIXME:
             throw new SnapshotInstallException();
         }
     }

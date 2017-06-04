@@ -35,7 +35,8 @@ public class RaftSnapshotInstallTest extends RaftFunctionalTestBase {
             throws InterruptedException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, LogException,
             FileNotFoundException, SnapshotInstallException, IOException {
         // This test creates a cluster of clusterSize members. Then it applies
-        // applyCount different commands. Then it adds a catching up member.
+        // logSize different commands. Next, it takes a snapshot. Adds a few
+        // more commands. Then it adds a catching up member.
         // Catching up member should receive a snapshot. Once the snapshot is
         // installed on the catching up member, it issues more SM commands, and
         // verifies all SMs and logs are consistent.
