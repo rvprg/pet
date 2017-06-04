@@ -1,4 +1,4 @@
-package com.rvprg.raft.tests.functional;
+package com.rvprg.raft.tests.helpers;
 
 import java.io.IOException;
 import java.io.OutputStream;

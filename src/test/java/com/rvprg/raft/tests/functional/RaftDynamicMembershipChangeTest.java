@@ -28,9 +28,10 @@ import com.rvprg.raft.protocol.RaftListenerImpl;
 import com.rvprg.raft.protocol.RaftMemberConnector;
 import com.rvprg.raft.protocol.Role;
 import com.rvprg.raft.tests.helpers.NetworkUtils;
+import com.rvprg.raft.tests.helpers.RaftFunctionalBase;
 import com.rvprg.raft.transport.MemberId;
 
-public class RaftDynamicMembershipChangeTest extends RaftFunctionalTestBase {
+public class RaftDynamicMembershipChangeTest extends RaftFunctionalBase {
 
     @Test(timeout = 60000)
     public void testAddMemberDynamically()

@@ -23,8 +23,9 @@ import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftImpl;
 import com.rvprg.raft.protocol.RaftListener;
 import com.rvprg.raft.protocol.RaftListenerImpl;
+import com.rvprg.raft.tests.helpers.RaftFunctionalBase;
 
-public class RaftElectionSafetyTest extends RaftFunctionalTestBase {
+public class RaftElectionSafetyTest extends RaftFunctionalBase {
     @Test(timeout = 60000)
     public void testElectionSafetyProperty_OneLeaderPerTerm()
             throws InterruptedException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException,

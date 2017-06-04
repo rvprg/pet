@@ -16,8 +16,9 @@ import com.rvprg.raft.log.SnapshotInstallException;
 import com.rvprg.raft.protocol.ApplyCommandResult;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftImpl;
+import com.rvprg.raft.tests.helpers.RaftFunctionalBase;
 
-public class RaftLogConsistencyTest extends RaftFunctionalTestBase {
+public class RaftLogConsistencyTest extends RaftFunctionalBase {
 
     @Test
     public void testLogConsistencyProperty()

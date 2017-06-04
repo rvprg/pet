@@ -1,4 +1,4 @@
-package com.rvprg.raft.tests.functional;
+package com.rvprg.raft.tests.helpers;
 
 import com.google.inject.AbstractModule;
 import com.rvprg.raft.log.LevelDBLogImpl;

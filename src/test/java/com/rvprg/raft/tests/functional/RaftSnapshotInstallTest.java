@@ -26,9 +26,10 @@ import com.rvprg.raft.protocol.RaftImpl;
 import com.rvprg.raft.protocol.RaftListener;
 import com.rvprg.raft.protocol.RaftListenerImpl;
 import com.rvprg.raft.tests.helpers.NetworkUtils;
+import com.rvprg.raft.tests.helpers.RaftFunctionalBase;
 import com.rvprg.raft.transport.MemberId;
 
-public class RaftSnapshotInstallTest extends RaftFunctionalTestBase {
+public class RaftSnapshotInstallTest extends RaftFunctionalBase {
 
     @Test
     public void testInstallSnapshot()

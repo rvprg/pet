@@ -1,4 +1,4 @@
-package com.rvprg.raft.tests.functional;
+package com.rvprg.raft.tests.helpers;
 
 import static org.junit.Assert.assertTrue;
 
@@ -30,13 +30,12 @@ import com.rvprg.raft.protocol.RaftListenerImpl;
 import com.rvprg.raft.protocol.Role;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.sm.StateMachine;
-import com.rvprg.raft.tests.helpers.NetworkUtils;
 import com.rvprg.raft.transport.MemberConnector;
 import com.rvprg.raft.transport.MemberId;
 import com.rvprg.raft.transport.MessageReceiver;
 import com.rvprg.raft.transport.SnapshotDescriptor;
 
-public class RaftFunctionalTestBase {
+public abstract class RaftFunctionalBase {
     public Raft getRaft(String host, int port, Set<MemberId> nodes, RaftListener raftListener)
             throws InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
         return getRaft(host, port, nodes, 150, 300, raftListener);
