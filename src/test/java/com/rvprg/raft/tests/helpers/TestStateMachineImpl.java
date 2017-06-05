@@ -7,7 +7,7 @@ import com.rvprg.raft.log.ByteUtils;
 import com.rvprg.raft.log.SnapshotInstallException;
 import com.rvprg.raft.sm.KeyValueStore;
 import com.rvprg.raft.sm.KeyValueStore.Data;
-import com.rvprg.raft.sm.ReadableSnapshot;
+import com.rvprg.raft.sm.StreambaleSnapshot;
 import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.sm.WritableSnapshot;
 
@@ -21,9 +21,9 @@ public class TestStateMachineImpl implements StateMachine {
     }
 
     @Override
-    public void installSnapshot(ReadableSnapshot snapshot) throws SnapshotInstallException {
+    public void installSnapshot(StreambaleSnapshot snapshot) throws SnapshotInstallException {
         try {
-            store = KeyValueStore.read(snapshot.read());
+            store = KeyValueStore.read(snapshot.getInputStream());
         } catch (Exception e) {
             throw new SnapshotInstallException();
         }

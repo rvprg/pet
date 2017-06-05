@@ -11,9 +11,9 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.rvprg.raft.sm.ReadableSnapshot;
+import com.rvprg.raft.sm.StreambaleSnapshot;
 
-public class SnapshotDescriptor implements ReadableSnapshot {
+public class SnapshotDescriptor implements StreambaleSnapshot {
     private final static Logger logger = LoggerFactory.getLogger(SnapshotDescriptor.class);
 
     private final SnapshotMetadata metadata;
@@ -27,13 +27,9 @@ public class SnapshotDescriptor implements ReadableSnapshot {
         return new File(folder, metadata.getSnapshotId());
     }
 
+    @Override
     public InputStream getInputStream() throws FileNotFoundException {
         return new BufferedInputStream(new FileInputStream(getSnapshotFile()));
-    }
-
-    @Override
-    public InputStream read() throws FileNotFoundException {
-        return getInputStream();
     }
 
     public SnapshotDescriptor(File folder, SnapshotMetadata metadata) {

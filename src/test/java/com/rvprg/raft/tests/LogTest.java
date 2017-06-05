@@ -26,7 +26,7 @@ import com.rvprg.raft.log.LogException;
 import com.rvprg.raft.log.SnapshotInstallException;
 import com.rvprg.raft.log.InMemoryLogImpl;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
-import com.rvprg.raft.sm.ReadableSnapshot;
+import com.rvprg.raft.sm.StreambaleSnapshot;
 import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.sm.WritableSnapshot;
 import com.rvprg.raft.transport.MemberId;
@@ -236,7 +236,7 @@ public class LogTest {
             }
 
             @Override
-            public void installSnapshot(ReadableSnapshot snapshot) throws SnapshotInstallException {
+            public void installSnapshot(StreambaleSnapshot snapshot) throws SnapshotInstallException {
             }
 
             @Override
@@ -297,7 +297,7 @@ public class LogTest {
             }
 
             @Override
-            public void installSnapshot(ReadableSnapshot snapshot) throws SnapshotInstallException {
+            public void installSnapshot(StreambaleSnapshot snapshot) throws SnapshotInstallException {
             }
 
             @Override
