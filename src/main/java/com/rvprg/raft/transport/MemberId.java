@@ -3,6 +3,11 @@ package com.rvprg.raft.transport;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+
+@JsonSerialize(using = CustomMemberIdSerializer.class)
+@JsonDeserialize(using = CustomMemberIdDeserializer.class)
 public class MemberId extends InetSocketAddress {
     private static final long serialVersionUID = -8840089459612603760L;
 

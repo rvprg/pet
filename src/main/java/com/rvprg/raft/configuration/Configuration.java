@@ -1,10 +1,19 @@
 package com.rvprg.raft.configuration;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonGenerationException;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.base.Verify;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Files;
@@ -13,25 +22,41 @@ import com.rvprg.raft.transport.MemberId;
 import net.jcip.annotations.Immutable;
 
 @Immutable
+@JsonInclude(Include.NON_NULL)
 public class Configuration {
-
+    @JsonInclude(Include.NON_NULL)
     public static class Builder {
+        @JsonProperty("memberId")
         private MemberId memberId;
+        @JsonProperty("heartbeatInterval")
         private int heartbeatInterval = 50;
+        @JsonProperty("electionMinTimeout")
         private int electionMinTimeout = 150;
+        @JsonProperty("electionMaxTimeout")
         private int electionMaxTimeout = 300;
+        @JsonProperty("autoReconnectRetryInterval")
         private int autoReconnectRetryInterval = 1000;
+        @JsonProperty("replicationRetryInterval")
         private int replicationRetryInterval = 500;
+        @JsonProperty("maxNumberOfLogEntriesPerRequest")
         private int maxNumberOfLogEntriesPerRequest = 3;
+        @JsonProperty("logCompactionThreshold")
         private int logCompactionThreshold = 100;
+        @JsonProperty("mainEventLoopThreadPoolSize")
         private int mainEventLoopThreadPoolSize = 0;
+        @JsonProperty("memberConnectorEventLoopThreadPoolSize")
         private int memberConnectorEventLoopThreadPoolSize = 0;
+        @JsonProperty("messageReceiverBossEventLoopThreadPoolSize")
         private int messageReceiverBossEventLoopThreadPoolSize = 0;
+        @JsonProperty("messageReceiverWorkerEventLoopThreadPoolSize")
         private int messageReceiverWorkerEventLoopThreadPoolSize = 0;
+        @JsonProperty("snapshotFolderPath")
         private File snapshotFolderPath = Files.createTempDir();
+        @JsonProperty("snapshotSenderPort")
         private int snapshotSenderPort = 10000;
-
+        @JsonProperty("logUri")
         private URI logUri;
+        @JsonProperty("memberIds")
         private Set<MemberId> memberIds = new HashSet<MemberId>();
 
         public Builder memberId(MemberId memberId) {
@@ -114,6 +139,10 @@ public class Configuration {
             return this;
         }
 
+        public static Builder fromFile(File file) throws JsonParseException, JsonMappingException, IOException {
+            return getMapper().readValue(file, Builder.class);
+        }
+
         public Configuration build() {
             Verify.verify(autoReconnectRetryInterval > 0, "autoReconnectRetryInterval must be positive and nonzero");
             Verify.verify(replicationRetryInterval > 0, "replicationRetryInterval must be positive and nonzero");
@@ -138,21 +167,37 @@ public class Configuration {
 
     }
 
+    @JsonProperty("memberId")
     private final MemberId memberId;
+    @JsonProperty("heartbeatInterval")
     private final int heartbeatInterval;
+    @JsonProperty("electionMinTimeout")
     private final int electionMinTimeout;
+    @JsonProperty("electionMaxTimeout")
     private final int electionMaxTimeout;
+    @JsonProperty("autoReconnectRetryInterval")
     private final int autoReconnectRetryInterval;
+    @JsonProperty("memberIds")
     private final Set<MemberId> memberIds;
+    @JsonProperty("replicationRetryInterval")
     private final int replicationRetryInterval;
+    @JsonProperty("maxNumberOfLogEntriesPerRequest")
     private final int maxNumberOfLogEntriesPerRequest;
+    @JsonProperty("logCompactionThreshold")
     private final int logCompactionThreshold;
+    @JsonProperty("logUri")
     private final URI logUri;
+    @JsonProperty("mainEventLoopThreadPoolSize")
     private final int mainEventLoopThreadPoolSize;
+    @JsonProperty("memberConnectorEventLoopThreadPoolSize")
     private final int memberConnectorEventLoopThreadPoolSize;
+    @JsonProperty("messageReceiverBossEventLoopThreadPoolSize")
     private final int messageReceiverBossEventLoopThreadPoolSize;
+    @JsonProperty("messageReceiverWorkerEventLoopThreadPoolSize")
     private final int messageReceiverWorkerEventLoopThreadPoolSize;
+    @JsonProperty("snapshotFolderPath")
     private final File snapshotFolderPath;
+    @JsonProperty("snapshotSenderPort")
     private final int snapshotSenderPort;
 
     public Configuration(Builder builder) {
@@ -240,6 +285,97 @@ public class Configuration {
 
     public int getSnapshotSenderPort() {
         return snapshotSenderPort;
+    }
+
+    public void toFile(File file) throws JsonGenerationException, JsonMappingException, IOException {
+        getMapper().writeValue(file, this);
+    }
+
+    private static ObjectMapper getMapper() {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+        mapper.configure(SerializationFeature.WRITE_NULL_MAP_VALUES, false);
+        mapper.enable(SerializationFeature.INDENT_OUTPUT);
+        return mapper;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + autoReconnectRetryInterval;
+        result = prime * result + electionMaxTimeout;
+        result = prime * result + electionMinTimeout;
+        result = prime * result + heartbeatInterval;
+        result = prime * result + logCompactionThreshold;
+        result = prime * result + ((logUri == null) ? 0 : logUri.hashCode());
+        result = prime * result + mainEventLoopThreadPoolSize;
+        result = prime * result + maxNumberOfLogEntriesPerRequest;
+        result = prime * result + memberConnectorEventLoopThreadPoolSize;
+        result = prime * result + ((memberId == null) ? 0 : memberId.hashCode());
+        result = prime * result + ((memberIds == null) ? 0 : memberIds.hashCode());
+        result = prime * result + messageReceiverBossEventLoopThreadPoolSize;
+        result = prime * result + messageReceiverWorkerEventLoopThreadPoolSize;
+        result = prime * result + replicationRetryInterval;
+        result = prime * result + ((snapshotFolderPath == null) ? 0 : snapshotFolderPath.hashCode());
+        result = prime * result + snapshotSenderPort;
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        Configuration other = (Configuration) obj;
+        if (autoReconnectRetryInterval != other.autoReconnectRetryInterval)
+            return false;
+        if (electionMaxTimeout != other.electionMaxTimeout)
+            return false;
+        if (electionMinTimeout != other.electionMinTimeout)
+            return false;
+        if (heartbeatInterval != other.heartbeatInterval)
+            return false;
+        if (logCompactionThreshold != other.logCompactionThreshold)
+            return false;
+        if (logUri == null) {
+            if (other.logUri != null)
+                return false;
+        } else if (!logUri.equals(other.logUri))
+            return false;
+        if (mainEventLoopThreadPoolSize != other.mainEventLoopThreadPoolSize)
+            return false;
+        if (maxNumberOfLogEntriesPerRequest != other.maxNumberOfLogEntriesPerRequest)
+            return false;
+        if (memberConnectorEventLoopThreadPoolSize != other.memberConnectorEventLoopThreadPoolSize)
+            return false;
+        if (memberId == null) {
+            if (other.memberId != null)
+                return false;
+        } else if (!memberId.equals(other.memberId))
+            return false;
+        if (memberIds == null) {
+            if (other.memberIds != null)
+                return false;
+        } else if (!memberIds.equals(other.memberIds))
+            return false;
+        if (messageReceiverBossEventLoopThreadPoolSize != other.messageReceiverBossEventLoopThreadPoolSize)
+            return false;
+        if (messageReceiverWorkerEventLoopThreadPoolSize != other.messageReceiverWorkerEventLoopThreadPoolSize)
+            return false;
+        if (replicationRetryInterval != other.replicationRetryInterval)
+            return false;
+        if (snapshotFolderPath == null) {
+            if (other.snapshotFolderPath != null)
+                return false;
+        } else if (!snapshotFolderPath.equals(other.snapshotFolderPath))
+            return false;
+        if (snapshotSenderPort != other.snapshotSenderPort)
+            return false;
+        return true;
     }
 
 }

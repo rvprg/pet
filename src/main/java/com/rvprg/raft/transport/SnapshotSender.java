@@ -84,14 +84,14 @@ public class SnapshotSender {
             try {
                 memberId = MemberId.fromString(memberIdStr);
             } catch (IllegalArgumentException e) {
-                logger.error("Could not parse memberId. MemberId string = {}. Closing connection.", memberIdStr, e);
+                logger.error("Could not parse memberId. MemberId string = {}. Closing the connection.", memberIdStr, e);
                 ctx.channel().close();
                 return;
             }
 
             String snapshotId = msg.getSnapshotDownloadRequest().getSnapshotId();
             if (!snapshot.getMetadata().getSnapshotId().equalsIgnoreCase(snapshotId)) {
-                logger.info("MemberId={} (as reported). Requested SnapshotId={}, but we are serving snapshotId={}. Closing connection.", memberIdStr, snapshotId,
+                logger.info("MemberId={} (as reported). Requested SnapshotId={}, but we are serving snapshotId={}. Closing the connection.", memberIdStr, snapshotId,
                         snapshot.getMetadata().getSnapshotId());
                 ctx.channel().close();
                 return;
