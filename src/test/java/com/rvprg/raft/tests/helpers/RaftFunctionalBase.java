@@ -258,9 +258,6 @@ public abstract class RaftFunctionalBase {
 
         public void checkFirstIndexes() {
             long firstIndex = rafts.get(0).getLog().getFirstIndex();
-            for (Raft r : rafts) {
-                System.out.println(r.getLog().getFirstIndex());
-            }
             assertTrue(rafts.stream().map(x -> x.getLog().getFirstIndex()).allMatch((x) -> firstIndex == x));
         }
 

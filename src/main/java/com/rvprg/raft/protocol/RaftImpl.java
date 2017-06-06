@@ -163,7 +163,7 @@ public class RaftImpl implements Raft {
             throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException, LogException {
         SnapshotDescriptor latestSnapshot = SnapshotDescriptor.getLatestSnapshotDescriptor(configuration.getSnapshotFolderPath());
         if (latestSnapshot != null) {
-            logger.info("Initializing from the snapshot: {}.", latestSnapshot);
+            logger.info("[{}] Initializing from the snapshot: {}.", getCurrentTerm(), latestSnapshot);
             log.installSnapshot(stateMachine, memberConnector, latestSnapshot);
             this.snapshotSender.setSnapshotDescriptor(latestSnapshot);
         }
@@ -171,7 +171,7 @@ public class RaftImpl implements Raft {
 
     private void cancelAllSnapshotTransfers() {
         snapshotRecipients.forEach((memberId, channel) -> {
-            logger.info("MemberId: {}. Aborting snapshot transfer.");
+            logger.info("[{}] MemberId: {}. Aborting snapshot transfer.", getCurrentTerm(), memberId);
             channel.disconnect();
         });
         snapshotRecipients.clear();
@@ -180,25 +180,25 @@ public class RaftImpl implements Raft {
     private void snapshotSenderEventHandler(SnapshotTransferEvent x) {
         if (x instanceof SnapshotTransferConnectionOpenedEvent) {
             SnapshotTransferConnectionOpenedEvent event = (SnapshotTransferConnectionOpenedEvent) x;
-            logger.info("MemberId: {} connected to the snapshot sender. Snapshot: {}.", event.getMemberId(), event.getSnapshotDescriptor());
+            logger.info("[{}] MemberId: {} connected to the snapshot sender. Snapshot: {}.", getCurrentTerm(), event.getMemberId(), event.getSnapshotDescriptor());
             Channel prevValue = snapshotRecipients.put(event.getMemberId(), event.getChannel());
             if (prevValue != null) {
                 prevValue.close();
             }
         } else if (x instanceof SnapshotTransferStartedEvent) {
             SnapshotTransferStartedEvent event = (SnapshotTransferStartedEvent) x;
-            logger.info("MemberId: {}. Snapshot: {}. Snapshot transfer started.", event.getMemberId(), event.getSnapshotDescriptor());
+            logger.info("[{}] MemberId: {}. Snapshot: {}. Snapshot transfer started.", getCurrentTerm(), event.getMemberId(), event.getSnapshotDescriptor());
         } else if (x instanceof SnapshotTransferCompletedEvent) {
             SnapshotTransferCompletedEvent event = (SnapshotTransferCompletedEvent) x;
-            logger.info("MemberId: {}. Snapshot: {}. Snapshot transfer completed.", event.getMemberId(), event.getSnapshotDescriptor());
+            logger.info("[{}] MemberId: {}. Snapshot: {}. Snapshot transfer completed.", getCurrentTerm(), event.getMemberId(), event.getSnapshotDescriptor());
             snapshotRecipients.remove(event.getMemberId());
         } else if (x instanceof SnapshotTransferConnectionClosedEvent) {
             SnapshotTransferConnectionClosedEvent event = (SnapshotTransferConnectionClosedEvent) x;
-            logger.info("MemberId: {}. Snapshot: {}. Closing.", event.getMemberId(), event.getSnapshotDescriptor());
+            logger.info("[{}] MemberId: {}. Snapshot: {}. Closing.", getCurrentTerm(), event.getMemberId(), event.getSnapshotDescriptor());
             snapshotRecipients.remove(event.getMemberId());
         } else if (x instanceof SnapshotTransferExceptionThrownEvent) {
             SnapshotTransferExceptionThrownEvent event = (SnapshotTransferExceptionThrownEvent) x;
-            logger.info("MemberId: {}. Snapshot: {}. Error occured.", event.getMemberId(), event.getSnapshotDescriptor(), event.getThrowable());
+            logger.info("[{}] MemberId: {}. Snapshot: {}. Error occured.", getCurrentTerm(), event.getMemberId(), event.getSnapshotDescriptor(), event.getThrowable());
             Channel prevValue = snapshotRecipients.remove(event.getMemberId());
             if (prevValue != null) {
                 prevValue.close();
@@ -263,14 +263,14 @@ public class RaftImpl implements Raft {
                 try {
                     grantVote = checkCandidatesLogIsUpToDate(requestVote);
                 } catch (LogException e) {
-                    logger.error(severe, "Member: {}. Term: {}. checkCandidatesLogIsUpToDate failed.", member.getMemberId(), getCurrentTerm(), e);
+                    logger.error(severe, "[{}] Member: {}. checkCandidatesLogIsUpToDate failed.", getCurrentTerm(), member.getMemberId(), e);
                 }
             }
 
             if (grantVote) {
                 votedFor = candidateId;
                 log.setVotedFor(votedFor);
-                logger.debug("Member: {}. Term: {}. Giving vote to: {}.", selfId, getCurrentTerm(), votedFor);
+                logger.debug("[{}] Member: {}. Giving vote to: {}.", getCurrentTerm(), selfId, votedFor);
             }
         }
 
@@ -299,7 +299,7 @@ public class RaftImpl implements Raft {
             if (sameTerm && requestVoteResponse.getVoteGranted()) {
                 listener.voteReceived();
                 ++votesReceived;
-                logger.debug("Member: {}. Term: {}. Votes received: {}.", selfId, getCurrentTerm(), votesReceived);
+                logger.debug("[{}] MemberId: {}. Votes received: {}.", getCurrentTerm(), selfId, votesReceived);
             } else {
                 listener.voteRejected();
             }
@@ -335,7 +335,7 @@ public class RaftImpl implements Raft {
             if (getRole() != Role.Candidate) {
                 return;
             }
-            logger.debug("Member: {}. Term: {}. Votes Received: {}. BECAME LEADER.", selfId, getCurrentTerm(), votesReceived);
+            logger.debug("[{}] MemberId: {}. Votes Received: {}. BECAME LEADER.", getCurrentTerm(), selfId, votesReceived);
             cancelElectionTimeoutTask();
             scheduleSendHeartbeats();
             schedulePeriodicHeartbeatTask();
@@ -432,7 +432,7 @@ public class RaftImpl implements Raft {
 
         try {
             if (appendEntries.hasInstallSnapshot()) {
-                logger.info("{} Install snapshot request received", selfId);
+                logger.info("[{}] MemberId: {} Install snapshot request received", getCurrentTerm(), selfId);
                 processInstallSnapshot(member, appendEntries.getInstallSnapshot());
             } else if (appendEntries.getLogEntriesCount() == 0) {
                 processHeartbeat(appendEntries);
@@ -450,7 +450,7 @@ public class RaftImpl implements Raft {
             }
             logCompaction();
         } catch (LogException e) {
-            logger.error(severe, "Member: {}. Term: {}. consumeAppendEntries failed.", member.getMemberId(), getCurrentTerm(), e);
+            logger.error(severe, "[{}] MemberId: {}. consumeAppendEntries failed.", getCurrentTerm(), member.getMemberId(), e);
         }
     }
 
@@ -472,7 +472,7 @@ public class RaftImpl implements Raft {
                 try {
                     snapshotSender.setSnapshotDescriptor(log.getSnapshotAndTruncate(stateMachine, memberConnector));
                 } catch (Exception e) {
-                    logger.error(severe, "{} Snapshot/Log Compaction failed.", log, e);
+                    logger.error(severe, "[{}] {} Snapshot/Log Compaction failed.", getCurrentTerm(), log, e);
                 }
             }, eventLoop.get());
         });
@@ -521,15 +521,16 @@ public class RaftImpl implements Raft {
                                         throw e;
                                     }
                                     log.installSnapshot(stateMachine, memberConnector, sd);
-                                    logger.info("Member: {}. Snapshot: {}. Installation successfull.", selfId, sd);
+                                    logger.info("[{}] MemberId: {}. Snapshot: {}. Installation successfull.", getCurrentTerm(), selfId, sd);
                                     listener.snapshotInstalled(sd);
                                     sendAppendEntriesSnapshotInstalledResponse(member, getAppendEntriesFromSnapshotResponse(request.getIndex()));
                                 } catch (Throwable e1) {
-                                    logger.error(severe, "Member: {}. Snapshot: {}. Installation failed.", selfId, snapshotDescriptor, e1);
+                                    logger.error(severe, "[{}] MemberId: {}. Snapshot: {}. Installation failed.", getCurrentTerm(), selfId, snapshotDescriptor, e1);
                                 }
                             });
                 } catch (Exception e) {
-                    logger.error(severe, "Member: {}. Snapshot: {}. Receiver initialization failed.",
+                    logger.error(severe, "[{}] MemberId: {}. Snapshot: {}. Receiver initialization failed.",
+                            getCurrentTerm(),
                             selfId,
                             snapshotDescriptor,
                             e);
@@ -547,14 +548,14 @@ public class RaftImpl implements Raft {
                 DynamicMembershipChangeCommand command = DynamicMembershipChangeCommand.parseFrom(le.getEntry().toByteArray());
                 MemberId memberId = MemberId.fromString(command.getMemberId());
                 if (command.getType() == CommandType.AddMember) {
-                    logger.info("Member: {}. Term: {}. Adding {} to the cluster.", selfId, getCurrentTerm(), memberId);
+                    logger.info("[{}] MemberId: {}. Adding {} to the cluster.", getCurrentTerm(), selfId, memberId);
                     if (!memberId.equals(selfId)) {
                         memberConnector.register(memberId, memberConnectorListener);
                         memberConnector.connect(memberId);
                     }
                 } else {
                     memberConnector.unregister(memberId);
-                    logger.info("Member: {}. Term: {}. Removing {} from from cluster.", selfId, getCurrentTerm(), memberId);
+                    logger.info("[{}] MemberId: {}. Removing {} from from cluster.", getCurrentTerm(), selfId, memberId);
                 }
             } catch (InvalidProtocolBufferException e) {
                 logger.error("Error on processing raft command.", e);
@@ -616,7 +617,7 @@ public class RaftImpl implements Raft {
         try {
             checkReplicationStatus();
         } catch (LogException e) {
-            logger.error(severe, "Member: {}. Term: {}. Replication check failed due to log exception.", member.getMemberId(), getCurrentTerm(), e);
+            logger.error(severe, "[{}] MemberId: {}. Replication check failed due to log exception.", getCurrentTerm(), member.getMemberId(), e);
         }
     }
 
@@ -744,7 +745,7 @@ public class RaftImpl implements Raft {
             ScheduledFuture<?> future = eventLoop.get().schedule(() -> this.scheduleAppendEntries(memberId), configuration.getReplicationRetryInterval(), TimeUnit.MILLISECONDS);
             cancelTask(replicationRetryTasks.get(memberId).getAndSet(future));
         } catch (RejectedExecutionException e) {
-            logger.error(severe, "Member: {}. Term: {}. Scheduling replication retry failed.", memberId, getCurrentTerm(), e);
+            logger.error(severe, "[{}] MemberId: {}. Scheduling replication retry failed.", getCurrentTerm(), memberId, e);
         }
     }
 
@@ -755,7 +756,7 @@ public class RaftImpl implements Raft {
             try {
                 scheduleSendMessageToMember(member, getAppendEntries(memberId));
             } catch (LogException e) {
-                logger.error(severe, "Member: {}. Term: {}. Could not schedule replication.", memberId, getCurrentTerm(), e);
+                logger.error(severe, "[{}] MemberId: {}. Could not schedule replication.", getCurrentTerm(), memberId, e);
             }
         }
     }
@@ -795,7 +796,7 @@ public class RaftImpl implements Raft {
 
     private void electionTimedout() {
         listener.electionTimedout();
-        logger.debug("Member: {}. Term: {}. Election timedout.", selfId, getCurrentTerm());
+        logger.debug("[{}] MemberId: {}. Election timedout.", getCurrentTerm(), selfId);
         initiateElection();
     }
 
@@ -816,14 +817,14 @@ public class RaftImpl implements Raft {
             log.setVotedFor(votedFor);
             leader = null;
             votesReceived = 0;
-            logger.debug("Member: {}. Term: {}. New election.", selfId, getCurrentTerm());
+            logger.debug("[{}] MemberId: {}. New election.", getCurrentTerm(), selfId);
         }
 
         synchronized (stateLock) {
             if (votedFor == null) {
                 ++votesReceived;
                 votedFor = selfId;
-                logger.debug("Member: {}. Term: {}. Votes Received: {}. Voted for itself.", selfId, getCurrentTerm(), votesReceived);
+                logger.debug("[{}] MemberId: {}. Votes Received: {}. Voted for itself.", getCurrentTerm(), selfId, votesReceived);
             } else {
                 return;
             }
@@ -851,7 +852,7 @@ public class RaftImpl implements Raft {
         try {
             return member.getChannel().eventLoop().schedule(() -> RaftImpl.this.sendMessage(member, msg), 0, TimeUnit.MILLISECONDS);
         } catch (RejectedExecutionException e) {
-            logger.error("Member: {}. Term: {}. Message type: {}. Message sending failed.", member, getCurrentTerm(), msg.getType(), e);
+            logger.error("[{}] MemberId: {}. Message type: {}. Message sending failed.", getCurrentTerm(), member, msg.getType(), e);
         }
         return null;
     }
@@ -860,7 +861,7 @@ public class RaftImpl implements Raft {
         try {
             scheduleSendMessageToEachVotingMember(getRequestVoteMessage());
         } catch (LogException e) {
-            logger.error(severe, "Term: {}. scheduleSendVoteRequests failed.", getCurrentTerm(), e);
+            logger.error(severe, "[{}] scheduleSendVoteRequests failed.", getCurrentTerm(), e);
         }
     }
 
@@ -955,7 +956,7 @@ public class RaftImpl implements Raft {
         Channel memberChannel = member.getChannel();
         if (memberChannel.isActive()) {
             if (req.getType() == RaftMessage.MessageType.RequestVote) {
-                logger.debug("Member: {}. Term: {}. Vote request sent to: {}.", selfId, getCurrentTerm(), member.getMemberId());
+                logger.debug("[{}] MemberId: {}. Vote request sent to: {}.", getCurrentTerm(), selfId, member.getMemberId());
             }
             memberChannel.writeAndFlush(req);
         }

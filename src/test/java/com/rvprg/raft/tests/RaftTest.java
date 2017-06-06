@@ -34,11 +34,11 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.rvprg.raft.Module;
 import com.rvprg.raft.configuration.Configuration;
+import com.rvprg.raft.log.InMemoryLogImpl;
 import com.rvprg.raft.log.Log;
 import com.rvprg.raft.log.LogEntryFactory;
 import com.rvprg.raft.log.LogException;
 import com.rvprg.raft.log.SnapshotInstallException;
-import com.rvprg.raft.log.InMemoryLogImpl;
 import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftImpl;
 import com.rvprg.raft.protocol.RaftListener;
@@ -150,7 +150,8 @@ public class RaftTest {
     @Test
     public void testElectionTimeout() throws InterruptedException, LogException, FileNotFoundException, SnapshotInstallException, IOException {
         int port = NetworkUtils.getRandomFreePort();
-        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", port)).logUri(URI.create("file:///test")).build();
+        Configuration configuration = Configuration.newBuilder().memberId(new MemberId("localhost", port)).snapshotSenderPort(NetworkUtils.getRandomFreePort())
+                .logUri(URI.create("file:///test")).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
         MembersRegistry memberRegistry = mock(MembersRegistry.class);
