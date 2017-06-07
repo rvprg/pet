@@ -22,7 +22,7 @@ public class ConfigurationTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testConditions_ShouldFail_WrongElectionTimeouts() {
-        Configuration.newBuilder().memberId(new MemberId("localhost", 1234)).snapshotFolderPath(new File("c:\\adfadsf")).electionMaxTimeout(10).electionMinTimeout(20).build();
+        Configuration.newBuilder().memberId(new MemberId("localhost", 1234)).electionMaxTimeout(10).electionMinTimeout(20).build();
     }
 
     @Test
