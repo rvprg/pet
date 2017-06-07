@@ -164,7 +164,7 @@ public class Configuration {
                 throw new IllegalArgumentException(errorMessage);
             }
 
-            return new Configuration(this);
+            return configuration;
         }
 
     }
