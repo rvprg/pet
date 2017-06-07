@@ -5,6 +5,14 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import javax.validation.ConstraintViolation;
+import javax.validation.Validation;
+import javax.validation.Validator;
+import javax.validation.ValidatorFactory;
+import javax.validation.constraints.DecimalMin;
+import javax.validation.constraints.NotNull;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
@@ -14,7 +22,7 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.google.common.base.Verify;
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Files;
 import com.rvprg.raft.transport.MemberId;
@@ -23,6 +31,7 @@ import net.jcip.annotations.Immutable;
 
 @Immutable
 @JsonInclude(Include.NON_NULL)
+@ValidConfiguration
 public class Configuration {
     @JsonInclude(Include.NON_NULL)
     public static class Builder {
@@ -144,59 +153,81 @@ public class Configuration {
         }
 
         public Configuration build() {
-            Verify.verify(autoReconnectRetryInterval > 0, "autoReconnectRetryInterval must be positive and nonzero");
-            Verify.verify(replicationRetryInterval > 0, "replicationRetryInterval must be positive and nonzero");
-            Verify.verify(electionMinTimeout > 0, "electionMinTimeout must be positive and nonzero");
-            Verify.verify(electionMaxTimeout > 0, "electionMaxTimeout must be positive and nonzero");
-            Verify.verify(maxNumberOfLogEntriesPerRequest > 0, "maxNumberOfLogEntriesPerRequest must be positive and nonzero");
-            Verify.verify(heartbeatInterval > 0, "heartbeatInterval must be positive and nonzero");
-            Verify.verify(electionMinTimeout < electionMaxTimeout, "electionMaxTimeout must not be smaller than election electionMinTimeout");
-            Verify.verify(logCompactionThreshold >= 0, "logCompactionThreshold must be positive or zero");
-            Verify.verify(mainEventLoopThreadPoolSize >= 0, "mainEventLoopThreadPoolSize must be positive");
-            Verify.verify(memberConnectorEventLoopThreadPoolSize >= 0, "memberConnectorEventLoopThreadPoolSize must be positive or zero");
-            Verify.verify(messageReceiverBossEventLoopThreadPoolSize >= 0, "messageReceiverBossEventLoopThreadPoolSize must be positive or zero");
-            Verify.verify(messageReceiverWorkerEventLoopThreadPoolSize >= 0, "messageReceiverWorkerEventLoopThreadPoolSize must be positive or zero");
-            Verify.verify(snapshotSenderPort > 0, "snapshotSenderPort must be positive");
-            Verify.verify(memberId != null, "memberId must not be null");
-            Verify.verify(logUri != null, "logUri must not be null");
-            Verify.verify(snapshotFolderPath != null, "snapshotFolderPath must not be null");
-            Verify.verify(snapshotFolderPath.exists() && snapshotFolderPath.isDirectory() && snapshotFolderPath.canWrite(),
-                    "snapshotFolderPath should point to existing folder and be writable");
+            ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+            Validator validator = factory.getValidator();
+
+            Configuration configuration = new Configuration(this);
+            Set<ConstraintViolation<Configuration>> res = validator.validate(configuration);
+            if (res.size() > 0) {
+                String errorMessage = Joiner.on(";").join(
+                        res.stream().map(x -> x.getPropertyPath() + " " + x.getMessage()).collect(Collectors.toList()));
+                throw new IllegalArgumentException(errorMessage);
+            }
+
             return new Configuration(this);
         }
 
     }
 
+    @NotNull
     @JsonProperty("memberId")
     private final MemberId memberId;
+
     @JsonProperty("heartbeatInterval")
     private final int heartbeatInterval;
+
+    @DecimalMin(value = "1")
     @JsonProperty("electionMinTimeout")
     private final int electionMinTimeout;
+    @DecimalMin(value = "1")
     @JsonProperty("electionMaxTimeout")
     private final int electionMaxTimeout;
+
+    @DecimalMin(value = "1")
     @JsonProperty("autoReconnectRetryInterval")
     private final int autoReconnectRetryInterval;
+
+    @NotNull
     @JsonProperty("memberIds")
     private final Set<MemberId> memberIds;
+
+    @DecimalMin(value = "1")
     @JsonProperty("replicationRetryInterval")
     private final int replicationRetryInterval;
+
+    @DecimalMin(value = "1")
     @JsonProperty("maxNumberOfLogEntriesPerRequest")
     private final int maxNumberOfLogEntriesPerRequest;
+
+    @DecimalMin(value = "0")
     @JsonProperty("logCompactionThreshold")
     private final int logCompactionThreshold;
+
+    @NotNull
     @JsonProperty("logUri")
     private final URI logUri;
+
+    @DecimalMin(value = "0")
     @JsonProperty("mainEventLoopThreadPoolSize")
     private final int mainEventLoopThreadPoolSize;
+
+    @DecimalMin(value = "0")
     @JsonProperty("memberConnectorEventLoopThreadPoolSize")
     private final int memberConnectorEventLoopThreadPoolSize;
+
+    @DecimalMin(value = "0")
     @JsonProperty("messageReceiverBossEventLoopThreadPoolSize")
     private final int messageReceiverBossEventLoopThreadPoolSize;
+
+    @DecimalMin(value = "0")
     @JsonProperty("messageReceiverWorkerEventLoopThreadPoolSize")
     private final int messageReceiverWorkerEventLoopThreadPoolSize;
+
+    @NotNull
     @JsonProperty("snapshotFolderPath")
     private final File snapshotFolderPath;
+
+    @DecimalMin(value = "1")
     @JsonProperty("snapshotSenderPort")
     private final int snapshotSenderPort;
 
