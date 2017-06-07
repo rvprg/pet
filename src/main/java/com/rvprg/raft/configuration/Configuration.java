@@ -35,8 +35,8 @@ import net.jcip.annotations.Immutable;
 public class Configuration {
     @JsonInclude(Include.NON_NULL)
     public static class Builder {
-        @JsonProperty("memberId")
-        private MemberId memberId;
+        @JsonProperty("selfId")
+        private MemberId selfId;
         @JsonProperty("heartbeatInterval")
         private int heartbeatInterval = 50;
         @JsonProperty("electionMinTimeout")
@@ -68,8 +68,8 @@ public class Configuration {
         @JsonProperty("memberIds")
         private Set<MemberId> memberIds = new HashSet<MemberId>();
 
-        public Builder memberId(MemberId memberId) {
-            this.memberId = memberId;
+        public Builder selfId(MemberId selfId) {
+            this.selfId = selfId;
             return this;
         }
 
@@ -170,8 +170,8 @@ public class Configuration {
     }
 
     @NotNull
-    @JsonProperty("memberId")
-    private final MemberId memberId;
+    @JsonProperty("selfId")
+    private final MemberId selfId;
 
     @JsonProperty("heartbeatInterval")
     private final int heartbeatInterval;
@@ -232,7 +232,7 @@ public class Configuration {
     private final int snapshotSenderPort;
 
     public Configuration(Builder builder) {
-        memberId = builder.memberId;
+        selfId = builder.selfId;
         heartbeatInterval = builder.heartbeatInterval;
         electionMinTimeout = builder.electionMinTimeout;
         electionMaxTimeout = builder.electionMaxTimeout;
@@ -270,8 +270,8 @@ public class Configuration {
         return mainEventLoopThreadPoolSize;
     }
 
-    public MemberId getMemberId() {
-        return memberId;
+    public MemberId getSelfId() {
+        return selfId;
     }
 
     public int getHeartbeatInterval() {
@@ -343,7 +343,7 @@ public class Configuration {
         result = prime * result + mainEventLoopThreadPoolSize;
         result = prime * result + maxNumberOfLogEntriesPerRequest;
         result = prime * result + memberConnectorEventLoopThreadPoolSize;
-        result = prime * result + ((memberId == null) ? 0 : memberId.hashCode());
+        result = prime * result + ((selfId == null) ? 0 : selfId.hashCode());
         result = prime * result + ((memberIds == null) ? 0 : memberIds.hashCode());
         result = prime * result + messageReceiverBossEventLoopThreadPoolSize;
         result = prime * result + messageReceiverWorkerEventLoopThreadPoolSize;
@@ -383,10 +383,10 @@ public class Configuration {
             return false;
         if (memberConnectorEventLoopThreadPoolSize != other.memberConnectorEventLoopThreadPoolSize)
             return false;
-        if (memberId == null) {
-            if (other.memberId != null)
+        if (selfId == null) {
+            if (other.selfId != null)
                 return false;
-        } else if (!memberId.equals(other.memberId))
+        } else if (!selfId.equals(other.selfId))
             return false;
         if (memberIds == null) {
             if (other.memberIds != null)

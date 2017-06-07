@@ -46,7 +46,7 @@ public abstract class RaftFunctionalBase {
         File tempDir = Files.createTempDir();
         File snapshotFolderPath = Files.createTempDir();
         Configuration configuration = Configuration.newBuilder()
-                .memberId(new MemberId(host, port))
+                .selfId(new MemberId(host, port))
                 .addMemberIds(nodes)
                 .electionMinTimeout(electionMinTimeout)
                 .electionMaxTimeout(electionMaxTimeout)

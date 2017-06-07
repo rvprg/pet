@@ -22,18 +22,18 @@ public class ConfigurationTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testConditions_ShouldFail_WrongElectionTimeouts() {
-        Configuration.newBuilder().memberId(new MemberId("localhost", 1234)).electionMaxTimeout(10).electionMinTimeout(20).build();
+        Configuration.newBuilder().selfId(new MemberId("localhost", 1234)).electionMaxTimeout(10).electionMinTimeout(20).build();
     }
 
     @Test
     public void testConditions_ShouldSucceed_Defaults() {
-        Configuration.newBuilder().memberId(new MemberId("localhost", 1234)).logUri(URI.create("file:///test")).build();
+        Configuration.newBuilder().selfId(new MemberId("localhost", 1234)).logUri(URI.create("file:///test")).build();
     }
 
     @Test
     public void testConditions_File() throws JsonGenerationException, JsonMappingException, IOException {
         File tmpDir = Files.createTempDir();
-        Configuration c1 = Configuration.newBuilder().memberId(new MemberId("localhost", 1234)).logUri(URI.create("file:///test")).build();
+        Configuration c1 = Configuration.newBuilder().selfId(new MemberId("localhost", 1234)).logUri(URI.create("file:///test")).build();
         File file = new File(tmpDir, "test.json");
         c1.toFile(file);
         Configuration c2 = Configuration.Builder.fromFile(file).build();

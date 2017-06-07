@@ -24,7 +24,7 @@ import com.rvprg.raft.transport.MemberId;
 public class RaftMemberConnectorTest {
     @Test(timeout = 60000)
     public void testCatchingUpAndVotingMembesBookkeeping() throws InterruptedException {
-        Injector injector = Guice.createInjector(new Module(Configuration.newBuilder().memberId(new MemberId("localhost", 1)).logUri(URI.create("file:///test")).build()));
+        Injector injector = Guice.createInjector(new Module(Configuration.newBuilder().selfId(new MemberId("localhost", 1)).logUri(URI.create("file:///test")).build()));
         MemberConnector memberConnector = injector.getInstance(MemberConnector.class);
         ChannelPipelineInitializer pipelineInitializer = injector.getInstance(ChannelPipelineInitializer.class);
         EchoServer server1 = new EchoServer(pipelineInitializer);

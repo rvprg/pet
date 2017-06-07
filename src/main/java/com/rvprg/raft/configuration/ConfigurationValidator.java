@@ -18,9 +18,30 @@ public class ConfigurationValidator implements ConstraintValidator<ValidConfigur
 
         boolean isValid = true;
 
+        if (configuration.getSelfId() != null && configuration.getSelfId().getPort() == configuration.getSnapshotSenderPort()) {
+            hibernateContext
+                    .buildConstraintViolationWithTemplate("selfId port and snapshotSenderPort must be different")
+                    .addConstraintViolation();
+            isValid = false;
+        }
+
+        if (configuration.getMemberIds().contains(configuration.getSelfId())) {
+            hibernateContext
+                    .buildConstraintViolationWithTemplate("memberIds must not contain selfId")
+                    .addConstraintViolation();
+            isValid = false;
+        }
+
         if (configuration.getElectionMinTimeout() > configuration.getElectionMaxTimeout()) {
             hibernateContext
                     .buildConstraintViolationWithTemplate("electionMinTimeout must be smaller than electionMaxTimeout")
+                    .addConstraintViolation();
+            isValid = false;
+        }
+
+        if (configuration.getHeartbeatInterval() >= configuration.getElectionMinTimeout()) {
+            hibernateContext
+                    .buildConstraintViolationWithTemplate("heartbeatInterval must be smaller than electionMinTimeout")
                     .addConstraintViolation();
             isValid = false;
         }

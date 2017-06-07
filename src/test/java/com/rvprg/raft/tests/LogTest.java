@@ -19,15 +19,15 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import com.rvprg.raft.configuration.Configuration;
+import com.rvprg.raft.log.InMemoryLogImpl;
 import com.rvprg.raft.log.LevelDBLogImpl;
 import com.rvprg.raft.log.Log;
 import com.rvprg.raft.log.LogEntryFactory;
 import com.rvprg.raft.log.LogException;
 import com.rvprg.raft.log.SnapshotInstallException;
-import com.rvprg.raft.log.InMemoryLogImpl;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
-import com.rvprg.raft.sm.StreambaleSnapshot;
 import com.rvprg.raft.sm.StateMachine;
+import com.rvprg.raft.sm.StreambaleSnapshot;
 import com.rvprg.raft.sm.WritableSnapshot;
 import com.rvprg.raft.transport.MemberId;
 
@@ -48,7 +48,7 @@ public class LogTest {
     public void init() throws IOException {
         Configuration configuration = Configuration.newBuilder()
                 .logUri(URI.create("file:///" + UUID.randomUUID().toString()))
-                .memberId(new MemberId("localhost", 1234)).build();
+                .selfId(new MemberId("localhost", 1234)).build();
         log.initialize(configuration);
     }
 
