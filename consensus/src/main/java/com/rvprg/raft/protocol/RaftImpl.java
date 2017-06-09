@@ -111,7 +111,7 @@ public class RaftImpl implements Raft {
     @GuardedBy("stateLock")
     private MemberId leader;
     @GuardedBy("stateLock")
-    private Role role = Role.Follower;
+    private MemberRole role = MemberRole.Follower;
     @GuardedBy("stateLock")
     private boolean started = false;
     @GuardedBy("stateLock")
@@ -129,11 +129,11 @@ public class RaftImpl implements Raft {
     @Inject
     public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine, RaftListener listener)
             throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException, LogException {
-        this(configuration, memberConnector, messageReceiver, log, stateMachine, log.getTerm(), Role.Follower, listener);
+        this(configuration, memberConnector, messageReceiver, log, stateMachine, log.getTerm(), MemberRole.Follower, listener);
     }
 
     public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine,
-            int initTerm, Role initRole,
+            int initTerm, MemberRole initRole,
             RaftListener listener) throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException, LogException {
         this.messageReceiver = messageReceiver;
         this.selfId = messageReceiver.getMemberId();
@@ -289,7 +289,7 @@ public class RaftImpl implements Raft {
             return;
         }
 
-        if (getRole() != Role.Candidate) {
+        if (getRole() != MemberRole.Candidate) {
             return;
         }
 
@@ -332,14 +332,14 @@ public class RaftImpl implements Raft {
 
     private void becomeLeader() {
         synchronized (stateLock) {
-            if (getRole() != Role.Candidate) {
+            if (getRole() != MemberRole.Candidate) {
                 return;
             }
             logger.debug("[{}] MemberId: {}. Votes Received: {}. BECAME LEADER.", getCurrentTerm(), selfId, votesReceived);
             cancelElectionTimeoutTask();
             scheduleSendHeartbeats();
             schedulePeriodicHeartbeatTask();
-            role = Role.Leader;
+            role = MemberRole.Leader;
             leader = selfId;
             votesReceived = 0;
 
@@ -382,7 +382,7 @@ public class RaftImpl implements Raft {
         }
 
         synchronized (stateLock) {
-            role = Role.Follower;
+            role = MemberRole.Follower;
             votedFor = null;
             log.setVotedFor(null);
             votesReceived = 0;
@@ -423,7 +423,7 @@ public class RaftImpl implements Raft {
                 MemberId otherLeader = MemberId.fromString(appendEntries.getLeaderId());
                 if (leader != null &&
                         !leader.equals(otherLeader) &&
-                        role != Role.Follower) {
+                        role != MemberRole.Follower) {
                     becomeFollower();
                 }
                 leader = otherLeader;
@@ -810,7 +810,7 @@ public class RaftImpl implements Raft {
         scheduleElectionTimeoutTask();
 
         synchronized (stateLock) {
-            role = Role.Candidate;
+            role = MemberRole.Candidate;
             ++currentTerm;
             log.setTerm(currentTerm);
             votedFor = null;
@@ -963,7 +963,7 @@ public class RaftImpl implements Raft {
     }
 
     @Override
-    public Role getRole() {
+    public MemberRole getRole() {
         synchronized (stateLock) {
             return role;
         }
@@ -994,7 +994,7 @@ public class RaftImpl implements Raft {
     }
 
     private boolean isLeader() {
-        return getRole() == Role.Leader;
+        return getRole() == MemberRole.Leader;
     }
 
     @Override

@@ -26,7 +26,7 @@ import com.rvprg.raft.protocol.RaftImpl;
 import com.rvprg.raft.protocol.RaftListener;
 import com.rvprg.raft.protocol.RaftListenerImpl;
 import com.rvprg.raft.protocol.RaftMemberConnector;
-import com.rvprg.raft.protocol.Role;
+import com.rvprg.raft.protocol.MemberRole;
 import com.rvprg.raft.tests.helpers.NetworkUtils;
 import com.rvprg.raft.tests.helpers.RaftFunctionalBase;
 import com.rvprg.raft.transport.MemberId;
@@ -159,7 +159,7 @@ public class RaftDynamicMembershipChangeTest extends RaftFunctionalBase {
         Raft memberToRemove = cluster.getLeader();
 
         memberToRemove.becomeCatchingUpMember();
-        while (memberToRemove.getRole() == Role.Leader) {
+        while (memberToRemove.getRole() == MemberRole.Leader) {
             Thread.sleep(100);
         }
 

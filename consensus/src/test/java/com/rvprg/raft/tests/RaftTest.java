@@ -43,7 +43,7 @@ import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftImpl;
 import com.rvprg.raft.protocol.RaftListener;
 import com.rvprg.raft.protocol.RaftListenerImpl;
-import com.rvprg.raft.protocol.Role;
+import com.rvprg.raft.protocol.MemberRole;
 import com.rvprg.raft.protocol.messages.ProtocolMessages;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntries;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
@@ -90,7 +90,7 @@ public class RaftTest {
         final AtomicLong requestVotesInitiatedTime = new AtomicLong();
 
         // Start as a follower with term set to 0.
-        assertEquals(Role.Follower, raft.getRole());
+        assertEquals(MemberRole.Follower, raft.getRole());
         assertEquals(0, raft.getCurrentTerm());
 
         // Register when was the last heartbeat sent.
@@ -169,7 +169,7 @@ public class RaftTest {
 
         final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftListener);
         // Start as a follower with term set to 0.
-        assertEquals(Role.Follower, raft.getRole());
+        assertEquals(MemberRole.Follower, raft.getRole());
         assertEquals(0, raft.getCurrentTerm());
 
         // This set up tests that election time out works. Once a new election
@@ -192,7 +192,7 @@ public class RaftTest {
 
         // At least two terms further.
         assertTrue(raft.getCurrentTerm() >= 2);
-        assertEquals(Role.Candidate, raft.getRole());
+        assertEquals(MemberRole.Candidate, raft.getRole());
     }
 
     @Test
@@ -388,7 +388,7 @@ public class RaftTest {
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
         Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("localhost", NetworkUtils.getRandomFreePort()));
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 2, Role.Follower, raftListener);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 2, MemberRole.Follower, raftListener);
 
         assertEquals(2, raft.getCurrentTerm());
 
@@ -440,7 +440,7 @@ public class RaftTest {
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
         Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("localhost", NetworkUtils.getRandomFreePort()));
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 1, Role.Candidate, raftListener);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 1, MemberRole.Candidate, raftListener);
 
         Method initializeEventLoop = RaftImpl.class.getDeclaredMethod("initializeEventLoop", new Class[] {});
         initializeEventLoop.setAccessible(true);
@@ -471,28 +471,28 @@ public class RaftTest {
         raft.consumeRequestVoteResponse(member, requestVoteResponseTerm1);
         assertEquals(1, votesReceived.get());
         assertEquals(0, votesRejected.get());
-        assertEquals(Role.Candidate, raft.getRole());
+        assertEquals(MemberRole.Candidate, raft.getRole());
 
         raft.consumeRequestVoteResponse(member, requestVoteResponseTerm1);
         assertEquals(2, votesReceived.get());
         assertEquals(0, votesRejected.get());
-        assertEquals(Role.Candidate, raft.getRole());
+        assertEquals(MemberRole.Candidate, raft.getRole());
 
         // Send from a different term, should reject.
         raft.consumeRequestVoteResponse(member, requestVoteResponseTerm0);
         assertEquals(2, votesReceived.get());
         assertEquals(1, votesRejected.get());
-        assertEquals(Role.Candidate, raft.getRole());
+        assertEquals(MemberRole.Candidate, raft.getRole());
 
         raft.consumeRequestVoteResponse(member, requestVoteResponseTerm1);
         assertEquals(3, votesReceived.get());
         assertEquals(1, votesRejected.get());
-        assertEquals(Role.Candidate, raft.getRole());
+        assertEquals(MemberRole.Candidate, raft.getRole());
 
         raft.consumeRequestVoteResponse(member, requestVoteResponseTerm1);
         assertEquals(4, votesReceived.get());
         assertEquals(1, votesRejected.get());
-        assertEquals(Role.Leader, raft.getRole());
+        assertEquals(MemberRole.Leader, raft.getRole());
 
         raft.shutdown();
     }
@@ -513,13 +513,13 @@ public class RaftTest {
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
         Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("localhost", NetworkUtils.getRandomFreePort()));
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 1, Role.Candidate, raftListener);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 1, MemberRole.Candidate, raftListener);
 
         Method initializeEventLoop = RaftImpl.class.getDeclaredMethod("initializeEventLoop", new Class[] {});
         initializeEventLoop.setAccessible(true);
         initializeEventLoop.invoke(raft, new Object[] {});
 
-        assertEquals(Role.Candidate, raft.getRole());
+        assertEquals(MemberRole.Candidate, raft.getRole());
         assertEquals(1, raft.getCurrentTerm());
 
         RequestVoteResponse requestVoteResponseTerm1 = ProtocolMessages.RequestVoteResponse.newBuilder()
@@ -528,7 +528,7 @@ public class RaftTest {
                 .build();
 
         raft.consumeRequestVoteResponse(member, requestVoteResponseTerm1);
-        assertEquals(Role.Follower, raft.getRole());
+        assertEquals(MemberRole.Follower, raft.getRole());
     }
 
     @Test(timeout = 30000)
@@ -571,7 +571,7 @@ public class RaftTest {
             }
         };
 
-        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 0, Role.Candidate, raftListener);
+        final RaftImpl raft = new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, 0, MemberRole.Candidate, raftListener);
         Method initializeEventLoop = RaftImpl.class.getDeclaredMethod("initializeEventLoop", new Class[] {});
         initializeEventLoop.setAccessible(true);
         initializeEventLoop.invoke(raft, new Object[] {});

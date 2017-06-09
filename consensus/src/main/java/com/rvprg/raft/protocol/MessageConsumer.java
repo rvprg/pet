@@ -5,9 +5,8 @@ import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntriesResponse;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVote;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse;
 import com.rvprg.raft.transport.Member;
-import com.rvprg.raft.transport.MemberIdentifiable;
 
-public interface MessageConsumer extends MemberIdentifiable {
+public interface MessageConsumer {
     void consumeRequestVote(Member member, RequestVote requestVote);
 
     void consumeRequestVoteResponse(Member member, RequestVoteResponse requestVote);

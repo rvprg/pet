@@ -1,5 +1,5 @@
 package com.rvprg.raft.protocol;
 
-public enum Role {
+public enum MemberRole {
     Leader, Follower, Candidate
 }

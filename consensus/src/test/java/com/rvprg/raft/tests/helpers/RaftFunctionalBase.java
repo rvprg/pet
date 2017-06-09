@@ -27,7 +27,7 @@ import com.rvprg.raft.protocol.Raft;
 import com.rvprg.raft.protocol.RaftImpl;
 import com.rvprg.raft.protocol.RaftListener;
 import com.rvprg.raft.protocol.RaftListenerImpl;
-import com.rvprg.raft.protocol.Role;
+import com.rvprg.raft.protocol.MemberRole;
 import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.raft.sm.StateMachine;
 import com.rvprg.raft.transport.MemberConnector;
@@ -206,7 +206,7 @@ public abstract class RaftFunctionalBase {
         public Raft getLeader() {
             do {
                 for (Raft raft : rafts) {
-                    if (raft.getRole() == Role.Leader) {
+                    if (raft.getRole() == MemberRole.Leader) {
                         return raft;
                     }
                 }

@@ -3,8 +3,9 @@ package com.rvprg.raft.protocol;
 import com.rvprg.raft.configuration.Configuration;
 import com.rvprg.raft.log.Log;
 import com.rvprg.raft.transport.MemberId;
+import com.rvprg.raft.transport.MemberIdentifiable;
 
-public interface Raft extends MessageConsumer {
+public interface Raft extends MessageConsumer, MemberIdentifiable {
     void start() throws InterruptedException;
 
     void shutdown() throws InterruptedException;
@@ -13,7 +14,7 @@ public interface Raft extends MessageConsumer {
 
     int getCurrentTerm();
 
-    Role getRole();
+    MemberRole getRole();
 
     Configuration getConfiguration();
 
