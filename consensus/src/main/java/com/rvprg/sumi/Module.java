@@ -6,9 +6,9 @@ import com.rvprg.sumi.configuration.Configuration;
 import com.rvprg.sumi.log.InMemoryLogImpl;
 import com.rvprg.sumi.log.Log;
 import com.rvprg.sumi.protocol.MessageConsumer;
-import com.rvprg.sumi.protocol.Raft;
-import com.rvprg.sumi.protocol.RaftImpl;
-import com.rvprg.sumi.protocol.RaftListener;
+import com.rvprg.sumi.protocol.Consensus;
+import com.rvprg.sumi.protocol.ConsensusImpl;
+import com.rvprg.sumi.protocol.ConsensusEventListener;
 import com.rvprg.sumi.sm.CommandSerde;
 import com.rvprg.sumi.sm.CommandSerdeImpl;
 import com.rvprg.sumi.sm.StateMachine;
@@ -49,15 +49,15 @@ public class Module extends AbstractModule {
         bind(MemberConnectorListener.class).to(MemberConnectorListenerImpl.class);
         bind(ChannelPipelineInitializer.class).to(ChannelPipelineInitializerImpl.class);
 
-        bind(RaftImpl.class).in(Singleton.class);
-        bind(MessageConsumer.class).to(RaftImpl.class);
-        bind(Raft.class).to(RaftImpl.class);
+        bind(ConsensusImpl.class).in(Singleton.class);
+        bind(MessageConsumer.class).to(ConsensusImpl.class);
+        bind(Consensus.class).to(ConsensusImpl.class);
         bind(Log.class).to(InMemoryLogImpl.class);
         bind(StateMachine.class).to(StateMachineImpl.class);
 
         bind(CommandSerde.class).to(CommandSerdeImpl.class);
 
-        bind(RaftListener.class).toInstance(RaftListener.getDefaultInstance());
+        bind(ConsensusEventListener.class).toInstance(ConsensusEventListener.getDefaultInstance());
     }
 
 }

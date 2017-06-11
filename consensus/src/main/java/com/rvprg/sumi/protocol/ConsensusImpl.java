@@ -65,13 +65,13 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.util.concurrent.ScheduledFuture;
 import net.jcip.annotations.GuardedBy;
 
-public class RaftImpl implements Raft {
-    private final Logger logger = LoggerFactory.getLogger(RaftImpl.class);
+public class ConsensusImpl implements Consensus {
+    private final Logger logger = LoggerFactory.getLogger(ConsensusImpl.class);
     private final static Marker severe = MarkerFactory.getMarker("SEVERE");
 
     private final MemberId selfId;
     private final Configuration configuration;
-    private final RaftMemberConnector memberConnector;
+    private final ConsensusMemberConnector memberConnector;
     private final MessageReceiver messageReceiver;
     private final Log log;
 
@@ -99,7 +99,7 @@ public class RaftImpl implements Raft {
     @GuardedBy("dynamicMembershipChangeLock")
     private ApplyCommandResult dynamicMembershipChangeInProgress = null;
 
-    private final RaftListener listener;
+    private final ConsensusEventListener listener;
 
     private final Object stateLock = new Object();
     @GuardedBy("stateLock")
@@ -127,14 +127,14 @@ public class RaftImpl implements Raft {
     private final ChannelPipelineInitializer channelPipelineInitializer;
 
     @Inject
-    public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine, RaftListener listener)
+    public ConsensusImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine, ConsensusEventListener listener)
             throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException, LogException {
         this(configuration, memberConnector, messageReceiver, log, stateMachine, log.getTerm(), MemberRole.Follower, listener);
     }
 
-    public RaftImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine,
+    public ConsensusImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine,
             int initTerm, MemberRole initRole,
-            RaftListener listener) throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException, LogException {
+            ConsensusEventListener listener) throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException, LogException {
         this.messageReceiver = messageReceiver;
         this.selfId = messageReceiver.getMemberId();
         this.log = log;
@@ -143,7 +143,7 @@ public class RaftImpl implements Raft {
         this.leader = null;
         this.configuration = configuration;
         this.random = new Random();
-        this.listener = listener == null ? RaftListener.getDefaultInstance() : listener;
+        this.listener = listener == null ? ConsensusEventListener.getDefaultInstance() : listener;
         this.stateMachine = stateMachine;
         this.votedFor = log.getVotedFor();
         this.channelPipelineInitializer = messageReceiver.getChannelPipelineInitializer();
@@ -154,7 +154,7 @@ public class RaftImpl implements Raft {
                     snapshotSenderEventHandler(x);
                 });
         this.memberConnectorListener = new MemberConnectorListenerImpl(this, this.channelPipelineInitializer);
-        this.memberConnector = new RaftMemberConnector(memberConnector, memberConnectorListener);
+        this.memberConnector = new ConsensusMemberConnector(memberConnector, memberConnectorListener);
         configuration.getMemberIds().forEach(memberId -> memberConnector.register(memberId, memberConnectorListener));
         initializeFromTheLatestSnapshot();
     }
@@ -664,19 +664,19 @@ public class RaftImpl implements Raft {
     private ScheduledFuture<?> getNextElectionTask() {
         listener.nextElectionScheduled();
         final int timeout = random.nextInt(configuration.getElectionMaxTimeout() - configuration.getElectionMinTimeout()) + configuration.getElectionMinTimeout();
-        return eventLoop.get().schedule(() -> RaftImpl.this.heartbeatTimedout(), timeout, TimeUnit.MILLISECONDS);
+        return eventLoop.get().schedule(() -> ConsensusImpl.this.heartbeatTimedout(), timeout, TimeUnit.MILLISECONDS);
     }
 
     private void scheduleElectionTimeoutTask() {
         final int timeout = random.nextInt(configuration.getElectionMaxTimeout() - configuration.getElectionMinTimeout()) + configuration.getElectionMinTimeout();
         ScheduledFuture<?> prevTask = electionTimeoutMonitorTask.getAndSet(
-                eventLoop.get().schedule(() -> RaftImpl.this.electionTimedout(), timeout, TimeUnit.MILLISECONDS));
+                eventLoop.get().schedule(() -> ConsensusImpl.this.electionTimedout(), timeout, TimeUnit.MILLISECONDS));
         cancelTask(prevTask);
     }
 
     private void schedulePeriodicHeartbeatTask() {
         ScheduledFuture<?> prevTask = periodicHeartbeatTask.getAndSet(
-                eventLoop.get().scheduleAtFixedRate(() -> RaftImpl.this.scheduleSendHeartbeats(), 0, configuration.getHeartbeatInterval(), TimeUnit.MILLISECONDS));
+                eventLoop.get().scheduleAtFixedRate(() -> ConsensusImpl.this.scheduleSendHeartbeats(), 0, configuration.getHeartbeatInterval(), TimeUnit.MILLISECONDS));
         cancelTask(prevTask);
     }
 
@@ -850,7 +850,7 @@ public class RaftImpl implements Raft {
 
     private ScheduledFuture<?> scheduleSendMessageToMember(Member member, RaftMessage msg) {
         try {
-            return member.getChannel().eventLoop().schedule(() -> RaftImpl.this.sendMessage(member, msg), 0, TimeUnit.MILLISECONDS);
+            return member.getChannel().eventLoop().schedule(() -> ConsensusImpl.this.sendMessage(member, msg), 0, TimeUnit.MILLISECONDS);
         } catch (RejectedExecutionException e) {
             logger.error("[{}] MemberId: {}. Message type: {}. Message sending failed.", getCurrentTerm(), member, msg.getType(), e);
         }

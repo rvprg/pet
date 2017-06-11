@@ -21,15 +21,15 @@ import com.rvprg.sumi.log.LogException;
 import com.rvprg.sumi.log.SnapshotInstallException;
 import com.rvprg.sumi.protocol.AddCatchingUpMemberResult;
 import com.rvprg.sumi.protocol.ApplyCommandResult;
-import com.rvprg.sumi.protocol.Raft;
-import com.rvprg.sumi.protocol.RaftImpl;
-import com.rvprg.sumi.protocol.RaftListener;
-import com.rvprg.sumi.protocol.RaftListenerImpl;
+import com.rvprg.sumi.protocol.Consensus;
+import com.rvprg.sumi.protocol.ConsensusImpl;
+import com.rvprg.sumi.protocol.ConsensusEventListener;
+import com.rvprg.sumi.protocol.ConsensusEventListenerImpl;
 import com.rvprg.sumi.tests.helpers.NetworkUtils;
-import com.rvprg.sumi.tests.helpers.RaftFunctionalBase;
+import com.rvprg.sumi.tests.helpers.ConsensusFunctionalBase;
 import com.rvprg.sumi.transport.MemberId;
 
-public class RaftSnapshotInstallTest extends RaftFunctionalBase {
+public class SnapshotInstallTest extends ConsensusFunctionalBase {
 
     @Test
     public void testInstallSnapshot()
@@ -44,13 +44,13 @@ public class RaftSnapshotInstallTest extends RaftFunctionalBase {
         int clusterSize = 3;
         int logSize = 4;
 
-        Method scheduleLogCompactionTask = RaftImpl.class.getDeclaredMethod("scheduleLogCompactionTask", new Class[] {});
+        Method scheduleLogCompactionTask = ConsensusImpl.class.getDeclaredMethod("scheduleLogCompactionTask", new Class[] {});
         scheduleLogCompactionTask.setAccessible(true);
 
         RaftCluster cluster = new RaftCluster(clusterSize, clusterSize, clusterSize, 9000, 10000);
         cluster.start();
 
-        Raft currentLeader = cluster.getLeader();
+        Consensus currentLeader = cluster.getLeader();
         for (int i = 0; i < logSize; ++i) {
             byte[] buff = ByteBuffer.allocate(4).putInt(i).array();
             ApplyCommandResult applyCommandResult = currentLeader.applyCommand(buff);
@@ -67,7 +67,7 @@ public class RaftSnapshotInstallTest extends RaftFunctionalBase {
         cluster.waitUntilFollowersAdvance();
 
         // Take a snapshot
-        for (Raft r : cluster.getRafts()) {
+        for (Consensus r : cluster.getRafts()) {
             scheduleLogCompactionTask.invoke(r, new Object[] {});
         }
 
@@ -91,7 +91,7 @@ public class RaftSnapshotInstallTest extends RaftFunctionalBase {
         CountDownLatch newMemberStartLatch = new CountDownLatch(1);
         CountDownLatch newMemberShutdownLatch = new CountDownLatch(1);
 
-        RaftListener newMemberListener = new RaftListenerImpl() {
+        ConsensusEventListener newMemberListener = new ConsensusEventListenerImpl() {
             @Override
             public void started() {
                 newMemberStartLatch.countDown();
@@ -103,7 +103,7 @@ public class RaftSnapshotInstallTest extends RaftFunctionalBase {
             }
         };
 
-        Raft newRaftMember = getRaft(newMemberId.getHostName(), newMemberId.getPort(), peers, 9000, 10000, newMemberListener);
+        Consensus newRaftMember = getRaft(newMemberId.getHostName(), newMemberId.getPort(), peers, 9000, 10000, newMemberListener);
         newRaftMember.becomeCatchingUpMember();
         newRaftMember.start();
 

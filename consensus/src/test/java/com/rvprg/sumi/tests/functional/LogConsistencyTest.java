@@ -14,11 +14,11 @@ import org.junit.Test;
 import com.rvprg.sumi.log.LogException;
 import com.rvprg.sumi.log.SnapshotInstallException;
 import com.rvprg.sumi.protocol.ApplyCommandResult;
-import com.rvprg.sumi.protocol.Raft;
-import com.rvprg.sumi.protocol.RaftImpl;
-import com.rvprg.sumi.tests.helpers.RaftFunctionalBase;
+import com.rvprg.sumi.protocol.Consensus;
+import com.rvprg.sumi.protocol.ConsensusImpl;
+import com.rvprg.sumi.tests.helpers.ConsensusFunctionalBase;
 
-public class RaftLogConsistencyTest extends RaftFunctionalBase {
+public class LogConsistencyTest extends ConsensusFunctionalBase {
 
     @Test
     public void testLogConsistencyProperty()
@@ -33,12 +33,12 @@ public class RaftLogConsistencyTest extends RaftFunctionalBase {
         int applyCount = 5;
 
         RaftCluster cluster = new RaftCluster(clusterSize);
-        Method cancelHeartBeat = RaftImpl.class.getDeclaredMethod("becomeFollower", new Class[] {});
+        Method cancelHeartBeat = ConsensusImpl.class.getDeclaredMethod("becomeFollower", new Class[] {});
         cancelHeartBeat.setAccessible(true);
         cluster.start();
 
         int commandNumber = 0;
-        Raft currentLeader = null;
+        Consensus currentLeader = null;
         for (int i = 0; i < iterations; ++i) {
             currentLeader = cluster.getLeader();
             for (int j = 0; j < applyCount; ++j) {

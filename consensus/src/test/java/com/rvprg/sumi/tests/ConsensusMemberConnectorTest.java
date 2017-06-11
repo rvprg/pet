@@ -14,14 +14,14 @@ import com.google.inject.Injector;
 import com.rvprg.sumi.Module;
 import com.rvprg.sumi.configuration.Configuration;
 import com.rvprg.sumi.protocol.MessageConsumer;
-import com.rvprg.sumi.protocol.RaftMemberConnector;
+import com.rvprg.sumi.protocol.ConsensusMemberConnector;
 import com.rvprg.sumi.tests.helpers.EchoServer;
 import com.rvprg.sumi.tests.helpers.MemberConnectorListenerTestableImpl;
 import com.rvprg.sumi.transport.ChannelPipelineInitializer;
 import com.rvprg.sumi.transport.MemberConnector;
 import com.rvprg.sumi.transport.MemberId;
 
-public class RaftMemberConnectorTest {
+public class ConsensusMemberConnectorTest {
     @Test(timeout = 60000)
     public void testCatchingUpAndVotingMembesBookkeeping() throws InterruptedException {
         Injector injector = Guice.createInjector(new Module(Configuration.newBuilder().selfId(new MemberId("localhost", 1)).logUri(URI.create("file:///test")).build()));
@@ -29,7 +29,7 @@ public class RaftMemberConnectorTest {
         ChannelPipelineInitializer pipelineInitializer = injector.getInstance(ChannelPipelineInitializer.class);
         EchoServer server1 = new EchoServer(pipelineInitializer);
         EchoServer server2 = new EchoServer(pipelineInitializer);
-        RaftMemberConnector connector = new RaftMemberConnector(memberConnector);
+        ConsensusMemberConnector connector = new ConsensusMemberConnector(memberConnector);
 
         server1.start().awaitUninterruptibly();
         server2.start().awaitUninterruptibly();

@@ -13,7 +13,7 @@ import com.rvprg.sumi.transport.MemberConnectorListenerImpl;
 import com.rvprg.sumi.transport.MemberId;
 import com.rvprg.sumi.transport.MembersRegistry;
 
-public class RaftMemberConnector implements MemberConnector {
+public class ConsensusMemberConnector implements MemberConnector {
     private final MemberConnector memberConnector;
 
     private final ReentrantReadWriteLock stateLock = new ReentrantReadWriteLock();
@@ -21,12 +21,12 @@ public class RaftMemberConnector implements MemberConnector {
 
     private final MemberConnectorListenerImpl memberConnectorListener;
 
-    public RaftMemberConnector(MemberConnector memberConnector, MemberConnectorListenerImpl memberConnectorListener) {
+    public ConsensusMemberConnector(MemberConnector memberConnector, MemberConnectorListenerImpl memberConnectorListener) {
         this.memberConnector = memberConnector;
         this.memberConnectorListener = memberConnectorListener;
     }
 
-    public RaftMemberConnector(MemberConnector memberConnector) {
+    public ConsensusMemberConnector(MemberConnector memberConnector) {
         this(memberConnector, null);
     }
 

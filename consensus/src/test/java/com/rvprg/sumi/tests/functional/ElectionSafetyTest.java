@@ -19,13 +19,13 @@ import org.junit.Test;
 import com.rvprg.sumi.log.LogEntryFactory;
 import com.rvprg.sumi.log.LogException;
 import com.rvprg.sumi.log.SnapshotInstallException;
-import com.rvprg.sumi.protocol.Raft;
-import com.rvprg.sumi.protocol.RaftImpl;
-import com.rvprg.sumi.protocol.RaftListener;
-import com.rvprg.sumi.protocol.RaftListenerImpl;
-import com.rvprg.sumi.tests.helpers.RaftFunctionalBase;
+import com.rvprg.sumi.protocol.Consensus;
+import com.rvprg.sumi.protocol.ConsensusImpl;
+import com.rvprg.sumi.protocol.ConsensusEventListener;
+import com.rvprg.sumi.protocol.ConsensusEventListenerImpl;
+import com.rvprg.sumi.tests.helpers.ConsensusFunctionalBase;
 
-public class RaftElectionSafetyTest extends RaftFunctionalBase {
+public class ElectionSafetyTest extends ConsensusFunctionalBase {
     @Test(timeout = 60000)
     public void testElectionSafetyProperty_OneLeaderPerTerm()
             throws InterruptedException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException,
@@ -40,12 +40,12 @@ public class RaftElectionSafetyTest extends RaftFunctionalBase {
         int iterations = 5;
 
         LinkedHashMap<Integer, Integer> termsAndLeaders = new LinkedHashMap<>();
-        final SynchronousQueue<Raft> leaderBlockingQueue = new SynchronousQueue<>();
+        final SynchronousQueue<Consensus> leaderBlockingQueue = new SynchronousQueue<>();
         final AtomicBoolean trackLeader = new AtomicBoolean(true);
 
-        RaftListener listener = new RaftListenerImpl() {
+        ConsensusEventListener listener = new ConsensusEventListenerImpl() {
             @Override
-            public synchronized void electionWon(int term, Raft leader) {
+            public synchronized void electionWon(int term, Consensus leader) {
                 if (termsAndLeaders.containsKey(term)) {
                     termsAndLeaders.put(term, termsAndLeaders.get(term) + 1);
                 } else {
@@ -64,11 +64,11 @@ public class RaftElectionSafetyTest extends RaftFunctionalBase {
         RaftCluster cluster = new RaftCluster(clusterSize, listener);
         cluster.start();
 
-        Method cancelHeartBeat = RaftImpl.class.getDeclaredMethod("cancelPeriodicHeartbeatTask", new Class[] {});
+        Method cancelHeartBeat = ConsensusImpl.class.getDeclaredMethod("cancelPeriodicHeartbeatTask", new Class[] {});
         cancelHeartBeat.setAccessible(true);
 
         for (int i = 0; i < iterations; ++i) {
-            Raft currentLeader = leaderBlockingQueue.take();
+            Consensus currentLeader = leaderBlockingQueue.take();
             cancelHeartBeat.invoke(currentLeader, new Object[] {});
         }
 
@@ -97,11 +97,11 @@ public class RaftElectionSafetyTest extends RaftFunctionalBase {
         // Case #1: More recent term wins.
         int clusterSize = 5;
 
-        final SynchronousQueue<Raft> leaderBlockingQueue = new SynchronousQueue<>();
+        final SynchronousQueue<Consensus> leaderBlockingQueue = new SynchronousQueue<>();
 
-        RaftListener listener = new RaftListenerImpl() {
+        ConsensusEventListener listener = new ConsensusEventListenerImpl() {
             @Override
-            public synchronized void electionWon(int term, Raft leader) {
+            public synchronized void electionWon(int term, Consensus leader) {
                 try {
                     leaderBlockingQueue.put(leader);
                 } catch (InterruptedException e) {
@@ -112,16 +112,16 @@ public class RaftElectionSafetyTest extends RaftFunctionalBase {
 
         RaftCluster cluster = new RaftCluster(clusterSize, listener);
 
-        Set<Raft> majority = new HashSet<Raft>();
+        Set<Consensus> majority = new HashSet<Consensus>();
 
         for (int i = 0; i < clusterSize / 2 + 1; ++i) {
-            Raft raft = cluster.getRafts().get(i);
+            Consensus raft = cluster.getRafts().get(i);
             majority.add(raft);
             raft.getLog().append(LogEntryFactory.create(2, new byte[] { 2 }));
         }
 
         cluster.start();
-        Raft currentLeader = leaderBlockingQueue.take();
+        Consensus currentLeader = leaderBlockingQueue.take();
         assertTrue(majority.contains(currentLeader));
         cluster.shutdown();
     }
@@ -137,11 +137,11 @@ public class RaftElectionSafetyTest extends RaftFunctionalBase {
         // Case #2: Larger log wins.
         int clusterSize = 5;
 
-        final SynchronousQueue<Raft> leaderBlockingQueue = new SynchronousQueue<>();
+        final SynchronousQueue<Consensus> leaderBlockingQueue = new SynchronousQueue<>();
 
-        RaftListener listener = new RaftListenerImpl() {
+        ConsensusEventListener listener = new ConsensusEventListenerImpl() {
             @Override
-            public synchronized void electionWon(int term, Raft leader) {
+            public synchronized void electionWon(int term, Consensus leader) {
                 try {
                     leaderBlockingQueue.put(leader);
                 } catch (InterruptedException e) {
@@ -151,10 +151,10 @@ public class RaftElectionSafetyTest extends RaftFunctionalBase {
         };
 
         RaftCluster cluster = new RaftCluster(clusterSize, listener);
-        Set<Raft> majority = new HashSet<Raft>();
+        Set<Consensus> majority = new HashSet<Consensus>();
 
         for (int i = 0; i < clusterSize; ++i) {
-            Raft raft = cluster.getRafts().get(i);
+            Consensus raft = cluster.getRafts().get(i);
             majority.add(raft);
             raft.getLog().append(LogEntryFactory.create(2, new byte[] { 2 }));
             if (i < clusterSize / 2 + 1) {
@@ -164,7 +164,7 @@ public class RaftElectionSafetyTest extends RaftFunctionalBase {
 
         cluster.start();
 
-        Raft currentLeader = leaderBlockingQueue.take();
+        Consensus currentLeader = leaderBlockingQueue.take();
         assertTrue(majority.contains(currentLeader));
         cluster.shutdown();
     }

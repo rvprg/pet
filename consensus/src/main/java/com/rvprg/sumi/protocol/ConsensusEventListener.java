@@ -3,7 +3,7 @@ package com.rvprg.sumi.protocol;
 import com.rvprg.sumi.transport.MemberId;
 import com.rvprg.sumi.transport.SnapshotDescriptor;
 
-public interface RaftListener {
+public interface ConsensusEventListener {
     void heartbeatTimedout();
 
     void nextElectionScheduled();
@@ -14,7 +14,7 @@ public interface RaftListener {
 
     void voteRejected();
 
-    void electionWon(int term, Raft leader);
+    void electionWon(int term, Consensus leader);
 
     void electionTimedout();
 
@@ -26,7 +26,7 @@ public interface RaftListener {
 
     void snapshotInstalled(SnapshotDescriptor descriptor);
 
-    static RaftListener getDefaultInstance() {
-        return new RaftListenerImpl();
+    static ConsensusEventListener getDefaultInstance() {
+        return new ConsensusEventListenerImpl();
     }
 }

@@ -3,7 +3,7 @@ package com.rvprg.sumi.protocol;
 import com.rvprg.sumi.transport.MemberId;
 import com.rvprg.sumi.transport.SnapshotDescriptor;
 
-public class RaftListenerImpl implements RaftListener {
+public class ConsensusEventListenerImpl implements ConsensusEventListener {
 
     @Override
     public void heartbeatTimedout() {
@@ -31,7 +31,7 @@ public class RaftListenerImpl implements RaftListener {
     }
 
     @Override
-    public void electionWon(int term, Raft leader) {
+    public void electionWon(int term, Consensus leader) {
         // nop
     }
 

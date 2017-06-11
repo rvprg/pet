@@ -22,16 +22,16 @@ import com.rvprg.sumi.log.SnapshotInstallException;
 import com.rvprg.sumi.protocol.AddCatchingUpMemberResult;
 import com.rvprg.sumi.protocol.ApplyCommandResult;
 import com.rvprg.sumi.protocol.MemberRole;
-import com.rvprg.sumi.protocol.Raft;
-import com.rvprg.sumi.protocol.RaftImpl;
-import com.rvprg.sumi.protocol.RaftListener;
-import com.rvprg.sumi.protocol.RaftListenerImpl;
-import com.rvprg.sumi.protocol.RaftMemberConnector;
+import com.rvprg.sumi.protocol.Consensus;
+import com.rvprg.sumi.protocol.ConsensusImpl;
+import com.rvprg.sumi.protocol.ConsensusEventListener;
+import com.rvprg.sumi.protocol.ConsensusEventListenerImpl;
+import com.rvprg.sumi.protocol.ConsensusMemberConnector;
 import com.rvprg.sumi.tests.helpers.NetworkUtils;
-import com.rvprg.sumi.tests.helpers.RaftFunctionalBase;
+import com.rvprg.sumi.tests.helpers.ConsensusFunctionalBase;
 import com.rvprg.sumi.transport.MemberId;
 
-public class RaftDynamicMembershipChangeTest extends RaftFunctionalBase {
+public class DynamicMembershipChangeTest extends ConsensusFunctionalBase {
 
     @Test(timeout = 60000)
     public void testAddMemberDynamically()
@@ -42,7 +42,7 @@ public class RaftDynamicMembershipChangeTest extends RaftFunctionalBase {
         RaftCluster cluster = new RaftCluster(clusterSize, clusterSize, clusterSize, 9000, 10000);
         cluster.start();
 
-        Raft currentLeader = cluster.getLeader();
+        Consensus currentLeader = cluster.getLeader();
         for (int i = 0; i < logSize; ++i) {
             byte[] buff = ByteBuffer.allocate(4).putInt(i).array();
             ApplyCommandResult applyCommandResult = currentLeader.applyCommand(buff);
@@ -64,7 +64,7 @@ public class RaftDynamicMembershipChangeTest extends RaftFunctionalBase {
         CountDownLatch newMemberStartLatch = new CountDownLatch(1);
         CountDownLatch newMemberShutdownLatch = new CountDownLatch(1);
 
-        RaftListener newMemberListener = new RaftListenerImpl() {
+        ConsensusEventListener newMemberListener = new ConsensusEventListenerImpl() {
             @Override
             public void started() {
                 newMemberStartLatch.countDown();
@@ -83,7 +83,7 @@ public class RaftDynamicMembershipChangeTest extends RaftFunctionalBase {
             // Expected
         }
 
-        Raft newRaftMember = getRaft(newMemberId.getHostName(), newMemberId.getPort(), peers, 9000, 10000, newMemberListener);
+        Consensus newRaftMember = getRaft(newMemberId.getHostName(), newMemberId.getPort(), peers, 9000, 10000, newMemberListener);
         newRaftMember.becomeCatchingUpMember();
         newRaftMember.start();
 
@@ -138,7 +138,7 @@ public class RaftDynamicMembershipChangeTest extends RaftFunctionalBase {
 
         RaftCluster cluster = new RaftCluster(clusterSize, clusterSize, clusterSize - 1, 300, 500);
         cluster.start();
-        Raft currentLeader = cluster.getLeader();
+        Consensus currentLeader = cluster.getLeader();
 
         // Try to remove the leader.
         try {
@@ -156,14 +156,14 @@ public class RaftDynamicMembershipChangeTest extends RaftFunctionalBase {
 
         RaftCluster cluster = new RaftCluster(clusterSize, clusterSize, clusterSize - 1, 300, 500);
         cluster.start();
-        Raft memberToRemove = cluster.getLeader();
+        Consensus memberToRemove = cluster.getLeader();
 
         memberToRemove.becomeCatchingUpMember();
         while (memberToRemove.getRole() == MemberRole.Leader) {
             Thread.sleep(100);
         }
 
-        Raft currentLeader = cluster.getLeader();
+        Consensus currentLeader = cluster.getLeader();
 
         // Remove a member.
         ApplyCommandResult removeCatchingUpMemberResult = currentLeader.removeMemberDynamically(memberToRemove.getMemberId());
@@ -174,11 +174,11 @@ public class RaftDynamicMembershipChangeTest extends RaftFunctionalBase {
         cluster.getRafts().remove(memberToRemove);
         cluster.waitUntilFollowersAdvance();
 
-        Field memberConnectorField = RaftImpl.class.getDeclaredField("memberConnector");
+        Field memberConnectorField = ConsensusImpl.class.getDeclaredField("memberConnector");
         memberConnectorField.setAccessible(true);
 
-        for (Raft raft : cluster.getRafts()) {
-            RaftMemberConnector raftMemberConnector = (RaftMemberConnector) memberConnectorField.get(raft);
+        for (Consensus raft : cluster.getRafts()) {
+            ConsensusMemberConnector raftMemberConnector = (ConsensusMemberConnector) memberConnectorField.get(raft);
             // Additional -1 because raftMemberConnector excludes itself.
             assertEquals(clusterSize - 1 - 1, raftMemberConnector.getVotingMembersCount());
         }

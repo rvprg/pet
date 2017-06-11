@@ -25,23 +25,23 @@ import com.rvprg.sumi.log.Log;
 import com.rvprg.sumi.log.LogException;
 import com.rvprg.sumi.log.SnapshotInstallException;
 import com.rvprg.sumi.protocol.MemberRole;
-import com.rvprg.sumi.protocol.Raft;
-import com.rvprg.sumi.protocol.RaftImpl;
-import com.rvprg.sumi.protocol.RaftListener;
-import com.rvprg.sumi.protocol.RaftListenerImpl;
+import com.rvprg.sumi.protocol.Consensus;
+import com.rvprg.sumi.protocol.ConsensusImpl;
+import com.rvprg.sumi.protocol.ConsensusEventListener;
+import com.rvprg.sumi.protocol.ConsensusEventListenerImpl;
 import com.rvprg.sumi.sm.StateMachine;
 import com.rvprg.sumi.transport.MemberConnector;
 import com.rvprg.sumi.transport.MemberId;
 import com.rvprg.sumi.transport.MessageReceiver;
 import com.rvprg.sumi.transport.SnapshotDescriptor;
 
-public abstract class RaftFunctionalBase {
-    public Raft getRaft(String host, int port, Set<MemberId> nodes, RaftListener raftListener)
+public abstract class ConsensusFunctionalBase {
+    public Consensus getRaft(String host, int port, Set<MemberId> nodes, ConsensusEventListener raftListener)
             throws InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
         return getRaft(host, port, nodes, 150, 300, raftListener);
     }
 
-    public Raft getRaft(String host, int port, Set<MemberId> nodes, int electionMinTimeout, int electionMaxTimeout, RaftListener raftListener)
+    public Consensus getRaft(String host, int port, Set<MemberId> nodes, int electionMinTimeout, int electionMaxTimeout, ConsensusEventListener raftListener)
             throws InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
         File tempDir = Files.createTempDir();
         File snapshotFolderPath = Files.createTempDir();
@@ -61,15 +61,15 @@ public abstract class RaftFunctionalBase {
         MessageReceiver messageReceiver = injector.getInstance(MessageReceiver.class);
 
         Log log = injector.getInstance(Log.class);
-        return new RaftImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftListener);
+        return new ConsensusImpl(configuration, memberConnector, messageReceiver, log, stateMachine, raftListener);
     }
 
     public class RaftCluster {
-        private final List<Raft> rafts;
+        private final List<Consensus> rafts;
 
         private final CountDownLatch startLatch;
         private final CountDownLatch shutdownLatch;
-        private final RaftListener listener;
+        private final ConsensusEventListener listener;
         private final Set<MemberId> members;
 
         private final Method cancelHeartBeat;
@@ -88,7 +88,7 @@ public abstract class RaftFunctionalBase {
             startLatch = new CountDownLatch(startCountDownLatchCount);
             shutdownLatch = new CountDownLatch(shutdownCountDownLatchCount);
 
-            listener = new RaftListenerImpl() {
+            listener = new ConsensusEventListenerImpl() {
                 @Override
                 public void started() {
                     startLatch.countDown();
@@ -103,30 +103,30 @@ public abstract class RaftFunctionalBase {
             members = createMembers(clusterSize);
             rafts = createRafts(members, electionMinTimeout, electionMaxTimeout, listener);
 
-            cancelHeartBeat = RaftImpl.class.getDeclaredMethod("cancelPeriodicHeartbeatTask", new Class[] {});
+            cancelHeartBeat = ConsensusImpl.class.getDeclaredMethod("cancelPeriodicHeartbeatTask", new Class[] {});
             cancelHeartBeat.setAccessible(true);
         }
 
-        public RaftCluster(int clusterSize, final RaftListener listener)
+        public RaftCluster(int clusterSize, final ConsensusEventListener listener)
                 throws NoSuchMethodException, SecurityException, InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
             this(clusterSize, 250, 300, listener);
         }
 
-        public RaftCluster(int clusterSize, int electionMinTimeout, int electionMaxTimeout, final RaftListener listener)
+        public RaftCluster(int clusterSize, int electionMinTimeout, int electionMaxTimeout, final ConsensusEventListener listener)
                 throws NoSuchMethodException, SecurityException, InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
             this(clusterSize, clusterSize, clusterSize, electionMinTimeout, electionMaxTimeout, listener);
         }
 
         public RaftCluster(int clusterSize, int startCountDownLatchCount, int shutdownCountDownLatchCount, int electionMinTimeout, int electionMaxTimeout,
-                final RaftListener listener)
+                final ConsensusEventListener listener)
                 throws NoSuchMethodException, SecurityException, InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
             startLatch = new CountDownLatch(startCountDownLatchCount);
             shutdownLatch = new CountDownLatch(shutdownCountDownLatchCount);
 
-            cancelHeartBeat = RaftImpl.class.getDeclaredMethod("cancelPeriodicHeartbeatTask", new Class[] {});
+            cancelHeartBeat = ConsensusImpl.class.getDeclaredMethod("cancelPeriodicHeartbeatTask", new Class[] {});
             cancelHeartBeat.setAccessible(true);
 
-            this.listener = new RaftListener() {
+            this.listener = new ConsensusEventListener() {
                 @Override
                 public void started() {
                     startLatch.countDown();
@@ -165,7 +165,7 @@ public abstract class RaftFunctionalBase {
                 }
 
                 @Override
-                public void electionWon(int term, Raft leader) {
+                public void electionWon(int term, Consensus leader) {
                     listener.electionWon(term, leader);
                 }
 
@@ -190,22 +190,22 @@ public abstract class RaftFunctionalBase {
         }
 
         public void start() throws InterruptedException {
-            for (Raft raft : rafts) {
+            for (Consensus raft : rafts) {
                 raft.start();
             }
             startLatch.await();
         }
 
         public void shutdown() throws InterruptedException {
-            for (Raft raft : rafts) {
+            for (Consensus raft : rafts) {
                 raft.shutdown();
             }
             shutdownLatch.await();
         }
 
-        public Raft getLeader() {
+        public Consensus getLeader() {
             do {
-                for (Raft raft : rafts) {
+                for (Consensus raft : rafts) {
                     if (raft.getRole() == MemberRole.Leader) {
                         return raft;
                     }
@@ -215,7 +215,7 @@ public abstract class RaftFunctionalBase {
 
         public void waitUntilCommitAdvances() throws InterruptedException {
             // Polling. Wait until commit index advances.
-            Raft currentLeader = getLeader();
+            Consensus currentLeader = getLeader();
             while (currentLeader.getLog().getCommitIndex() != currentLeader.getLog().getLastIndex()) {
                 Thread.sleep(500);
                 currentLeader = getLeader();
@@ -226,9 +226,9 @@ public abstract class RaftFunctionalBase {
             // Polling. Wait until all followers advance their commit indexes.
             boolean finished = false;
             while (!finished) {
-                Raft currentLeader = getLeader();
+                Consensus currentLeader = getLeader();
                 finished = true;
-                for (Raft raft : rafts) {
+                for (Consensus raft : rafts) {
                     if (raft.getLog().getCommitIndex() != currentLeader.getLog().getCommitIndex()) {
                         finished = false;
                         Thread.sleep(500);
@@ -245,7 +245,7 @@ public abstract class RaftFunctionalBase {
 
             for (long i = firstIndex; i <= lastIndex; ++i) {
                 LogEntry le = firstRaftLog.get(i);
-                for (Raft raft : rafts) {
+                for (Consensus raft : rafts) {
                     assertTrue(raft.getLog().get(i).getTerm() == le.getTerm());
                 }
             }
@@ -261,7 +261,7 @@ public abstract class RaftFunctionalBase {
             assertTrue(rafts.stream().map(x -> x.getLog().getFirstIndex()).allMatch((x) -> firstIndex == x));
         }
 
-        public List<Raft> getRafts() {
+        public List<Consensus> getRafts() {
             return rafts;
         }
 
@@ -273,9 +273,9 @@ public abstract class RaftFunctionalBase {
             return members;
         }
 
-        public List<Raft> createRafts(Set<MemberId> members, int electionMinTimeout, int electionMaxTimeout, RaftListener listener)
+        public List<Consensus> createRafts(Set<MemberId> members, int electionMinTimeout, int electionMaxTimeout, ConsensusEventListener listener)
                 throws InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
-            List<Raft> rafts = new ArrayList<Raft>();
+            List<Consensus> rafts = new ArrayList<Consensus>();
             for (MemberId member : members) {
                 Set<MemberId> peers = (new HashSet<MemberId>(members));
                 peers.remove(member);
@@ -284,12 +284,12 @@ public abstract class RaftFunctionalBase {
             return rafts;
         }
 
-        public void cancelElection(Raft raft) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+        public void cancelElection(Consensus raft) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
             cancelHeartBeat.invoke(raft, new Object[] {});
         }
 
         public void cancelElectionForAll() throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
-            for (Raft raft : rafts) {
+            for (Consensus raft : rafts) {
                 cancelElection(raft);
             }
         }

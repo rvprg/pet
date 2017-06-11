@@ -5,7 +5,7 @@ import com.rvprg.sumi.log.Log;
 import com.rvprg.sumi.transport.MemberId;
 import com.rvprg.sumi.transport.MemberIdentifiable;
 
-public interface Raft extends MessageConsumer, MemberIdentifiable {
+public interface Consensus extends MessageConsumer, MemberIdentifiable {
     void start() throws InterruptedException;
 
     void shutdown() throws InterruptedException;
