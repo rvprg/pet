@@ -23,8 +23,8 @@ import org.slf4j.LoggerFactory;
 
 import com.google.inject.Inject;
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.LogEntry;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
 import com.rvprg.sumi.configuration.Configuration;
 import com.rvprg.sumi.sm.StateMachine;
 import com.rvprg.sumi.sm.WritableSnapshot;

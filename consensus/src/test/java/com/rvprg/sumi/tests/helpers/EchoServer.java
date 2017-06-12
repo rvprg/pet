@@ -1,6 +1,6 @@
 package com.rvprg.sumi.tests.helpers;
 
-import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.RaftMessage;
 import com.rvprg.sumi.transport.ChannelPipelineInitializer;
 
 import io.netty.bootstrap.ServerBootstrap;

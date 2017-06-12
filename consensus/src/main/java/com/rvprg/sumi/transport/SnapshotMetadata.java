@@ -14,7 +14,7 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.collect.ImmutableSet;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.SnapshotDownloadRequest;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.SnapshotDownloadRequest;
 
 @JsonInclude(Include.NON_NULL)
 public class SnapshotMetadata {

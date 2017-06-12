@@ -6,8 +6,8 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.DynamicMembershipChangeCommand;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.DynamicMembershipChangeCommand.CommandType;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.DynamicMembershipChangeCommand;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.DynamicMembershipChangeCommand.CommandType;
 import com.rvprg.sumi.transport.MemberId;
 
 public class MemberIdTest {

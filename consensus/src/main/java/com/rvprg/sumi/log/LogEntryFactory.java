@@ -1,8 +1,8 @@
 package com.rvprg.sumi.log;
 
 import com.google.protobuf.ByteString;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.LogEntry;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
 
 public class LogEntryFactory {
     public static LogEntry create(int term, LogEntryType type, byte[] data) {

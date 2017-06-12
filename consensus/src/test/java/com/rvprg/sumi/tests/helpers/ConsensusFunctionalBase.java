@@ -18,7 +18,7 @@ import com.google.common.io.Files;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.util.Modules;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.sumi.Module;
 import com.rvprg.sumi.configuration.Configuration;
 import com.rvprg.sumi.log.Log;

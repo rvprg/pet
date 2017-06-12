@@ -6,8 +6,8 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.LogEntry;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
 import com.rvprg.sumi.log.LogEntryFactory;
 
 public class LogEntryTest {

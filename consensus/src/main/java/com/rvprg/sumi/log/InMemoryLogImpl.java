@@ -5,8 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.google.protobuf.ByteString;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.LogEntry;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
 import com.rvprg.sumi.configuration.Configuration;
 import com.rvprg.sumi.sm.StateMachine;
 import com.rvprg.sumi.transport.MemberConnector;

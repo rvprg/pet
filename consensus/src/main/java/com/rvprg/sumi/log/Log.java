@@ -4,7 +4,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 
-import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.sumi.configuration.Configuration;
 import com.rvprg.sumi.sm.StateMachine;
 import com.rvprg.sumi.transport.MemberConnector;

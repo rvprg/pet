@@ -1,9 +1,9 @@
 package com.rvprg.sumi.protocol;
 
-import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntries;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntriesResponse;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVote;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.AppendEntries;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.AppendEntriesResponse;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.RequestVote;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.RequestVoteResponse;
 import com.rvprg.sumi.transport.Member;
 
 public interface MessageConsumer {

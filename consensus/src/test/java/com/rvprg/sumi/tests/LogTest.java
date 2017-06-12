@@ -18,7 +18,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.sumi.configuration.Configuration;
 import com.rvprg.sumi.log.InMemoryLogImpl;
 import com.rvprg.sumi.log.LevelDBLogImpl;

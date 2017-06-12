@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.google.common.collect.ImmutableList;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.RaftMessage;
 
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.protobuf.ProtobufDecoder;

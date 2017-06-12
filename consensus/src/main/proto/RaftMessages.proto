@@ -1,6 +1,6 @@
 syntax = "proto2";
 
-package com.rvprg.raft.protocol.messages;
+package com.rvprg.sumi.protocol.messages;
 
 option java_outer_classname = "ProtocolMessages";
 

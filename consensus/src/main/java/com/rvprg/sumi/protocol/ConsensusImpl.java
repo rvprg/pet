@@ -24,23 +24,23 @@ import org.slf4j.MarkerFactory;
 
 import com.google.inject.Inject;
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntries;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.AppendEntriesResponse;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.DynamicMembershipChangeCommand;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.DynamicMembershipChangeCommand.CommandType;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.RaftMessage.MessageType;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVote;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.RequestVoteResponse.Builder;
-import com.rvprg.raft.protocol.messages.ProtocolMessages.SnapshotDownloadRequest;
 import com.rvprg.sumi.configuration.Configuration;
 import com.rvprg.sumi.log.Log;
 import com.rvprg.sumi.log.LogEntryFactory;
 import com.rvprg.sumi.log.LogException;
 import com.rvprg.sumi.log.SnapshotInstallException;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.AppendEntries;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.AppendEntriesResponse;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.DynamicMembershipChangeCommand;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.DynamicMembershipChangeCommand.CommandType;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.LogEntry;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.RaftMessage;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.RaftMessage.MessageType;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.RequestVote;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.RequestVoteResponse;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.RequestVoteResponse.Builder;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.SnapshotDownloadRequest;
 import com.rvprg.sumi.sm.StateMachine;
 import com.rvprg.sumi.transport.ChannelPipelineInitializer;
 import com.rvprg.sumi.transport.Member;
@@ -127,7 +127,8 @@ public class ConsensusImpl implements Consensus {
     private final ChannelPipelineInitializer channelPipelineInitializer;
 
     @Inject
-    public ConsensusImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine, ConsensusEventListener listener)
+    public ConsensusImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver,
+            Log log, StateMachine stateMachine, ConsensusEventListener listener)
             throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException, LogException {
         this(configuration, memberConnector, messageReceiver, log, stateMachine, log.getTerm(), MemberRole.Follower, listener);
     }
