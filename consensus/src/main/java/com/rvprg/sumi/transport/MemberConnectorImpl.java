@@ -136,7 +136,7 @@ public class MemberConnectorImpl implements MemberConnector {
         });
     }
 
-    private void memberActivated(Member member, Channel channel) {
+    private void memberActivated(ActiveMember member, Channel channel) {
         MemberConnectorListener listener = registered.get(member.getMemberId());
         registeredChannels.put(member.getMemberId(), channel);
         if (listener != null) {

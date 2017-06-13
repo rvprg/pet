@@ -4,7 +4,7 @@ import java.util.concurrent.SynchronousQueue;
 
 import com.rvprg.sumi.protocol.MessageConsumer;
 import com.rvprg.sumi.transport.ChannelPipelineInitializer;
-import com.rvprg.sumi.transport.Member;
+import com.rvprg.sumi.transport.ActiveMember;
 import com.rvprg.sumi.transport.MemberConnectorListenerImpl;
 import com.rvprg.sumi.transport.MemberId;
 
@@ -46,7 +46,7 @@ public class MemberConnectorListenerTestableImpl extends MemberConnectorListener
     }
 
     @Override
-    public void connected(Member member) {
+    public void connected(ActiveMember member) {
         super.connected(member);
         register(connectSyncQueue);
     }

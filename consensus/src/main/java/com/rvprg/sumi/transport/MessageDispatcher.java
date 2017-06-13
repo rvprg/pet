@@ -14,10 +14,10 @@ public class MessageDispatcher extends SimpleChannelInboundHandler<RaftMessage> 
     private final static Logger logger = LoggerFactory.getLogger(MessageDispatcher.class);
 
     private final MessageConsumer messageConsumer;
-    private final Member member;
+    private final ActiveMember member;
 
     @Inject
-    public MessageDispatcher(final Member member, final MessageConsumer messageConsumer) {
+    public MessageDispatcher(final ActiveMember member, final MessageConsumer messageConsumer) {
         this.messageConsumer = messageConsumer;
         this.member = member;
     }

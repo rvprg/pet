@@ -54,7 +54,7 @@ import com.rvprg.sumi.protocol.ConsensusEventListener;
 import com.rvprg.sumi.protocol.ConsensusEventListenerImpl;
 import com.rvprg.sumi.sm.StateMachine;
 import com.rvprg.sumi.tests.helpers.NetworkUtils;
-import com.rvprg.sumi.transport.Member;
+import com.rvprg.sumi.transport.ActiveMember;
 import com.rvprg.sumi.transport.MemberConnector;
 import com.rvprg.sumi.transport.MemberId;
 import com.rvprg.sumi.transport.MembersRegistry;
@@ -156,7 +156,7 @@ public class ConsensusTest {
         MemberConnector memberConnector = mock(MemberConnector.class);
         MembersRegistry memberRegistry = mock(MembersRegistry.class);
         StateMachine stateMachine = mock(StateMachine.class);
-        Set<Member> members = new HashSet<Member>();
+        Set<ActiveMember> members = new HashSet<ActiveMember>();
         Mockito.when(memberRegistry.getAll()).thenReturn(members);
         Mockito.when(memberConnector.getActiveMembers()).thenReturn(memberRegistry);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -204,7 +204,7 @@ public class ConsensusTest {
         StateMachine stateMachine = mock(StateMachine.class);
         ConsensusEventListener raftListener = mock(ConsensusEventListener.class);
         Log log = mock(Log.class);
-        Member member = mock(Member.class);
+        ActiveMember member = mock(ActiveMember.class);
         Channel senderChannel = mock(Channel.class);
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
         Mockito.when(messageReceiver.getMemberId()).thenReturn(configuration.getSelfId());
@@ -263,7 +263,7 @@ public class ConsensusTest {
         StateMachine stateMachine = mock(StateMachine.class);
         ConsensusEventListener raftListener = mock(ConsensusEventListener.class);
         Log log = mock(Log.class);
-        Member member = mock(Member.class);
+        ActiveMember member = mock(ActiveMember.class);
         Channel senderChannel = mock(Channel.class);
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
         Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("localhost", NetworkUtils.getRandomFreePort()));
@@ -312,7 +312,7 @@ public class ConsensusTest {
         StateMachine stateMachine = mock(StateMachine.class);
         ConsensusEventListener raftListener = mock(ConsensusEventListener.class);
         Log log = mock(Log.class);
-        Member member = mock(Member.class);
+        ActiveMember member = mock(ActiveMember.class);
         Channel senderChannel = mock(Channel.class);
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
         Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("localhost", NetworkUtils.getRandomFreePort()));
@@ -383,7 +383,7 @@ public class ConsensusTest {
         StateMachine stateMachine = mock(StateMachine.class);
         ConsensusEventListener raftListener = mock(ConsensusEventListener.class);
         Log log = mock(Log.class);
-        Member member = mock(Member.class);
+        ActiveMember member = mock(ActiveMember.class);
         Channel senderChannel = mock(Channel.class);
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
         Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("localhost", NetworkUtils.getRandomFreePort()));
@@ -435,7 +435,7 @@ public class ConsensusTest {
         };
 
         Log log = new InMemoryLogImpl();
-        Member member = mock(Member.class);
+        ActiveMember member = mock(ActiveMember.class);
         Channel senderChannel = mock(Channel.class);
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
         Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("localhost", NetworkUtils.getRandomFreePort()));
@@ -466,7 +466,7 @@ public class ConsensusTest {
         Mockito.when(memberConnector.getRegisteredMemberIds()).thenReturn(membersSet);
         MembersRegistry members = mock(MembersRegistry.class);
         Mockito.when(memberConnector.getActiveMembers()).thenReturn(members);
-        Mockito.when(members.getAll()).thenReturn(new HashSet<Member>());
+        Mockito.when(members.getAll()).thenReturn(new HashSet<ActiveMember>());
 
         raft.consumeRequestVoteResponse(member, requestVoteResponseTerm1);
         assertEquals(1, votesReceived.get());
@@ -508,7 +508,7 @@ public class ConsensusTest {
         StateMachine stateMachine = mock(StateMachine.class);
         ConsensusEventListener raftListener = mock(ConsensusEventListener.class);
         Log log = mock(Log.class);
-        Member member = mock(Member.class);
+        ActiveMember member = mock(ActiveMember.class);
         Channel senderChannel = mock(Channel.class);
         Mockito.when(member.getChannel()).thenReturn(senderChannel);
         Mockito.when(messageReceiver.getMemberId()).thenReturn(new MemberId("localhost", NetworkUtils.getRandomFreePort()));

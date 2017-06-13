@@ -1,7 +1,7 @@
 package com.rvprg.sumi.transport;
 
 public interface MemberConnectorListener {
-    void connected(Member member);
+    void connected(ActiveMember member);
 
     void scheduledReconnect(MemberId member);
 
@@ -18,7 +18,7 @@ public interface MemberConnectorListener {
             }
 
             @Override
-            public void connected(Member member) {
+            public void connected(ActiveMember member) {
                 // nop
             }
 

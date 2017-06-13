@@ -4,7 +4,7 @@ import java.net.InetSocketAddress;
 
 import io.netty.channel.Channel;
 
-public class Member {
+public class ActiveMember {
     private final MemberId memberId;
     private final Channel channel;
 
@@ -21,12 +21,12 @@ public class Member {
         return channel;
     }
 
-    public Member(Channel channel) {
+    public ActiveMember(Channel channel) {
         this.channel = channel;
         this.memberId = new MemberId((InetSocketAddress) channel.remoteAddress());
     }
 
-    public Member(MemberId memberId, Channel channel) {
+    public ActiveMember(MemberId memberId, Channel channel) {
         this.channel = channel;
         this.memberId = memberId;
     }

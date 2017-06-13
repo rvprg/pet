@@ -10,18 +10,18 @@ import net.jcip.annotations.ThreadSafe;
 
 @ThreadSafe
 public class MutableMembersRegistryImpl implements MutableMembersRegistry {
-    private final ConcurrentHashMap<MemberId, Member> members = new ConcurrentHashMap<MemberId, Member>();
-    private ImmutableSet<Member> immutableSetOfMembers = ImmutableSet.of();
+    private final ConcurrentHashMap<MemberId, ActiveMember> members = new ConcurrentHashMap<MemberId, ActiveMember>();
+    private ImmutableSet<ActiveMember> immutableSetOfMembers = ImmutableSet.of();
 
     private final ReentrantReadWriteLock stateLock = new ReentrantReadWriteLock();
 
     @Override
-    public Member get(MemberId addr) {
+    public ActiveMember get(MemberId addr) {
         return members.get(addr);
     }
 
     @Override
-    public void addMember(Member s) {
+    public void addMember(ActiveMember s) {
         stateLock.writeLock().lock();
         try {
             members.put(s.getMemberId(), s);
@@ -32,7 +32,7 @@ public class MutableMembersRegistryImpl implements MutableMembersRegistry {
     }
 
     @Override
-    public void removeMember(Member s) {
+    public void removeMember(ActiveMember s) {
         stateLock.writeLock().lock();
         try {
             members.remove(s.getMemberId());
@@ -43,7 +43,7 @@ public class MutableMembersRegistryImpl implements MutableMembersRegistry {
     }
 
     @Override
-    public Set<Member> getAll() {
+    public Set<ActiveMember> getAll() {
         stateLock.readLock().lock();
         try {
             return immutableSetOfMembers;

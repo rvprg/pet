@@ -43,7 +43,7 @@ import com.rvprg.sumi.protocol.messages.ProtocolMessages.RequestVoteResponse.Bui
 import com.rvprg.sumi.protocol.messages.ProtocolMessages.SnapshotDownloadRequest;
 import com.rvprg.sumi.sm.StateMachine;
 import com.rvprg.sumi.transport.ChannelPipelineInitializer;
-import com.rvprg.sumi.transport.Member;
+import com.rvprg.sumi.transport.ActiveMember;
 import com.rvprg.sumi.transport.MemberConnector;
 import com.rvprg.sumi.transport.MemberConnectorListenerImpl;
 import com.rvprg.sumi.transport.MemberId;
@@ -248,7 +248,7 @@ public class ConsensusImpl implements Consensus {
     }
 
     @Override
-    public void consumeRequestVote(Member member, RequestVote requestVote) {
+    public void consumeRequestVote(ActiveMember member, RequestVote requestVote) {
         boolean ignoreMessage = checkTermRecency(requestVote.getTerm());
         if (ignoreMessage || isCatchingUpMember()) {
             return;
@@ -283,7 +283,7 @@ public class ConsensusImpl implements Consensus {
     }
 
     @Override
-    public void consumeRequestVoteResponse(Member member, RequestVoteResponse requestVoteResponse) {
+    public void consumeRequestVoteResponse(ActiveMember member, RequestVoteResponse requestVoteResponse) {
         boolean ignoreMessage = checkTermRecency(requestVoteResponse.getTerm());
         if (ignoreMessage) {
             listener.voteRejected();
@@ -413,7 +413,7 @@ public class ConsensusImpl implements Consensus {
     }
 
     @Override
-    public void consumeAppendEntries(Member member, AppendEntries appendEntries) {
+    public void consumeAppendEntries(ActiveMember member, AppendEntries appendEntries) {
         boolean ignoreMessage = checkTermRecency(appendEntries.getTerm());
         if (ignoreMessage) {
             return;
@@ -479,7 +479,7 @@ public class ConsensusImpl implements Consensus {
         });
     }
 
-    private void sendAppendEntriesResponse(Member member, AppendEntriesResponse appendEntriesResponse) {
+    private void sendAppendEntriesResponse(ActiveMember member, AppendEntriesResponse appendEntriesResponse) {
         RaftMessage responseMessage = RaftMessage.newBuilder()
                 .setType(MessageType.AppendEntriesResponse)
                 .setAppendEntriesResponse(appendEntriesResponse).build();
@@ -508,7 +508,7 @@ public class ConsensusImpl implements Consensus {
                 .build();
     }
 
-    private void processInstallSnapshot(final Member member, SnapshotDownloadRequest request) {
+    private void processInstallSnapshot(final ActiveMember member, SnapshotDownloadRequest request) {
         synchronized (snapshotInstallLock) {
             if (snapshotReceiver == null || snapshotReceiver.isDone()) {
                 final SnapshotDescriptor snapshotDescriptor = new SnapshotDescriptor(configuration.getSnapshotFolderPath(), SnapshotMetadata.fromRequest(request));
@@ -571,7 +571,7 @@ public class ConsensusImpl implements Consensus {
     }
 
     @Override
-    public void consumeAppendEntriesResponse(Member member, AppendEntriesResponse appendEntriesResponse) {
+    public void consumeAppendEntriesResponse(ActiveMember member, AppendEntriesResponse appendEntriesResponse) {
         boolean ignoreMessage = checkTermRecency(appendEntriesResponse.getTerm());
         if (ignoreMessage) {
             return;
@@ -589,7 +589,7 @@ public class ConsensusImpl implements Consensus {
         }
     }
 
-    private void processSuccessfulAppendEntriesResponse(Member member, AppendEntriesResponse appendEntriesResponse) {
+    private void processSuccessfulAppendEntriesResponse(ActiveMember member, AppendEntriesResponse appendEntriesResponse) {
         indexesLock.writeLock().lock();
         try {
             AtomicLong nextIndexRef = nextIndexes.get(member.getMemberId());
@@ -622,7 +622,7 @@ public class ConsensusImpl implements Consensus {
         }
     }
 
-    private void processFailedAppendEntriesResponse(Member member, AppendEntriesResponse appendEntriesResponse) {
+    private void processFailedAppendEntriesResponse(ActiveMember member, AppendEntriesResponse appendEntriesResponse) {
         indexesLock.writeLock().lock();
         try {
             AtomicLong nextIndexRef = nextIndexes.get(member.getMemberId());
@@ -752,7 +752,7 @@ public class ConsensusImpl implements Consensus {
 
     private void scheduleAppendEntries(MemberId memberId) {
         scheduleAppendEntriesRetry(memberId);
-        Member member = memberConnector.getActiveMember(memberId);
+        ActiveMember member = memberConnector.getActiveMember(memberId);
         if (member != null) {
             try {
                 scheduleSendMessageToMember(member, getAppendEntries(memberId));
@@ -842,14 +842,14 @@ public class ConsensusImpl implements Consensus {
         memberConnector.getAllActiveVotingMembers().forEach(member -> scheduleSendMessageToMember(member, msg));
     }
 
-    private void sendAppendEntriesSnapshotInstalledResponse(Member member, AppendEntriesResponse appendEntriesResponse) {
+    private void sendAppendEntriesSnapshotInstalledResponse(ActiveMember member, AppendEntriesResponse appendEntriesResponse) {
         RaftMessage responseMessage = RaftMessage.newBuilder()
                 .setType(MessageType.AppendEntriesResponse)
                 .setAppendEntriesResponse(appendEntriesResponse).build();
         scheduleSendMessageToMember(member, responseMessage);
     }
 
-    private ScheduledFuture<?> scheduleSendMessageToMember(Member member, RaftMessage msg) {
+    private ScheduledFuture<?> scheduleSendMessageToMember(ActiveMember member, RaftMessage msg) {
         try {
             return member.getChannel().eventLoop().schedule(() -> ConsensusImpl.this.sendMessage(member, msg), 0, TimeUnit.MILLISECONDS);
         } catch (RejectedExecutionException e) {
@@ -953,7 +953,7 @@ public class ConsensusImpl implements Consensus {
         return requestVote;
     }
 
-    private void sendMessage(Member member, RaftMessage req) {
+    private void sendMessage(ActiveMember member, RaftMessage req) {
         Channel memberChannel = member.getChannel();
         if (memberChannel.isActive()) {
             if (req.getType() == RaftMessage.MessageType.RequestVote) {

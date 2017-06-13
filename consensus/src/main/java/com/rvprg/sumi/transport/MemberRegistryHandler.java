@@ -17,7 +17,7 @@ public class MemberRegistryHandler extends ChannelInboundHandlerAdapter {
 
     private final MutableMembersRegistry registry;
     private final MemberConnector memberConnector;
-    private final BiConsumer<Member, Channel> activateNotifier;
+    private final BiConsumer<ActiveMember, Channel> activateNotifier;
     private final Consumer<MemberId> deactivateNotifier;
     private final BiConsumer<MemberId, Throwable> exceptionNotifier;
 
@@ -25,7 +25,7 @@ public class MemberRegistryHandler extends ChannelInboundHandlerAdapter {
     public MemberRegistryHandler(
             MutableMembersRegistry members,
             MemberConnector memberConnector,
-            BiConsumer<Member, Channel> activateNotifier,
+            BiConsumer<ActiveMember, Channel> activateNotifier,
             Consumer<MemberId> deactivateNotifier,
             BiConsumer<MemberId, Throwable> exceptionNotifier) {
         this.registry = members;
@@ -37,7 +37,7 @@ public class MemberRegistryHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
-        Member member = new Member(ctx.channel());
+        ActiveMember member = new ActiveMember(ctx.channel());
         registry.addMember(member);
         activateNotifier.accept(member, ctx.channel());
         ctx.fireChannelActive();
@@ -45,7 +45,7 @@ public class MemberRegistryHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-        Member member = new Member(ctx.channel());
+        ActiveMember member = new ActiveMember(ctx.channel());
         registry.removeMember(member);
         deactivateNotifier.accept(member.getMemberId());
         memberConnector.connect(member.getMemberId());
@@ -55,7 +55,7 @@ public class MemberRegistryHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
             throws Exception {
-        Member member = new Member(ctx.channel());
+        ActiveMember member = new ActiveMember(ctx.channel());
         registry.removeMember(member);
         exceptionNotifier.accept(member.getMemberId(), cause);
         logger.error("Error in the channel to {}: {}", member, cause.getMessage());

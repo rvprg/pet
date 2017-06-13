@@ -4,14 +4,14 @@ import com.rvprg.sumi.protocol.messages.ProtocolMessages.AppendEntries;
 import com.rvprg.sumi.protocol.messages.ProtocolMessages.AppendEntriesResponse;
 import com.rvprg.sumi.protocol.messages.ProtocolMessages.RequestVote;
 import com.rvprg.sumi.protocol.messages.ProtocolMessages.RequestVoteResponse;
-import com.rvprg.sumi.transport.Member;
+import com.rvprg.sumi.transport.ActiveMember;
 
 public interface MessageConsumer {
-    void consumeRequestVote(Member member, RequestVote requestVote);
+    void consumeRequestVote(ActiveMember member, RequestVote requestVote);
 
-    void consumeRequestVoteResponse(Member member, RequestVoteResponse requestVote);
+    void consumeRequestVoteResponse(ActiveMember member, RequestVoteResponse requestVote);
 
-    void consumeAppendEntries(Member member, AppendEntries appendEntries);
+    void consumeAppendEntries(ActiveMember member, AppendEntries appendEntries);
 
-    void consumeAppendEntriesResponse(Member member, AppendEntriesResponse appendEntriesResponse);
+    void consumeAppendEntriesResponse(ActiveMember member, AppendEntriesResponse appendEntriesResponse);
 }

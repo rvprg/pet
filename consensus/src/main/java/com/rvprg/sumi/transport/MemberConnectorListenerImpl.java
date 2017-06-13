@@ -17,7 +17,7 @@ public class MemberConnectorListenerImpl implements MemberConnectorListener {
     }
 
     @Override
-    public void connected(Member member) {
+    public void connected(ActiveMember member) {
         pipelineInitializer.initialize(member.getChannel().pipeline()).addLast(new MessageDispatcher(member, messageConsumer));
     }
 

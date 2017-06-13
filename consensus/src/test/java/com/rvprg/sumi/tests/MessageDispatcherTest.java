@@ -29,7 +29,7 @@ import com.rvprg.sumi.protocol.MessageConsumer;
 import com.rvprg.sumi.tests.helpers.EchoServer;
 import com.rvprg.sumi.tests.helpers.MemberConnectorListenerTestableImpl;
 import com.rvprg.sumi.transport.ChannelPipelineInitializer;
-import com.rvprg.sumi.transport.Member;
+import com.rvprg.sumi.transport.ActiveMember;
 import com.rvprg.sumi.transport.MemberConnector;
 import com.rvprg.sumi.transport.MemberId;
 
@@ -95,7 +95,7 @@ public class MessageDispatcherTest {
                 latch.countDown();
                 return null;
             }
-        }).when(messageConsumer).consumeRequestVote(any(Member.class), any(RequestVote.class));
+        }).when(messageConsumer).consumeRequestVote(any(ActiveMember.class), any(RequestVote.class));
 
         RaftMessage requestVoteRaftMessage = getRequestVoteInstance();
         channel.writeAndFlush(requestVoteRaftMessage);
@@ -112,7 +112,7 @@ public class MessageDispatcherTest {
                 latch.countDown();
                 return null;
             }
-        }).when(messageConsumer).consumeRequestVoteResponse(any(Member.class), any(RequestVoteResponse.class));
+        }).when(messageConsumer).consumeRequestVoteResponse(any(ActiveMember.class), any(RequestVoteResponse.class));
 
         RaftMessage requestVoteResponseRaftMessage = getRequestVoteResponseInstance();
         channel.writeAndFlush(requestVoteResponseRaftMessage);
@@ -131,7 +131,7 @@ public class MessageDispatcherTest {
                 latch.countDown();
                 return null;
             }
-        }).when(messageConsumer).consumeAppendEntries(any(Member.class), any(AppendEntries.class));
+        }).when(messageConsumer).consumeAppendEntries(any(ActiveMember.class), any(AppendEntries.class));
 
         RaftMessage requestAppendEntriesRaftMessage = getAppendEntriesInstance();
         channel.writeAndFlush(requestAppendEntriesRaftMessage);
@@ -150,7 +150,7 @@ public class MessageDispatcherTest {
                 latch.countDown();
                 return null;
             }
-        }).when(messageConsumer).consumeAppendEntriesResponse(any(Member.class), any(AppendEntriesResponse.class));
+        }).when(messageConsumer).consumeAppendEntriesResponse(any(ActiveMember.class), any(AppendEntriesResponse.class));
 
         RaftMessage requestAppendEntriesResponseRaftMessage = getAppendEntriesResponseInstance();
         channel.writeAndFlush(requestAppendEntriesResponseRaftMessage);

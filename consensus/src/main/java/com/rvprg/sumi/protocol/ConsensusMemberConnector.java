@@ -6,7 +6,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableSet;
-import com.rvprg.sumi.transport.Member;
+import com.rvprg.sumi.transport.ActiveMember;
 import com.rvprg.sumi.transport.MemberConnector;
 import com.rvprg.sumi.transport.MemberConnectorListener;
 import com.rvprg.sumi.transport.MemberConnectorListenerImpl;
@@ -65,11 +65,11 @@ public class ConsensusMemberConnector implements MemberConnector {
         return memberConnector.getActiveMembers();
     }
 
-    public Member getActiveMember(MemberId memberId) {
+    public ActiveMember getActiveMember(MemberId memberId) {
         return memberConnector.getActiveMembers().get(memberId);
     }
 
-    public Set<Member> getAllActiveMembers() {
+    public Set<ActiveMember> getAllActiveMembers() {
         return memberConnector.getActiveMembers().getAll();
     }
 
@@ -77,7 +77,7 @@ public class ConsensusMemberConnector implements MemberConnector {
         return getAllActiveMembers().size();
     }
 
-    public Set<Member> getAllActiveVotingMembers() {
+    public Set<ActiveMember> getAllActiveVotingMembers() {
         stateLock.readLock().lock();
         try {
             return memberConnector
