@@ -20,7 +20,7 @@ public interface StateMachine {
      *
      * @param snapshot
      */
-    void installSnapshot(StreambaleSnapshot snapshot) throws SnapshotInstallException;
+    void installSnapshot(StreamableSnapshot snapshot) throws SnapshotInstallException;
 
     /**
      * Returns a writable snapshot.

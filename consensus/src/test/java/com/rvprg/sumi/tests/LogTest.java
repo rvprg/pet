@@ -27,7 +27,7 @@ import com.rvprg.sumi.log.LogEntryFactory;
 import com.rvprg.sumi.log.LogException;
 import com.rvprg.sumi.log.SnapshotInstallException;
 import com.rvprg.sumi.sm.StateMachine;
-import com.rvprg.sumi.sm.StreambaleSnapshot;
+import com.rvprg.sumi.sm.StreamableSnapshot;
 import com.rvprg.sumi.sm.WritableSnapshot;
 import com.rvprg.sumi.transport.MemberId;
 
@@ -236,7 +236,7 @@ public class LogTest {
             }
 
             @Override
-            public void installSnapshot(StreambaleSnapshot snapshot) throws SnapshotInstallException {
+            public void installSnapshot(StreamableSnapshot snapshot) throws SnapshotInstallException {
             }
 
             @Override
@@ -297,7 +297,7 @@ public class LogTest {
             }
 
             @Override
-            public void installSnapshot(StreambaleSnapshot snapshot) throws SnapshotInstallException {
+            public void installSnapshot(StreamableSnapshot snapshot) throws SnapshotInstallException {
             }
 
             @Override

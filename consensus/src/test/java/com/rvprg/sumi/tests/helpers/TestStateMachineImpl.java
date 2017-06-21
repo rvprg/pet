@@ -7,7 +7,7 @@ import com.rvprg.sumi.log.ByteUtils;
 import com.rvprg.sumi.log.SnapshotInstallException;
 import com.rvprg.sumi.sm.KeyValueStore;
 import com.rvprg.sumi.sm.StateMachine;
-import com.rvprg.sumi.sm.StreambaleSnapshot;
+import com.rvprg.sumi.sm.StreamableSnapshot;
 import com.rvprg.sumi.sm.WritableSnapshot;
 import com.rvprg.sumi.sm.KeyValueStore.Data;
 
@@ -21,7 +21,7 @@ public class TestStateMachineImpl implements StateMachine {
     }
 
     @Override
-    public void installSnapshot(StreambaleSnapshot snapshot) throws SnapshotInstallException {
+    public void installSnapshot(StreamableSnapshot snapshot) throws SnapshotInstallException {
         try {
             store = KeyValueStore.read(snapshot.getInputStream());
         } catch (Exception e) {

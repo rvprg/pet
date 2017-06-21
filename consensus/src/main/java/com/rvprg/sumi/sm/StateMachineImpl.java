@@ -10,7 +10,7 @@ public class StateMachineImpl implements StateMachine {
     }
 
     @Override
-    public void installSnapshot(StreambaleSnapshot snapshot) throws SnapshotInstallException {
+    public void installSnapshot(StreamableSnapshot snapshot) throws SnapshotInstallException {
         // TODO
     }
 

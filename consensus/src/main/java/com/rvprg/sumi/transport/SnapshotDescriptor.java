@@ -11,9 +11,9 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.rvprg.sumi.sm.StreambaleSnapshot;
+import com.rvprg.sumi.sm.StreamableSnapshot;
 
-public class SnapshotDescriptor implements StreambaleSnapshot {
+public class SnapshotDescriptor implements StreamableSnapshot {
     private final static Logger logger = LoggerFactory.getLogger(SnapshotDescriptor.class);
 
     private final SnapshotMetadata metadata;
