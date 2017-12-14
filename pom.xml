@@ -32,10 +32,8 @@
  </properties>
 
  <modules>
-  <module>commons</module>
   <module>consensus</module>
   <module>server</module>
-  <module>client</module>
  </modules>
 
  <dependencyManagement>
