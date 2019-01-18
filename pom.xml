@@ -25,10 +25,24 @@
   <maven-checkstyle-plugin.version>2.17</maven-checkstyle-plugin.version>
 
   <version.protobuf>3.1.0</version.protobuf>
-  <version.jacoco>0.7.8</version.jacoco>
-  <version.jackson>2.6.4</version.jackson>
+  <version.jacoco>0.8.2</version.jacoco>
+  <version.jackson>2.9.8</version.jackson>
 
   <os.detected.classifier>windows-x86_64</os.detected.classifier>
+  <guava.version>27.0.1-jre</guava.version>
+  <logback-classic.version>1.1.9</logback-classic.version>
+  <slf4j-api.version>1.7.22</slf4j-api.version>
+  <guice.version>4.2.2</guice.version>
+  <junit.version>4.12</junit.version>
+  <mockito-core.version>2.23.4</mockito-core.version>
+  <netty-all.version>4.1.32.Final</netty-all.version>
+  <annotations.version>3.0.1</annotations.version>
+  <hibernate-validator.version>5.4.1.Final</hibernate-validator.version>
+  <collection.version>0.7</collection.version>
+  <commons-codec.version>1.9</commons-codec.version>
+  <commons-io.version>2.5</commons-io.version>
+  <leveldbjni-all.version>1.8</leveldbjni-all.version>
+  <jcip-annotations.version>1.0</jcip-annotations.version>
  </properties>
 
  <modules>
@@ -41,49 +55,49 @@
    <dependency>
     <groupId>com.google.code.findbugs</groupId>
     <artifactId>annotations</artifactId>
-    <version>3.0.1</version>
+    <version>${annotations.version}</version>
    </dependency>
    <dependency>
     <groupId>io.netty</groupId>
     <artifactId>netty-all</artifactId>
-    <version>4.1.7.Final</version>
+    <version>${netty-all.version}</version>
    </dependency>
    <dependency>
     <groupId>org.mockito</groupId>
     <artifactId>mockito-core</artifactId>
-    <version>2.7.0</version>
+    <version>${mockito-core.version}</version>
     <scope>test</scope>
    </dependency>
    <dependency>
     <groupId>junit</groupId>
     <artifactId>junit</artifactId>
-    <version>4.12</version>
+    <version>${junit.version}</version>
     <scope>test</scope>
    </dependency>
    <dependency>
     <groupId>com.google.inject</groupId>
     <artifactId>guice</artifactId>
-    <version>4.1.0</version>
+    <version>${guice.version}</version>
    </dependency>
    <dependency>
     <groupId>org.slf4j</groupId>
     <artifactId>slf4j-api</artifactId>
-    <version>1.7.22</version>
+    <version>${slf4j-api.version}</version>
    </dependency>
    <dependency>
     <groupId>ch.qos.logback</groupId>
     <artifactId>logback-classic</artifactId>
-    <version>1.1.9</version>
+    <version>${logback-classic.version}</version>
    </dependency>
    <dependency>
     <groupId>com.google.guava</groupId>
     <artifactId>guava</artifactId>
-    <version>21.0</version>
+    <version>${guava.version}</version>
    </dependency>
    <dependency>
     <groupId>com.google.protobuf</groupId>
     <artifactId>protobuf-java</artifactId>
-    <version>3.1.0</version>
+    <version>${version.protobuf}</version>
    </dependency>
    <dependency>
     <groupId>org.jacoco</groupId>
@@ -94,7 +108,7 @@
    <dependency>
     <groupId>net.jcip</groupId>
     <artifactId>jcip-annotations</artifactId>
-    <version>1.0</version>
+    <version>${jcip-annotations.version}</version>
    </dependency>
    <dependency>
     <groupId>com.fasterxml.jackson.core</groupId>
@@ -117,28 +131,28 @@
    <dependency>
     <groupId>org.fusesource.leveldbjni</groupId>
     <artifactId>leveldbjni-all</artifactId>
-    <version>1.8</version>
+    <version>${leveldbjni-all.version}</version>
    </dependency>
    <dependency>
     <groupId>commons-io</groupId>
     <artifactId>commons-io</artifactId>
-    <version>2.5</version>
+    <version>${commons-io.version}</version>
    </dependency>
    <dependency>
     <groupId>commons-codec</groupId>
     <artifactId>commons-codec</artifactId>
-    <version>1.9</version>
+    <version>${commons-codec.version}</version>
     <scope>test</scope>
    </dependency>
    <dependency>
     <groupId>com.github.andrewoma.dexx</groupId>
     <artifactId>collection</artifactId>
-    <version>0.7</version>
+    <version>${collection.version}</version>
    </dependency>
    <dependency>
     <groupId>org.hibernate</groupId>
     <artifactId>hibernate-validator</artifactId>
-    <version>5.4.1.Final</version>
+    <version>${hibernate-validator.version}</version>
    </dependency>
    <dependency>
     <groupId>org.glassfish</groupId>
@@ -257,6 +271,5 @@
    </plugins>
   </pluginManagement>
  </build>
-
 </project>
 

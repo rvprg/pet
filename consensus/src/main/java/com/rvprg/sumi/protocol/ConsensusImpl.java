@@ -1,5 +1,29 @@
 package com.rvprg.sumi.protocol;
 
+import com.google.inject.Inject;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.rvprg.sumi.configuration.Configuration;
+import com.rvprg.sumi.log.Log;
+import com.rvprg.sumi.log.LogEntryFactory;
+import com.rvprg.sumi.log.LogException;
+import com.rvprg.sumi.log.SnapshotInstallException;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.*;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.DynamicMembershipChangeCommand.CommandType;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.RaftMessage.MessageType;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.RequestVoteResponse.Builder;
+import com.rvprg.sumi.sm.StateMachine;
+import com.rvprg.sumi.transport.*;
+import io.netty.channel.Channel;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.util.concurrent.ScheduledFuture;
+import net.jcip.annotations.GuardedBy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -16,54 +40,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.Marker;
-import org.slf4j.MarkerFactory;
-
-import com.google.inject.Inject;
-import com.google.protobuf.InvalidProtocolBufferException;
-import com.rvprg.sumi.configuration.Configuration;
-import com.rvprg.sumi.log.Log;
-import com.rvprg.sumi.log.LogEntryFactory;
-import com.rvprg.sumi.log.LogException;
-import com.rvprg.sumi.log.SnapshotInstallException;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.AppendEntries;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.AppendEntriesResponse;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.DynamicMembershipChangeCommand;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.DynamicMembershipChangeCommand.CommandType;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.LogEntry;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.RaftMessage;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.RaftMessage.MessageType;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.RequestVote;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.RequestVoteResponse;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.RequestVoteResponse.Builder;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.SnapshotDownloadRequest;
-import com.rvprg.sumi.sm.StateMachine;
-import com.rvprg.sumi.transport.ChannelPipelineInitializer;
-import com.rvprg.sumi.transport.ActiveMember;
-import com.rvprg.sumi.transport.MemberConnector;
-import com.rvprg.sumi.transport.MemberConnectorListenerImpl;
-import com.rvprg.sumi.transport.MemberId;
-import com.rvprg.sumi.transport.MessageReceiver;
-import com.rvprg.sumi.transport.SnapshotDescriptor;
-import com.rvprg.sumi.transport.SnapshotMetadata;
-import com.rvprg.sumi.transport.SnapshotReceiver;
-import com.rvprg.sumi.transport.SnapshotSender;
-import com.rvprg.sumi.transport.SnapshotTransferCompletedEvent;
-import com.rvprg.sumi.transport.SnapshotTransferConnectionClosedEvent;
-import com.rvprg.sumi.transport.SnapshotTransferConnectionOpenedEvent;
-import com.rvprg.sumi.transport.SnapshotTransferEvent;
-import com.rvprg.sumi.transport.SnapshotTransferExceptionThrownEvent;
-import com.rvprg.sumi.transport.SnapshotTransferStartedEvent;
-
-import io.netty.channel.Channel;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.util.concurrent.ScheduledFuture;
-import net.jcip.annotations.GuardedBy;
 
 public class ConsensusImpl implements Consensus {
     private final Logger logger = LoggerFactory.getLogger(ConsensusImpl.class);
@@ -114,7 +90,6 @@ public class ConsensusImpl implements Consensus {
     private MemberRole role = MemberRole.Follower;
     @GuardedBy("stateLock")
     private boolean started = false;
-    @GuardedBy("stateLock")
     private AtomicReference<EventLoopGroup> eventLoop = new AtomicReference<EventLoopGroup>(null);
 
     private final MemberConnectorListenerImpl memberConnectorListener;
@@ -128,14 +103,14 @@ public class ConsensusImpl implements Consensus {
 
     @Inject
     public ConsensusImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver,
-            Log log, StateMachine stateMachine, ConsensusEventListener listener)
+                         Log log, StateMachine stateMachine, ConsensusEventListener listener)
             throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException, LogException {
         this(configuration, memberConnector, messageReceiver, log, stateMachine, log.getTerm(), MemberRole.Follower, listener);
     }
 
     public ConsensusImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine,
-            int initTerm, MemberRole initRole,
-            ConsensusEventListener listener) throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException, LogException {
+                         int initTerm, MemberRole initRole,
+                         ConsensusEventListener listener) throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException, LogException {
         this.messageReceiver = messageReceiver;
         this.selfId = messageReceiver.getMemberId();
         this.log = log;
