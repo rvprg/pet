@@ -46,12 +46,12 @@ public class ConsensusMemberConnector implements MemberConnector {
 
     @Override
     public void unregister(MemberId member) {
-        stateLock.readLock().lock();
+        stateLock.writeLock().lock();
         try {
             catchingUpMembers.remove(member);
             memberConnector.unregister(member);
         } finally {
-            stateLock.readLock().unlock();
+            stateLock.writeLock().unlock();
         }
     }
 
