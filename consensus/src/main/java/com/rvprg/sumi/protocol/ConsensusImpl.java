@@ -24,8 +24,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -104,13 +103,13 @@ public class ConsensusImpl implements Consensus {
     @Inject
     public ConsensusImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver,
                          Log log, StateMachine stateMachine, ConsensusEventListener listener)
-            throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException, LogException {
+            throws InterruptedException, SnapshotInstallException, LogException {
         this(configuration, memberConnector, messageReceiver, log, stateMachine, log.getTerm(), MemberRole.Follower, listener);
     }
 
     public ConsensusImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine,
                          int initTerm, MemberRole initRole,
-                         ConsensusEventListener listener) throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException, LogException {
+                         ConsensusEventListener listener) throws InterruptedException, SnapshotInstallException, LogException {
         this.messageReceiver = messageReceiver;
         this.selfId = messageReceiver.getMemberId();
         this.log = log;
@@ -136,7 +135,7 @@ public class ConsensusImpl implements Consensus {
     }
 
     private void initializeFromTheLatestSnapshot()
-            throws InterruptedException, SnapshotInstallException, FileNotFoundException, IOException, LogException {
+            throws SnapshotInstallException, LogException {
         SnapshotDescriptor latestSnapshot = SnapshotDescriptor.getLatestSnapshotDescriptor(configuration.getSnapshotFolderPath());
         if (latestSnapshot != null) {
             logger.info("[{}] Initializing from the snapshot: {}.", getCurrentTerm(), latestSnapshot);
@@ -331,7 +330,7 @@ public class ConsensusImpl implements Consensus {
     private void updateMemberIdRelatedBookkeeping(MemberId memberId) {
         nextIndexes.put(memberId, new AtomicLong(log.getLastIndex() + 1));
         matchIndexes.put(memberId, new AtomicLong(0));
-        replicationRetryTasks.putIfAbsent(memberId, new AtomicReference<ScheduledFuture<?>>(null));
+        replicationRetryTasks.putIfAbsent(memberId, new AtomicReference<>(null));
         scheduleAppendEntries(memberId);
     }
 
@@ -364,7 +363,7 @@ public class ConsensusImpl implements Consensus {
             votesReceived = 0;
             memberConnector.getRegisteredMemberIds().forEach(
                     memberId -> {
-                        replicationRetryTasks.putIfAbsent(memberId, new AtomicReference<ScheduledFuture<?>>(null));
+                        replicationRetryTasks.putIfAbsent(memberId, new AtomicReference<>(null));
                         cancelTask(replicationRetryTasks.get(memberId).getAndSet(null));
                     });
 
@@ -777,7 +776,7 @@ public class ConsensusImpl implements Consensus {
     }
 
     private void heartbeatTimedout() {
-        listener.heartbeatTimedout();
+        listener.heartbeatTimedOut();
         initiateElection();
     }
 
@@ -867,7 +866,7 @@ public class ConsensusImpl implements Consensus {
                             .setMemberId(snapshotSender.getMemberId().toString())
                             .setTerm(snapshot.getMetadata().getTerm())
                             .setIndex(snapshot.getMetadata().getIndex())
-                            .addAllMembers(snapshot.getMetadata().getMembers().stream().map(x -> x.toString()).collect(Collectors.toSet())));
+                            .addAllMembers(snapshot.getMetadata().getMembers().stream().map(InetSocketAddress::toString).collect(Collectors.toSet())));
         } else {
             List<LogEntry> logEntries = log.get(nextIndex, configuration.getMaxNumberOfLogEntriesPerRequest());
             if (logEntries.size() == 0) {

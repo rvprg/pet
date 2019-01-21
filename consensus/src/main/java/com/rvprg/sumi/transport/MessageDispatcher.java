@@ -23,13 +23,12 @@ public class MessageDispatcher extends SimpleChannelInboundHandler<RaftMessage> 
     }
 
     @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
-            throws Exception {
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         ctx.channel().close();
     }
 
     @Override
-    protected void channelRead0(ChannelHandlerContext ctx, RaftMessage msg) throws Exception {
+    protected void channelRead0(ChannelHandlerContext ctx, RaftMessage msg) {
         switch (msg.getType()) {
         case AppendEntries:
             messageConsumer.consumeAppendEntries(member, msg.getAppendEntries());

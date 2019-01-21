@@ -159,7 +159,7 @@ public class ConsensusMemberConnector implements MemberConnector {
     public void unregisterAllCatchingUpServers() {
         stateLock.writeLock().lock();
         try {
-            for (MemberId memberId : new HashSet<MemberId>(catchingUpMembers)) {
+            for (MemberId memberId : new HashSet<>(catchingUpMembers)) {
                 unregister(memberId);
             }
         } finally {

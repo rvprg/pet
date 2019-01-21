@@ -1,20 +1,19 @@
 package com.rvprg.sumi.log;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 import com.google.protobuf.ByteString;
+import com.rvprg.sumi.configuration.Configuration;
 import com.rvprg.sumi.protocol.messages.ProtocolMessages.LogEntry;
 import com.rvprg.sumi.protocol.messages.ProtocolMessages.LogEntry.LogEntryType;
-import com.rvprg.sumi.configuration.Configuration;
 import com.rvprg.sumi.sm.StateMachine;
 import com.rvprg.sumi.transport.MemberConnector;
 import com.rvprg.sumi.transport.MemberId;
 import com.rvprg.sumi.transport.SnapshotDescriptor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class InMemoryLogImpl implements Log {
-    private final ArrayList<LogEntry> log = new ArrayList<LogEntry>();
+    private final ArrayList<LogEntry> log = new ArrayList<>();
     private int commitIndex = 0;
     private long firstIndex = 0;
     private int term;
@@ -28,7 +27,7 @@ public class InMemoryLogImpl implements Log {
     }
 
     @Override
-    public synchronized void close() throws IOException {
+    public synchronized void close() {
         // nop
     }
 
@@ -102,7 +101,7 @@ public class InMemoryLogImpl implements Log {
     @Override
     public synchronized List<LogEntry> get(long nextIndex, int maxNum) {
         if (nextIndex > log.size() - 1 || nextIndex < 0 || maxNum <= 0) {
-            return new ArrayList<LogEntry>();
+            return new ArrayList<>();
         }
 
         if (nextIndex + maxNum > log.size() - 1) {
@@ -197,7 +196,7 @@ public class InMemoryLogImpl implements Log {
     }
 
     @Override
-    public void installSnapshot(StateMachine stateMachine, MemberConnector memberConnector, SnapshotDescriptor snapshotDescriptor) throws LogException, SnapshotInstallException {
+    public void installSnapshot(StateMachine stateMachine, MemberConnector memberConnector, SnapshotDescriptor snapshotDescriptor) throws LogException {
         throw new LogException("Not implemented");
     }
 

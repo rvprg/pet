@@ -140,8 +140,8 @@ public abstract class ConsensusFunctionalBase {
                 }
 
                 @Override
-                public void heartbeatTimedout() {
-                    listener.heartbeatTimedout();
+                public void heartbeatTimedOut() {
+                    listener.heartbeatTimedOut();
                 }
 
                 @Override

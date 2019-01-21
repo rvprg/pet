@@ -4,7 +4,7 @@ import com.rvprg.sumi.transport.MemberId;
 import com.rvprg.sumi.transport.SnapshotDescriptor;
 
 public interface ConsensusEventListener {
-    void heartbeatTimedout();
+    void heartbeatTimedOut();
 
     void nextElectionScheduled();
 

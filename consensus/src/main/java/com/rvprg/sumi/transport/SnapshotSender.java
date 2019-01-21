@@ -1,27 +1,19 @@
 package com.rvprg.sumi.transport;
 
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.rvprg.sumi.protocol.messages.ProtocolMessages.RaftMessage;
 import com.rvprg.sumi.protocol.messages.ProtocolMessages.RaftMessage.MessageType;
-
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.stream.ChunkedFile;
 import io.netty.handler.stream.ChunkedWriteHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 public class SnapshotSender {
     private final Logger logger = LoggerFactory.getLogger(SnapshotSender.class);
@@ -49,20 +41,19 @@ public class SnapshotSender {
         }
 
         @Override
-        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
-                throws Exception {
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
             initMember(ctx);
             eventCallback.accept(new SnapshotTransferExceptionThrownEvent(memberId, ctx.channel(), snapshot, cause));
         }
 
         @Override
-        public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        public void channelInactive(ChannelHandlerContext ctx) {
             initMember(ctx);
             eventCallback.accept(new SnapshotTransferConnectionClosedEvent(memberId, ctx.channel(), snapshot));
         }
 
         @Override
-        public void channelActive(ChannelHandlerContext ctx) throws Exception {
+        public void channelActive(ChannelHandlerContext ctx) {
             snapshot = SnapshotSender.this.snapshotDescriptor.get();
             if (snapshot == null) {
                 ctx.channel().close();
@@ -103,12 +94,9 @@ public class SnapshotSender {
             ctx.pipeline().addBefore(SnapshotTransferInitiator, ChunkedWriteHandler, new ChunkedWriteHandler());
 
             final ChunkedFile chunkedFile = new ChunkedFile(snapshot.getSnapshotFile());
-            ctx.channel().writeAndFlush(chunkedFile).addListener(ChannelFutureListener.CLOSE).addListener(new ChannelFutureListener() {
-                @Override
-                public void operationComplete(ChannelFuture future) throws Exception {
-                    chunkedFile.close();
-                    eventCallback.accept(new SnapshotTransferCompletedEvent(memberId, ctx.channel(), snapshot));
-                }
+            ctx.channel().writeAndFlush(chunkedFile).addListener(ChannelFutureListener.CLOSE).addListener((ChannelFutureListener) future -> {
+                chunkedFile.close();
+                eventCallback.accept(new SnapshotTransferCompletedEvent(memberId, ctx.channel(), snapshot));
             });
 
             eventCallback.accept(new SnapshotTransferStartedEvent(memberId, ctx.channel(), snapshot));
@@ -117,11 +105,11 @@ public class SnapshotSender {
 
     public SnapshotSender(ChannelPipelineInitializer channelPipelineInitializer,
             MemberId selfId,
-            Consumer<SnapshotTransferEvent> eventCallback) throws InterruptedException {
+            Consumer<SnapshotTransferEvent> eventCallback) {
         this.bossGroup = new NioEventLoopGroup();
         this.workerGroup = new NioEventLoopGroup();
         this.server = new ServerBootstrap();
-        this.snapshotDescriptor = new AtomicReference<SnapshotDescriptor>(null);
+        this.snapshotDescriptor = new AtomicReference<>(null);
         this.eventCallback = eventCallback;
         this.channelPipelineInitializer = channelPipelineInitializer;
         this.selfId = selfId;
@@ -131,7 +119,7 @@ public class SnapshotSender {
                 .childHandler(new ChannelInitializer<SocketChannel>() {
 
                     @Override
-                    public void initChannel(SocketChannel ch) throws Exception {
+                    public void initChannel(SocketChannel ch) {
                         channelPipelineInitializer.initialize(ch.pipeline()).addLast(
                                 SnapshotTransferInitiator.SnapshotTransferInitiator, new SnapshotTransferInitiator());
                     }

@@ -10,14 +10,14 @@ import net.jcip.annotations.ThreadSafe;
 
 @ThreadSafe
 public class MutableMembersRegistryImpl implements MutableMembersRegistry {
-    private final ConcurrentHashMap<MemberId, ActiveMember> members = new ConcurrentHashMap<MemberId, ActiveMember>();
+    private final ConcurrentHashMap<MemberId, ActiveMember> members = new ConcurrentHashMap<>();
     private ImmutableSet<ActiveMember> immutableSetOfMembers = ImmutableSet.of();
 
     private final ReentrantReadWriteLock stateLock = new ReentrantReadWriteLock();
 
     @Override
-    public ActiveMember get(MemberId addr) {
-        return members.get(addr);
+    public ActiveMember get(MemberId memberId) {
+        return members.get(memberId);
     }
 
     @Override

@@ -6,7 +6,7 @@ import com.rvprg.sumi.transport.SnapshotDescriptor;
 public class ConsensusEventListenerImpl implements ConsensusEventListener {
 
     @Override
-    public void heartbeatTimedout() {
+    public void heartbeatTimedOut() {
         // nop
     }
 

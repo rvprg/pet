@@ -111,7 +111,7 @@ public class ConsensusTest {
                 electionInitiatedLatch.countDown();
                 return null;
             }
-        }).when(raftListener).heartbeatTimedout();
+        }).when(raftListener).heartbeatTimedOut();
 
         // This will wait until an absence of heartbeats is detected. This
         // event triggers a schedule of the next election. Therefore we
@@ -143,7 +143,7 @@ public class ConsensusTest {
         assertTrue(raft.getCurrentTerm() > 0);
 
         verify(raftListener, atLeast(1)).heartbeatReceived();
-        verify(raftListener, atLeast(1)).heartbeatTimedout();
+        verify(raftListener, atLeast(1)).heartbeatTimedOut();
         assertTrue(requestVotesInitiatedTime.get() - lastHeartbeatTime.get() >= configuration.getElectionMinTimeout());
     }
 

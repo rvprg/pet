@@ -1,24 +1,8 @@
 package com.rvprg.sumi.configuration;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.URI;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import javax.validation.ConstraintViolation;
-import javax.validation.Validation;
-import javax.validation.Validator;
-import javax.validation.ValidatorFactory;
-import javax.validation.constraints.DecimalMin;
-import javax.validation.constraints.NotNull;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonGenerationException;
-import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -26,8 +10,20 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Files;
 import com.rvprg.sumi.transport.MemberId;
-
 import net.jcip.annotations.Immutable;
+
+import javax.validation.ConstraintViolation;
+import javax.validation.Validation;
+import javax.validation.Validator;
+import javax.validation.ValidatorFactory;
+import javax.validation.constraints.DecimalMin;
+import javax.validation.constraints.NotNull;
+import java.io.File;
+import java.io.IOException;
+import java.net.URI;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Immutable
 @JsonInclude(Include.NON_NULL)
@@ -66,7 +62,7 @@ public class Configuration {
         @JsonProperty("logUri")
         private URI logUri;
         @JsonProperty("memberIds")
-        private Set<MemberId> memberIds = new HashSet<MemberId>();
+        private Set<MemberId> memberIds = new HashSet<>();
 
         public Builder selfId(MemberId selfId) {
             this.selfId = selfId;
@@ -148,7 +144,7 @@ public class Configuration {
             return this;
         }
 
-        public static Builder fromFile(File file) throws JsonParseException, JsonMappingException, IOException {
+        public static Builder fromFile(File file) throws IOException {
             return getMapper().readValue(file, Builder.class);
         }
 
@@ -318,7 +314,7 @@ public class Configuration {
         return snapshotSenderPort;
     }
 
-    public void toFile(File file) throws JsonGenerationException, JsonMappingException, IOException {
+    public void toFile(File file) throws IOException {
         getMapper().writeValue(file, this);
     }
 

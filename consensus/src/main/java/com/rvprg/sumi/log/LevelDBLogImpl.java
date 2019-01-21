@@ -233,7 +233,7 @@ public class LevelDBLogImpl implements Log {
     public List<LogEntry> get(long nextIndex, int maxNum) throws LogException {
         long lastLogIndex = getLastIndex();
 
-        ArrayList<LogEntry> retArr = new ArrayList<LogEntry>();
+        ArrayList<LogEntry> retArr = new ArrayList<>();
         if (nextIndex > lastLogIndex || nextIndex < 0 || maxNum <= 0) {
             return retArr;
         }

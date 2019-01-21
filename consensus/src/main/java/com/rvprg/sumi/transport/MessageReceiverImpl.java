@@ -43,7 +43,7 @@ public class MessageReceiverImpl implements MessageReceiver {
     }
 
     @Override
-    public void shutdown() throws InterruptedException {
+    public void shutdown() {
         synchronized (stateLock) {
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();

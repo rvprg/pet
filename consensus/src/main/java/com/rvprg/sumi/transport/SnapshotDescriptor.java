@@ -6,6 +6,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -48,12 +49,9 @@ public class SnapshotDescriptor implements StreamableSnapshot {
                         return null;
                     }
                 })
-                .filter(f -> f != null)
+                .filter(Objects::nonNull)
                 .max(SnapshotMetadata::compare);
-        if (optFile.isPresent()) {
-            return new SnapshotDescriptor(folder, optFile.get());
-        }
-        return null;
+        return optFile.map(snapshotMetadata -> new SnapshotDescriptor(folder, snapshotMetadata)).orElse(null);
     }
 
     @Override

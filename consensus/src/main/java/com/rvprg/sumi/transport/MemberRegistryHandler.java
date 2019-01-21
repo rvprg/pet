@@ -36,7 +36,7 @@ public class MemberRegistryHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelActive(ChannelHandlerContext ctx) throws Exception {
+    public void channelActive(ChannelHandlerContext ctx) {
         ActiveMember member = new ActiveMember(ctx.channel());
         registry.addMember(member);
         activateNotifier.accept(member, ctx.channel());
@@ -44,7 +44,7 @@ public class MemberRegistryHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+    public void channelInactive(ChannelHandlerContext ctx) {
         ActiveMember member = new ActiveMember(ctx.channel());
         registry.removeMember(member);
         deactivateNotifier.accept(member.getMemberId());
@@ -53,8 +53,7 @@ public class MemberRegistryHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
-            throws Exception {
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         ActiveMember member = new ActiveMember(ctx.channel());
         registry.removeMember(member);
         exceptionNotifier.accept(member.getMemberId(), cause);

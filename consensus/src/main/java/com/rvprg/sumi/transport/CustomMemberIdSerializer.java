@@ -10,7 +10,7 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 public class CustomMemberIdSerializer extends JsonSerializer<MemberId> {
 
     @Override
-    public void serialize(MemberId value, JsonGenerator gen, SerializerProvider serializers) throws IOException, JsonProcessingException {
+    public void serialize(MemberId value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
         gen.writeString(value.toString());
     }
 

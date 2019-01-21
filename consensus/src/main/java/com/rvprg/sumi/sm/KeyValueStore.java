@@ -20,7 +20,7 @@ import com.github.andrewoma.dexx.collection.HashMap;
 import com.github.andrewoma.dexx.collection.Pair;
 
 public class KeyValueStore implements Externalizable {
-    private AtomicReference<HashMap<Data, Data>> map = new AtomicReference<>(HashMap.<Data, Data> empty());
+    private AtomicReference<HashMap<Data, Data>> map = new AtomicReference<>(HashMap.empty());
 
     public KeyValueStore(KeyValueStore s) {
         this.map.set(s.map.get());
@@ -59,7 +59,7 @@ public class KeyValueStore implements Externalizable {
     }
 
     @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+    public void readExternal(ObjectInput in) throws IOException {
         int size = in.readInt();
         for (int i = 0; i < size; ++i) {
             int length = in.readInt();

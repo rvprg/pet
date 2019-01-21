@@ -1,31 +1,22 @@
 package com.rvprg.sumi.transport;
 
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.RaftMessage;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.RaftMessage.MessageType;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.SnapshotDownloadRequest;
+import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.*;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioSocketChannel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.RaftMessage;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.RaftMessage.MessageType;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.SnapshotDownloadRequest;
-
-import io.netty.bootstrap.Bootstrap;
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioSocketChannel;
 
 public class SnapshotReceiver {
     private final Logger logger = LoggerFactory.getLogger(SnapshotReceiver.class);
@@ -59,12 +50,9 @@ public class SnapshotReceiver {
                                     .setTerm(snapshotDescriptor.getMetadata().getTerm())
                                     .setIndex(snapshotDescriptor.getMetadata().getIndex())
                                     .setSize(snapshotDescriptor.getMetadata().getSize()))
-                    .build()).addListener(new ChannelFutureListener() {
-                        @Override
-                        public void operationComplete(ChannelFuture future) throws Exception {
-                            for (String handlerName : channelPipelineInitializer.getHandlerNames()) {
-                                ctx.pipeline().remove(handlerName);
-                            }
+                    .build()).addListener((ChannelFutureListener) future -> {
+                        for (String handlerName : channelPipelineInitializer.getHandlerNames()) {
+                            ctx.pipeline().remove(handlerName);
                         }
                     });
             out = new BufferedOutputStream(new FileOutputStream(snapshotDescriptor.getSnapshotFile(), false));
@@ -133,7 +121,7 @@ public class SnapshotReceiver {
                 .channel(NioSocketChannel.class)
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
-                    public void initChannel(SocketChannel ch) throws Exception {
+                    public void initChannel(SocketChannel ch) {
                         channelPipelineInitializer.initialize(ch.pipeline())
                                 .addLast(new SnapshotReceiveHandler(snapshotDescriptor));
                     }

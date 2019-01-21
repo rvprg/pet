@@ -1,20 +1,17 @@
 package com.rvprg.sumi.transport;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonGenerationException;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.collect.ImmutableSet;
 import com.rvprg.sumi.protocol.messages.ProtocolMessages.SnapshotDownloadRequest;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 
 @JsonInclude(Include.NON_NULL)
 public class SnapshotMetadata {
@@ -29,7 +26,7 @@ public class SnapshotMetadata {
         @JsonProperty("snapshotId")
         private String snapshotId;
         @JsonProperty("members")
-        private Set<MemberId> members = new HashSet<MemberId>();
+        private Set<MemberId> members = new HashSet<>();
         @JsonProperty("size")
         private long size;
 
@@ -71,7 +68,7 @@ public class SnapshotMetadata {
             return new SnapshotMetadata(this);
         }
 
-        public static Builder fromFile(File file) throws JsonParseException, JsonMappingException, IOException {
+        public static Builder fromFile(File file) throws IOException {
             return getMapper().readValue(file, Builder.class);
         }
 
@@ -82,10 +79,10 @@ public class SnapshotMetadata {
         this.term = builder.term;
         this.snapshotId = builder.snapshotId;
         this.size = builder.size;
-        this.members = ImmutableSet.<MemberId> copyOf(builder.members);
+        this.members = ImmutableSet.copyOf(builder.members);
     }
 
-    public void toFile(File file) throws JsonGenerationException, JsonMappingException, IOException {
+    public void toFile(File file) throws IOException {
         getMapper().writeValue(file, this);
     }
 
@@ -126,11 +123,11 @@ public class SnapshotMetadata {
         builder.term = request.getTerm();
         builder.snapshotId = request.getSnapshotId();
         builder.size = request.getSize();
-        Set<MemberId> m = new HashSet<MemberId>();
+        Set<MemberId> m = new HashSet<>();
         for (int i = 0; i < request.getMembersCount(); ++i) {
             m.add(MemberId.fromString(request.getMembers(i)));
         }
-        builder.members = ImmutableSet.<MemberId> copyOf(m);
+        builder.members = ImmutableSet.copyOf(m);
         return builder.build();
     }
 
@@ -181,7 +178,7 @@ public class SnapshotMetadata {
         return Integer.compare(s1.term, s2.term);
     }
 
-    public static int compare(File f1, File f2) throws JsonParseException, JsonMappingException, IOException {
+    public static int compare(File f1, File f2) throws IOException {
         SnapshotMetadata m1 = Builder.fromFile(f1).build();
         SnapshotMetadata m2 = Builder.fromFile(f2).build();
         return compare(m1, m2);

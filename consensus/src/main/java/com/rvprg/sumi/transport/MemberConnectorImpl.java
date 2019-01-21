@@ -26,8 +26,8 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 public class MemberConnectorImpl implements MemberConnector {
     private final static Logger logger = LoggerFactory.getLogger(MemberConnectorImpl.class);
 
-    private final ConcurrentHashMap<MemberId, MemberConnectorListener> registered = new ConcurrentHashMap<MemberId, MemberConnectorListener>();
-    private final ConcurrentHashMap<MemberId, Channel> registeredChannels = new ConcurrentHashMap<MemberId, Channel>();
+    private final ConcurrentHashMap<MemberId, MemberConnectorListener> registered = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<MemberId, Channel> registeredChannels = new ConcurrentHashMap<>();
 
     private ImmutableSet<MemberId> immutableMemberIdSet = ImmutableSet.of();
     private final Bootstrap clientBootstrap;
@@ -55,7 +55,7 @@ public class MemberConnectorImpl implements MemberConnector {
         clientBootstrap.option(ChannelOption.SO_KEEPALIVE, true);
         clientBootstrap.handler(new ChannelInitializer<SocketChannel>() {
             @Override
-            public void initChannel(SocketChannel ch) throws Exception {
+            public void initChannel(SocketChannel ch) {
                 ch.pipeline().addLast(new MemberRegistryHandler(
                         members,
                         MemberConnectorImpl.this,
@@ -118,20 +118,14 @@ public class MemberConnectorImpl implements MemberConnector {
         }
 
         final ChannelFuture channelFuture = clientBootstrap.connect(memberId);
-        channelFuture.addListener(new ChannelFutureListener() {
-            @Override
-            public void operationComplete(ChannelFuture future) throws Exception {
-                if (!future.isSuccess()) {
-                    logger.warn("Connection to {} failed. Retrying in {} ms.", memberId, configuration.getAutoReconnectRetryInterval());
-                    memberScheduledReconnect(memberId);
+        channelFuture.addListener((ChannelFutureListener) future -> {
+            if (!future.isSuccess()) {
+                logger.warn("Connection to {} failed. Retrying in {} ms.", memberId,
+                        configuration.getAutoReconnectRetryInterval());
+                memberScheduledReconnect(memberId);
 
-                    channelFuture.channel().eventLoop().schedule(new Runnable() {
-                        @Override
-                        public void run() {
-                            connect(memberId);
-                        }
-                    }, configuration.getAutoReconnectRetryInterval(), TimeUnit.MILLISECONDS);
-                }
+                channelFuture.channel().eventLoop().schedule(() -> connect(memberId),
+                        configuration.getAutoReconnectRetryInterval(), TimeUnit.MILLISECONDS);
             }
         });
     }
@@ -180,7 +174,7 @@ public class MemberConnectorImpl implements MemberConnector {
 
     @Override
     public void connectAllRegistered() {
-        getRegisteredMemberIds().forEach(member -> connect(member));
+        getRegisteredMemberIds().forEach(this::connect);
     }
 
 }

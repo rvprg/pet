@@ -17,7 +17,7 @@ public class ServerChannelInitializer extends ChannelInitializer<SocketChannel> 
     }
 
     @Override
-    protected void initChannel(SocketChannel ch) throws Exception {
+    protected void initChannel(SocketChannel ch) {
         pipelineInitializer.initialize(ch.pipeline()).addLast(new MessageDispatcher(new ActiveMember(ch), messageConsumer));
     }
 
