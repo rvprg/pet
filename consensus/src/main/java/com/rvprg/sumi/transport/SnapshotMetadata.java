@@ -15,7 +15,7 @@ import java.util.Set;
 
 @JsonInclude(Include.NON_NULL)
 public class SnapshotMetadata {
-    public static final String FILE_EXTENTION = ".json";
+    public static final String FILE_EXTENSION = ".json";
 
     @JsonInclude(Include.NON_NULL)
     public static class Builder {

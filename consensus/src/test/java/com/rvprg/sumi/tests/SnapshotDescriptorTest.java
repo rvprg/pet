@@ -1,23 +1,20 @@
 package com.rvprg.sumi.tests;
 
-import static org.junit.Assert.assertEquals;
+import com.google.common.io.Files;
+import com.rvprg.sumi.transport.SnapshotDescriptor;
+import com.rvprg.sumi.transport.SnapshotMetadata;
+import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.UUID;
 
-import org.junit.Test;
-
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.google.common.io.Files;
-import com.rvprg.sumi.transport.SnapshotDescriptor;
-import com.rvprg.sumi.transport.SnapshotMetadata;
+import static org.junit.Assert.assertEquals;
 
 public class SnapshotDescriptorTest {
 
     @Test
-    public void testCompare() throws JsonParseException, JsonMappingException, IOException {
+    public void testCompare() {
         long index = 10;
         int term = 1;
 
@@ -44,8 +41,8 @@ public class SnapshotDescriptorTest {
         SnapshotMetadata m1 = new SnapshotMetadata.Builder().index(index).term(term).build();
         SnapshotMetadata m2 = new SnapshotMetadata.Builder().index(index).term(term + 1).build();
 
-        m1.toFile(new File(tempDir, UUID.randomUUID() + SnapshotMetadata.FILE_EXTENTION));
-        m2.toFile(new File(tempDir, UUID.randomUUID() + SnapshotMetadata.FILE_EXTENTION));
+        m1.toFile(new File(tempDir, UUID.randomUUID() + SnapshotMetadata.FILE_EXTENSION));
+        m2.toFile(new File(tempDir, UUID.randomUUID() + SnapshotMetadata.FILE_EXTENSION));
 
         SnapshotDescriptor latest = SnapshotDescriptor.getLatestSnapshotDescriptor(tempDir);
         assertEquals(latest.getMetadata(), m2);

@@ -89,7 +89,7 @@ public class ConsensusImpl implements Consensus {
     private MemberRole role = MemberRole.Follower;
     @GuardedBy("stateLock")
     private boolean started = false;
-    private AtomicReference<EventLoopGroup> eventLoop = new AtomicReference<EventLoopGroup>(null);
+    private AtomicReference<EventLoopGroup> eventLoop = new AtomicReference<>(null);
 
     private final MemberConnectorListenerImpl memberConnectorListener;
 
@@ -109,7 +109,7 @@ public class ConsensusImpl implements Consensus {
 
     public ConsensusImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver, Log log, StateMachine stateMachine,
                          int initTerm, MemberRole initRole,
-                         ConsensusEventListener listener) throws InterruptedException, SnapshotInstallException, LogException {
+                         ConsensusEventListener listener) throws SnapshotInstallException, LogException {
         this.messageReceiver = messageReceiver;
         this.selfId = messageReceiver.getMemberId();
         this.log = log;
@@ -125,9 +125,7 @@ public class ConsensusImpl implements Consensus {
         this.snapshotSender = new SnapshotSender(this.channelPipelineInitializer,
                 new MemberId(messageReceiver.getMemberId().getHostName(),
                         configuration.getSnapshotSenderPort()),
-                x -> {
-                    snapshotSenderEventHandler(x);
-                });
+                x -> snapshotSenderEventHandler(x));
         this.memberConnectorListener = new MemberConnectorListenerImpl(this, this.channelPipelineInitializer);
         this.memberConnector = new ConsensusMemberConnector(memberConnector, memberConnectorListener);
         configuration.getMemberIds().forEach(memberId -> memberConnector.register(memberId, memberConnectorListener));
@@ -421,6 +419,7 @@ public class ConsensusImpl implements Consensus {
                 } else {
                     log.commit(appendEntries.getLeaderCommitIndex(), stateMachine);
                 }
+                logger.debug("[{}] MemberId: {}. processAppendEntries succeeded. indexOfLastNewEntry={}", getCurrentTerm(), member.getMemberId(), indexOfLastNewEntry);
                 sendAppendEntriesResponse(member, getAppendEntriesResponse(indexOfFirstNewEntry, indexOfLastNewEntry, successFlag));
             }
             logCompaction();

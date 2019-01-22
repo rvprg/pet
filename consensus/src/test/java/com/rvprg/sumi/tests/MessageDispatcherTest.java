@@ -1,39 +1,29 @@
 package com.rvprg.sumi.tests;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import com.rvprg.sumi.Module;
+import com.rvprg.sumi.configuration.Configuration;
+import com.rvprg.sumi.protocol.MessageConsumer;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.*;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.RaftMessage.MessageType;
+import com.rvprg.sumi.tests.helpers.EchoServer;
+import com.rvprg.sumi.tests.helpers.MemberConnectorListenerTestableImpl;
+import com.rvprg.sumi.transport.ActiveMember;
+import com.rvprg.sumi.transport.ChannelPipelineInitializer;
+import com.rvprg.sumi.transport.MemberConnector;
+import com.rvprg.sumi.transport.MemberId;
+import io.netty.channel.Channel;
+import org.junit.Test;
+import org.mockito.stubbing.Answer;
 
 import java.net.URI;
 import java.util.concurrent.CountDownLatch;
 
-import org.junit.Test;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
-
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.AppendEntries;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.AppendEntriesResponse;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.RaftMessage;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.RaftMessage.MessageType;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.RequestVote;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.RequestVoteResponse;
-import com.rvprg.sumi.Module;
-import com.rvprg.sumi.configuration.Configuration;
-import com.rvprg.sumi.protocol.MessageConsumer;
-import com.rvprg.sumi.tests.helpers.EchoServer;
-import com.rvprg.sumi.tests.helpers.MemberConnectorListenerTestableImpl;
-import com.rvprg.sumi.transport.ChannelPipelineInitializer;
-import com.rvprg.sumi.transport.ActiveMember;
-import com.rvprg.sumi.transport.MemberConnector;
-import com.rvprg.sumi.transport.MemberId;
-
-import io.netty.channel.Channel;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
 
 public class MessageDispatcherTest {
 
@@ -89,12 +79,9 @@ public class MessageDispatcherTest {
     private void checkRequestVoteDispatch(MessageConsumer messageConsumer, Channel channel) throws InterruptedException {
         final CountDownLatch latch = new CountDownLatch(1);
 
-        doAnswer(new Answer<Void>() {
-            @Override
-            public Void answer(InvocationOnMock invocation) throws Throwable {
-                latch.countDown();
-                return null;
-            }
+        doAnswer((Answer<Void>) invocation -> {
+            latch.countDown();
+            return null;
         }).when(messageConsumer).consumeRequestVote(any(ActiveMember.class), any(RequestVote.class));
 
         RaftMessage requestVoteRaftMessage = getRequestVoteInstance();
@@ -106,12 +93,9 @@ public class MessageDispatcherTest {
     private void checkRequestVoteResponseDispatch(MessageConsumer messageConsumer, Channel channel) throws InterruptedException {
         final CountDownLatch latch = new CountDownLatch(1);
 
-        doAnswer(new Answer<Void>() {
-            @Override
-            public Void answer(InvocationOnMock invocation) throws Throwable {
-                latch.countDown();
-                return null;
-            }
+        doAnswer((Answer<Void>) invocation -> {
+            latch.countDown();
+            return null;
         }).when(messageConsumer).consumeRequestVoteResponse(any(ActiveMember.class), any(RequestVoteResponse.class));
 
         RaftMessage requestVoteResponseRaftMessage = getRequestVoteResponseInstance();
@@ -125,12 +109,9 @@ public class MessageDispatcherTest {
     private void checkAppendEntriesDispatch(MessageConsumer messageConsumer, Channel channel) throws InterruptedException {
         final CountDownLatch latch = new CountDownLatch(1);
 
-        doAnswer(new Answer<Void>() {
-            @Override
-            public Void answer(InvocationOnMock invocation) throws Throwable {
-                latch.countDown();
-                return null;
-            }
+        doAnswer((Answer<Void>) invocation -> {
+            latch.countDown();
+            return null;
         }).when(messageConsumer).consumeAppendEntries(any(ActiveMember.class), any(AppendEntries.class));
 
         RaftMessage requestAppendEntriesRaftMessage = getAppendEntriesInstance();
@@ -144,12 +125,9 @@ public class MessageDispatcherTest {
     private void checkAppendEntriesResponseDispatch(MessageConsumer messageConsumer, Channel channel) throws InterruptedException {
         final CountDownLatch latch = new CountDownLatch(1);
 
-        doAnswer(new Answer<Void>() {
-            @Override
-            public Void answer(InvocationOnMock invocation) throws Throwable {
-                latch.countDown();
-                return null;
-            }
+        doAnswer((Answer<Void>) invocation -> {
+            latch.countDown();
+            return null;
         }).when(messageConsumer).consumeAppendEntriesResponse(any(ActiveMember.class), any(AppendEntriesResponse.class));
 
         RaftMessage requestAppendEntriesResponseRaftMessage = getAppendEntriesResponseInstance();

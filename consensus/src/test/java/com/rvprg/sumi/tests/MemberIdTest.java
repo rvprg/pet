@@ -1,14 +1,12 @@
 package com.rvprg.sumi.tests;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import org.junit.Test;
-
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.rvprg.sumi.protocol.messages.ProtocolMessages.DynamicMembershipChangeCommand;
 import com.rvprg.sumi.protocol.messages.ProtocolMessages.DynamicMembershipChangeCommand.CommandType;
 import com.rvprg.sumi.transport.MemberId;
+import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 public class MemberIdTest {
     @Test
@@ -19,7 +17,7 @@ public class MemberIdTest {
         assertEquals("localhost/127.0.0.1:12345", memberId1.toString());
 
         assertEquals(memberId0.toString(), memberId1.toString());
-        assertTrue(memberId0.equals(memberId1));
+        assertEquals(memberId0, memberId1);
     }
 
     @Test
@@ -30,7 +28,7 @@ public class MemberIdTest {
         assertEquals("/0:0:0:0:0:0:0:1:12345", memberId1.toString());
 
         assertEquals(memberId0.toString(), memberId1.toString());
-        assertTrue(memberId0.equals(memberId1));
+        assertEquals(memberId0, memberId1);
     }
 
     @Test

@@ -40,7 +40,7 @@ public class SnapshotDescriptor implements StreamableSnapshot {
 
     public static SnapshotDescriptor getLatestSnapshotDescriptor(File folder) {
         Optional<SnapshotMetadata> optFile = Arrays.stream(folder
-                .listFiles((dir, file) -> file.endsWith(SnapshotMetadata.FILE_EXTENTION)))
+                .listFiles((dir, file) -> file.endsWith(SnapshotMetadata.FILE_EXTENSION)))
                 .map(f -> {
                     try {
                         return SnapshotMetadata.Builder.fromFile(f).build();

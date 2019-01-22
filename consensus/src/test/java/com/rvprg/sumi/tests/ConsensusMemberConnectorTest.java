@@ -23,7 +23,7 @@ import com.rvprg.sumi.transport.MemberId;
 
 public class ConsensusMemberConnectorTest {
     @Test(timeout = 60000)
-    public void testCatchingUpAndVotingMembesBookkeeping() throws InterruptedException {
+    public void testCatchingUpAndVotingMembersBookkeeping() throws InterruptedException {
         Injector injector = Guice.createInjector(new Module(Configuration.newBuilder().selfId(new MemberId("localhost", 1)).logUri(URI.create("file:///test")).build()));
         MemberConnector memberConnector = injector.getInstance(MemberConnector.class);
         ChannelPipelineInitializer pipelineInitializer = injector.getInstance(ChannelPipelineInitializer.class);

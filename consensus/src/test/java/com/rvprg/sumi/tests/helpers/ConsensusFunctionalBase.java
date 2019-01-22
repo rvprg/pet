@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public abstract class ConsensusFunctionalBase {
@@ -241,7 +242,7 @@ public abstract class ConsensusFunctionalBase {
             for (long i = firstIndex; i <= lastIndex; ++i) {
                 LogEntry le = firstRaftLog.get(i);
                 for (Consensus raft : rafts) {
-                    assertTrue(raft.getLog().get(i).getTerm() == le.getTerm());
+                    assertEquals(raft.getLog().get(i).getTerm(), le.getTerm());
                 }
             }
         }
@@ -269,7 +270,7 @@ public abstract class ConsensusFunctionalBase {
         }
 
         public List<Consensus> createRafts(Set<MemberId> members, int electionMinTimeout, int electionMaxTimeout, ConsensusEventListener listener)
-                throws InterruptedException, SnapshotInstallException, IOException, LogException {
+                throws InterruptedException, SnapshotInstallException, LogException {
             List<Consensus> rafts = new ArrayList<>();
             for (MemberId member : members) {
                 Set<MemberId> peers = (new HashSet<>(members));

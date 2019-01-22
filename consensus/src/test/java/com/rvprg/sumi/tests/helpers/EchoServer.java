@@ -27,7 +27,7 @@ public class EchoServer {
 
     private static class EchoHandler extends SimpleChannelInboundHandler<RaftMessage> {
         @Override
-        protected void channelRead0(ChannelHandlerContext ctx, RaftMessage msg) throws Exception {
+        protected void channelRead0(ChannelHandlerContext ctx, RaftMessage msg) {
             ctx.channel().writeAndFlush(msg);
         }
     }
@@ -55,7 +55,7 @@ public class EchoServer {
                 .channel(NioServerSocketChannel.class)
                 .childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override
-                    public void initChannel(SocketChannel ch) throws Exception {
+                    public void initChannel(SocketChannel ch) {
                         pipelineInitializer.initialize(ch.pipeline()).addLast(new EchoHandler());
                     }
                 })

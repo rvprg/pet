@@ -30,7 +30,7 @@ public class NetworkUtils {
     }
 
     public static Set<Integer> getRandomFreePorts(int howMany) {
-        Set<Integer> freePorts = new HashSet<Integer>();
+        Set<Integer> freePorts = new HashSet<>();
         for (int i = 0; i < howMany; ++i) {
             while (true) {
                 int port = getRandomFreePort(MIN_PORT, MAX_PORT);

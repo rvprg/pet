@@ -32,12 +32,7 @@ public class TestStateMachineImpl implements StateMachine {
     @Override
     public WritableSnapshot getWritableSnapshot() {
         final KeyValueStore thisStore = new KeyValueStore(store);
-        return new WritableSnapshot() {
-            @Override
-            public void write(OutputStream stream) throws IOException {
-                thisStore.write(stream);
-            }
-        };
+        return stream -> thisStore.write(stream);
     }
 
 }

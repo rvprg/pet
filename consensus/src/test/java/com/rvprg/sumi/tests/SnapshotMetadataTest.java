@@ -18,11 +18,11 @@ import com.rvprg.sumi.transport.SnapshotMetadata.Builder;
 
 public class SnapshotMetadataTest {
     @Test
-    public void testSerializationDeserialization() throws JsonGenerationException, JsonMappingException, IOException {
+    public void testSerializationDeserialization() throws IOException {
         SnapshotMetadata.Builder builder1 = new Builder();
         builder1.index(123);
         builder1.term(456);
-        Set<MemberId> members = new HashSet<MemberId>();
+        Set<MemberId> members = new HashSet<>();
         members.add(new MemberId("localhost", 123));
         builder1.members(members);
 

@@ -1,18 +1,15 @@
 package com.rvprg.sumi.tests;
 
-import static org.junit.Assert.assertEquals;
+import com.google.common.io.Files;
+import com.rvprg.sumi.configuration.Configuration;
+import com.rvprg.sumi.transport.MemberId;
+import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 
-import org.junit.Test;
-
-import com.fasterxml.jackson.core.JsonGenerationException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.google.common.io.Files;
-import com.rvprg.sumi.configuration.Configuration;
-import com.rvprg.sumi.transport.MemberId;
+import static org.junit.Assert.assertEquals;
 
 public class ConfigurationTest {
     @Test(expected = IllegalArgumentException.class)
@@ -31,7 +28,7 @@ public class ConfigurationTest {
     }
 
     @Test
-    public void testConditions_File() throws JsonGenerationException, JsonMappingException, IOException {
+    public void testConditions_File() throws IOException {
         File tmpDir = Files.createTempDir();
         Configuration c1 = Configuration.newBuilder().selfId(new MemberId("localhost", 1234)).logUri(URI.create("file:///test")).build();
         File file = new File(tmpDir, "test.json");

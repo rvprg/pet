@@ -1,9 +1,17 @@
 package com.rvprg.sumi.tests;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
+import com.rvprg.sumi.configuration.Configuration;
+import com.rvprg.sumi.log.*;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.LogEntry;
+import com.rvprg.sumi.sm.StateMachine;
+import com.rvprg.sumi.sm.StreamableSnapshot;
+import com.rvprg.sumi.sm.WritableSnapshot;
+import com.rvprg.sumi.transport.MemberId;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import java.io.IOException;
 import java.net.URI;
@@ -12,24 +20,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.LogEntry;
-import com.rvprg.sumi.configuration.Configuration;
-import com.rvprg.sumi.log.InMemoryLogImpl;
-import com.rvprg.sumi.log.LevelDBLogImpl;
-import com.rvprg.sumi.log.Log;
-import com.rvprg.sumi.log.LogEntryFactory;
-import com.rvprg.sumi.log.LogException;
-import com.rvprg.sumi.log.SnapshotInstallException;
-import com.rvprg.sumi.sm.StateMachine;
-import com.rvprg.sumi.sm.StreamableSnapshot;
-import com.rvprg.sumi.sm.WritableSnapshot;
-import com.rvprg.sumi.transport.MemberId;
+import static org.junit.Assert.*;
 
 @RunWith(Parameterized.class)
 public class LogTest {
@@ -40,7 +31,7 @@ public class LogTest {
     }
 
     @Parameterized.Parameters(name = "{0}")
-    public static Iterable<? extends Object> data() {
+    public static Iterable<?> data() {
         return Arrays.asList(new InMemoryLogImpl(), new LevelDBLogImpl());
     }
 
@@ -59,7 +50,7 @@ public class LogTest {
     }
 
     @Test
-    public void testSimpleAppendAndGet() throws IOException, LogException {
+    public void testSimpleAppendAndGet() throws LogException {
         LogEntry logEntry1 = LogEntryFactory.create(1, new byte[0]);
         LogEntry logEntry2 = LogEntryFactory.create(1, new byte[0]);
         LogEntry logEntry3 = LogEntryFactory.create(2, new byte[0]);
@@ -104,7 +95,7 @@ public class LogTest {
     }
 
     @Test
-    public void testComplexAppend_ShouldSucceed1() throws IOException, LogException {
+    public void testComplexAppend_ShouldSucceed1() throws LogException {
         log.append(LogEntryFactory.create(1, new byte[0])); // 1
         log.append(LogEntryFactory.create(1, new byte[0])); // 2
         log.append(LogEntryFactory.create(1, new byte[0])); // 3
@@ -116,12 +107,12 @@ public class LogTest {
         LogEntry logEntry1 = LogEntryFactory.create(2, new byte[0]);
         LogEntry logEntry2 = LogEntryFactory.create(2, new byte[0]);
 
-        List<LogEntry> logEntries = new ArrayList<LogEntry>();
+        List<LogEntry> logEntries = new ArrayList<>();
         logEntries.add(logEntry1);
         logEntries.add(logEntry2);
 
         boolean res = log.append(4, 2, logEntries);
-        assertEquals(true, res);
+        assertTrue(res);
         assertEquals(6, log.getLastIndex());
 
         assertEquals(logEntry1, log.get(5));
@@ -129,7 +120,7 @@ public class LogTest {
     }
 
     @Test
-    public void testComplexAppend_ShouldSucceed2() throws IOException, LogException {
+    public void testComplexAppend_ShouldSucceed2() throws LogException {
         log.append(LogEntryFactory.create(1, new byte[0])); // 1
         log.append(LogEntryFactory.create(1, new byte[0])); // 2
         log.append(LogEntryFactory.create(1, new byte[0])); // 3
@@ -141,17 +132,17 @@ public class LogTest {
         LogEntry logEntry1 = LogEntryFactory.create(2, new byte[0]);
         LogEntry logEntry2 = LogEntryFactory.create(2, new byte[0]);
 
-        List<LogEntry> logEntries = new ArrayList<LogEntry>();
+        List<LogEntry> logEntries = new ArrayList<>();
         logEntries.add(logEntry1);
         logEntries.add(logEntry2);
 
         boolean res = log.append(5, 3, logEntries);
-        assertEquals(true, res);
+        assertTrue(res);
         assertEquals(7, log.getLastIndex());
     }
 
     @Test
-    public void testComplexAppend_ShouldSucceed3() throws IOException, LogException {
+    public void testComplexAppend_ShouldSucceed3() throws LogException {
         LogEntry[] logEntriesArr = new LogEntry[] {
                 LogEntryFactory.create(1, new byte[0]), // 1
                 LogEntryFactory.create(1, new byte[0]), // 2
@@ -166,12 +157,12 @@ public class LogTest {
 
         assertEquals(5, log.getLastIndex());
 
-        List<LogEntry> logEntries = new ArrayList<LogEntry>();
+        List<LogEntry> logEntries = new ArrayList<>();
         logEntries.add(logEntriesArr[3]);
         logEntries.add(logEntriesArr[4]);
 
         boolean res = log.append(3, 1, logEntries);
-        assertEquals(true, res);
+        assertTrue(res);
 
         assertEquals(5, log.getLastIndex());
 
@@ -181,7 +172,7 @@ public class LogTest {
     }
 
     @Test
-    public void testComplexAppend_ShouldFail1() throws IOException, LogException {
+    public void testComplexAppend_ShouldFail1() throws LogException {
         log.append(LogEntryFactory.create(1, new byte[0])); // 1
         log.append(LogEntryFactory.create(1, new byte[0])); // 2
         log.append(LogEntryFactory.create(1, new byte[0])); // 3
@@ -193,25 +184,25 @@ public class LogTest {
         LogEntry logEntry1 = LogEntryFactory.create(2, new byte[0]);
         LogEntry logEntry2 = LogEntryFactory.create(2, new byte[0]);
 
-        List<LogEntry> logEntries = new ArrayList<LogEntry>();
+        List<LogEntry> logEntries = new ArrayList<>();
         logEntries.add(logEntry1);
         logEntries.add(logEntry2);
 
         boolean res = log.append(4, 1, logEntries);
-        assertEquals(false, res);
+        assertFalse(res);
         assertEquals(5, log.getLastIndex());
     }
 
     @Test
-    public void testComplexAppend_ShouldFail2() throws IOException, LogException {
-        assertEquals(false, log.append(3, 1, null));
+    public void testComplexAppend_ShouldFail2() throws LogException {
+        assertFalse(log.append(3, 1, null));
 
-        List<LogEntry> logEntries = new ArrayList<LogEntry>();
+        List<LogEntry> logEntries = new ArrayList<>();
         logEntries.add(LogEntryFactory.create(2, new byte[0]));
         logEntries.add(LogEntryFactory.create(2, new byte[0]));
 
-        assertEquals(false, log.append(3, 1, logEntries));
-        assertEquals(false, log.append(-1, 1, logEntries));
+        assertFalse(log.append(3, 1, logEntries));
+        assertFalse(log.append(-1, 1, logEntries));
     }
 
     @Test
@@ -236,7 +227,7 @@ public class LogTest {
             }
 
             @Override
-            public void installSnapshot(StreamableSnapshot snapshot) throws SnapshotInstallException {
+            public void installSnapshot(StreamableSnapshot snapshot) {
             }
 
             @Override
@@ -297,7 +288,7 @@ public class LogTest {
             }
 
             @Override
-            public void installSnapshot(StreamableSnapshot snapshot) throws SnapshotInstallException {
+            public void installSnapshot(StreamableSnapshot snapshot) {
             }
 
             @Override

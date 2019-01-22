@@ -1,15 +1,22 @@
 package com.rvprg.sumi.tests;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.atLeast;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import com.rvprg.sumi.Module;
+import com.rvprg.sumi.configuration.Configuration;
+import com.rvprg.sumi.log.*;
+import com.rvprg.sumi.protocol.*;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.*;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.RaftMessage.MessageType;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.RequestVoteResponse.Builder;
+import com.rvprg.sumi.sm.StateMachine;
+import com.rvprg.sumi.tests.helpers.NetworkUtils;
+import com.rvprg.sumi.transport.*;
+import io.netty.channel.Channel;
+import org.junit.Test;
+import org.mockito.Mockito;
+import org.mockito.stubbing.Answer;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -25,42 +32,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.junit.Test;
-import org.mockito.Mockito;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
-
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.AppendEntries;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.LogEntry;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.RaftMessage;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.RaftMessage.MessageType;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.RequestVote;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.RequestVoteResponse;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.RequestVoteResponse.Builder;
-import com.rvprg.sumi.Module;
-import com.rvprg.sumi.configuration.Configuration;
-import com.rvprg.sumi.log.InMemoryLogImpl;
-import com.rvprg.sumi.log.Log;
-import com.rvprg.sumi.log.LogEntryFactory;
-import com.rvprg.sumi.log.LogException;
-import com.rvprg.sumi.log.SnapshotInstallException;
-import com.rvprg.sumi.protocol.MemberRole;
-import com.rvprg.sumi.protocol.Consensus;
-import com.rvprg.sumi.protocol.ConsensusImpl;
-import com.rvprg.sumi.protocol.ConsensusEventListener;
-import com.rvprg.sumi.protocol.ConsensusEventListenerImpl;
-import com.rvprg.sumi.sm.StateMachine;
-import com.rvprg.sumi.tests.helpers.NetworkUtils;
-import com.rvprg.sumi.transport.ActiveMember;
-import com.rvprg.sumi.transport.MemberConnector;
-import com.rvprg.sumi.transport.MemberId;
-import com.rvprg.sumi.transport.MembersRegistry;
-import com.rvprg.sumi.transport.MessageReceiver;
-
-import io.netty.channel.Channel;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
 
 public class ConsensusTest {
     private AppendEntries getAppendEntriesInstance() {
@@ -74,7 +50,7 @@ public class ConsensusTest {
     }
 
     @Test
-    public void checkHeartbeatTimeout() throws InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
+    public void checkHeartbeatTimeout() throws InterruptedException, SnapshotInstallException, LogException {
         Configuration configuration = Configuration.newBuilder().selfId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).logUri(URI.create("file:///test")).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
@@ -94,23 +70,17 @@ public class ConsensusTest {
         assertEquals(0, raft.getCurrentTerm());
 
         // Register when was the last heartbeat sent.
-        doAnswer(new Answer<Void>() {
-            @Override
-            public Void answer(InvocationOnMock invocation) throws Throwable {
-                lastHeartbeatTime.set(System.currentTimeMillis());
-                return null;
-            }
+        doAnswer((Answer<Void>) invocation -> {
+            lastHeartbeatTime.set(System.currentTimeMillis());
+            return null;
         }).when(raftListener).heartbeatReceived();
 
         // Set a latch on a new election event.
         final CountDownLatch electionInitiatedLatch = new CountDownLatch(1);
-        doAnswer(new Answer<Void>() {
-            @Override
-            public Void answer(InvocationOnMock invocation) throws Throwable {
-                requestVotesInitiatedTime.set(System.currentTimeMillis());
-                electionInitiatedLatch.countDown();
-                return null;
-            }
+        doAnswer((Answer<Void>) invocation -> {
+            requestVotesInitiatedTime.set(System.currentTimeMillis());
+            electionInitiatedLatch.countDown();
+            return null;
         }).when(raftListener).heartbeatTimedOut();
 
         // This will wait until an absence of heartbeats is detected. This
@@ -119,15 +89,12 @@ public class ConsensusTest {
         // so as to check that the action on receiving a heartbeat works as
         // expected.
         final CountDownLatch nextElectionScheduledLatch = new CountDownLatch(2);
-        doAnswer(new Answer<Void>() {
-            @Override
-            public Void answer(InvocationOnMock invocation) throws Throwable {
-                if (nextElectionScheduledLatch.getCount() > 0) {
-                    nextElectionScheduledLatch.countDown();
-                    raft.consumeAppendEntries(null, getAppendEntriesInstance());
-                }
-                return null;
+        doAnswer((Answer<Void>) invocation -> {
+            if (nextElectionScheduledLatch.getCount() > 0) {
+                nextElectionScheduledLatch.countDown();
+                raft.consumeAppendEntries(null, getAppendEntriesInstance());
             }
+            return null;
         }).when(raftListener).nextElectionScheduled();
 
         raft.start();
@@ -148,7 +115,7 @@ public class ConsensusTest {
     }
 
     @Test
-    public void testElectionTimeout() throws InterruptedException, LogException, FileNotFoundException, SnapshotInstallException, IOException {
+    public void testElectionTimeout() throws InterruptedException, LogException, SnapshotInstallException {
         int port = NetworkUtils.getRandomFreePort();
         Configuration configuration = Configuration.newBuilder().selfId(new MemberId("localhost", port)).snapshotSenderPort(NetworkUtils.getRandomFreePort())
                 .logUri(URI.create("file:///test")).build();
@@ -156,7 +123,7 @@ public class ConsensusTest {
         MemberConnector memberConnector = mock(MemberConnector.class);
         MembersRegistry memberRegistry = mock(MembersRegistry.class);
         StateMachine stateMachine = mock(StateMachine.class);
-        Set<ActiveMember> members = new HashSet<ActiveMember>();
+        Set<ActiveMember> members = new HashSet<>();
         Mockito.when(memberRegistry.getAll()).thenReturn(members);
         Mockito.when(memberConnector.getActiveMembers()).thenReturn(memberRegistry);
         MessageReceiver messageReceiver = mock(MessageReceiver.class);
@@ -176,12 +143,9 @@ public class ConsensusTest {
         // has been initiated, we allow it to time out twice. We should be able
         // to see that the term at least 2, and that we are still a Candidate.
         final CountDownLatch electionTimedoutLatch = new CountDownLatch(2);
-        doAnswer(new Answer<Void>() {
-            @Override
-            public Void answer(InvocationOnMock invocation) throws Throwable {
-                electionTimedoutLatch.countDown();
-                return null;
-            }
+        doAnswer((Answer<Void>) invocation -> {
+            electionTimedoutLatch.countDown();
+            return null;
         }).when(raftListener).electionTimedOut();
 
         raft.start();
@@ -196,7 +160,7 @@ public class ConsensusTest {
     }
 
     @Test
-    public void testConsumeVoteRequest_GiveVoteOnce() throws LogException, InterruptedException, FileNotFoundException, SnapshotInstallException, IOException {
+    public void testConsumeVoteRequest_GiveVoteOnce() throws LogException, InterruptedException, SnapshotInstallException {
         Configuration configuration = Configuration.newBuilder().selfId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).logUri(URI.create("file:///test")).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
@@ -255,7 +219,7 @@ public class ConsensusTest {
     }
 
     @Test
-    public void testConsumeVoteRequest_GiveVoteSameCandidate() throws LogException, InterruptedException, FileNotFoundException, SnapshotInstallException, IOException {
+    public void testConsumeVoteRequest_GiveVoteSameCandidate() throws LogException, InterruptedException, SnapshotInstallException {
         Configuration configuration = Configuration.newBuilder().selfId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).logUri(URI.create("file:///test")).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
@@ -304,7 +268,7 @@ public class ConsensusTest {
     @Test
     public void testConsumeVoteRequest_GiveVoteIfLogIsAsUpToDateAsReceivers()
             throws NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, LogException, InterruptedException,
-            FileNotFoundException, SnapshotInstallException, IOException {
+            SnapshotInstallException {
         Configuration configuration = Configuration.newBuilder().selfId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).logUri(URI.create("file:///test")).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
@@ -375,7 +339,7 @@ public class ConsensusTest {
     }
 
     @Test
-    public void testConsumeVoteRequest_DontGiveVoteIfTermIsOutdated() throws InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
+    public void testConsumeVoteRequest_DontGiveVoteIfTermIsOutdated() throws InterruptedException, SnapshotInstallException, LogException {
         Configuration configuration = Configuration.newBuilder().selfId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).logUri(URI.create("file:///test")).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
@@ -407,7 +371,7 @@ public class ConsensusTest {
     @Test
     public void testConsumeVoteRequestResponse_CheckMajorityRule()
             throws NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, InterruptedException,
-            FileNotFoundException, SnapshotInstallException, IOException, LogException {
+            SnapshotInstallException, LogException {
         Configuration configuration = Configuration.newBuilder().selfId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).logUri(URI.create("file:///test")).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
@@ -458,7 +422,7 @@ public class ConsensusTest {
                 .build();
 
         @SuppressWarnings("unchecked")
-        Set<MemberId> membersSet = new HashSet<MemberId>();
+        Set<MemberId> membersSet = new HashSet<>();
         for (int i = 0; i < 5; i++) {
             membersSet.add(new MemberId("localhost", i));
         }
@@ -466,7 +430,7 @@ public class ConsensusTest {
         Mockito.when(memberConnector.getRegisteredMemberIds()).thenReturn(membersSet);
         MembersRegistry members = mock(MembersRegistry.class);
         Mockito.when(memberConnector.getActiveMembers()).thenReturn(members);
-        Mockito.when(members.getAll()).thenReturn(new HashSet<ActiveMember>());
+        Mockito.when(members.getAll()).thenReturn(new HashSet<>());
 
         raft.consumeRequestVoteResponse(member, requestVoteResponseTerm1);
         assertEquals(1, votesReceived.get());
@@ -500,7 +464,7 @@ public class ConsensusTest {
     @Test
     public void testConsumeVoteRequestResponse_CheckSateTerm()
             throws NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, InterruptedException,
-            FileNotFoundException, SnapshotInstallException, IOException, LogException {
+            SnapshotInstallException, LogException {
         Configuration configuration = Configuration.newBuilder().selfId(new MemberId("localhost", NetworkUtils.getRandomFreePort())).logUri(URI.create("file:///test")).build();
 
         MemberConnector memberConnector = mock(MemberConnector.class);
