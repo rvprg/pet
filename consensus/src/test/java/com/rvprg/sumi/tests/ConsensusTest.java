@@ -182,7 +182,7 @@ public class ConsensusTest {
                 electionTimedoutLatch.countDown();
                 return null;
             }
-        }).when(raftListener).electionTimedout();
+        }).when(raftListener).electionTimedOut();
 
         raft.start();
 

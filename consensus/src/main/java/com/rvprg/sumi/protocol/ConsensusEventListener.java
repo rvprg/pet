@@ -16,7 +16,7 @@ public interface ConsensusEventListener {
 
     void electionWon(int term, Consensus leader);
 
-    void electionTimedout();
+    void electionTimedOut();
 
     void started();
 

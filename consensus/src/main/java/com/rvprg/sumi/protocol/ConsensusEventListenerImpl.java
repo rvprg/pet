@@ -36,7 +36,7 @@ public class ConsensusEventListenerImpl implements ConsensusEventListener {
     }
 
     @Override
-    public void electionTimedout() {
+    public void electionTimedOut() {
         // nop
     }
 

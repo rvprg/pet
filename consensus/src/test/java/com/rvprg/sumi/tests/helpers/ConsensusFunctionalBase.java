@@ -1,9 +1,24 @@
 package com.rvprg.sumi.tests.helpers;
 
-import static org.junit.Assert.assertTrue;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.io.Files;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import com.google.inject.util.Modules;
+import com.rvprg.sumi.Module;
+import com.rvprg.sumi.configuration.Configuration;
+import com.rvprg.sumi.log.Log;
+import com.rvprg.sumi.log.LogException;
+import com.rvprg.sumi.log.SnapshotInstallException;
+import com.rvprg.sumi.protocol.*;
+import com.rvprg.sumi.protocol.messages.ProtocolMessages.LogEntry;
+import com.rvprg.sumi.sm.StateMachine;
+import com.rvprg.sumi.transport.MemberConnector;
+import com.rvprg.sumi.transport.MemberId;
+import com.rvprg.sumi.transport.MessageReceiver;
+import com.rvprg.sumi.transport.SnapshotDescriptor;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -13,36 +28,16 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 
-import com.google.common.collect.ImmutableSet;
-import com.google.common.io.Files;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import com.google.inject.util.Modules;
-import com.rvprg.sumi.protocol.messages.ProtocolMessages.LogEntry;
-import com.rvprg.sumi.Module;
-import com.rvprg.sumi.configuration.Configuration;
-import com.rvprg.sumi.log.Log;
-import com.rvprg.sumi.log.LogException;
-import com.rvprg.sumi.log.SnapshotInstallException;
-import com.rvprg.sumi.protocol.MemberRole;
-import com.rvprg.sumi.protocol.Consensus;
-import com.rvprg.sumi.protocol.ConsensusImpl;
-import com.rvprg.sumi.protocol.ConsensusEventListener;
-import com.rvprg.sumi.protocol.ConsensusEventListenerImpl;
-import com.rvprg.sumi.sm.StateMachine;
-import com.rvprg.sumi.transport.MemberConnector;
-import com.rvprg.sumi.transport.MemberId;
-import com.rvprg.sumi.transport.MessageReceiver;
-import com.rvprg.sumi.transport.SnapshotDescriptor;
+import static org.junit.Assert.assertTrue;
 
 public abstract class ConsensusFunctionalBase {
     public Consensus getRaft(String host, int port, Set<MemberId> nodes, ConsensusEventListener raftListener)
-            throws InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
+            throws InterruptedException, SnapshotInstallException, LogException {
         return getRaft(host, port, nodes, 150, 300, raftListener);
     }
 
     public Consensus getRaft(String host, int port, Set<MemberId> nodes, int electionMinTimeout, int electionMaxTimeout, ConsensusEventListener raftListener)
-            throws InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
+            throws InterruptedException, SnapshotInstallException, LogException {
         File tempDir = Files.createTempDir();
         File snapshotFolderPath = Files.createTempDir();
         Configuration configuration = Configuration.newBuilder()
@@ -79,12 +74,12 @@ public abstract class ConsensusFunctionalBase {
         }
 
         public RaftCluster(int clusterSize)
-                throws NoSuchMethodException, SecurityException, InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
+                throws NoSuchMethodException, SecurityException, InterruptedException, SnapshotInstallException, IOException, LogException {
             this(clusterSize, clusterSize, clusterSize, 250, 300);
         }
 
         public RaftCluster(int clusterSize, int startCountDownLatchCount, int shutdownCountDownLatchCount, int electionMinTimeout, int electionMaxTimeout)
-                throws NoSuchMethodException, SecurityException, InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
+                throws NoSuchMethodException, SecurityException, InterruptedException, SnapshotInstallException, IOException, LogException {
             startLatch = new CountDownLatch(startCountDownLatchCount);
             shutdownLatch = new CountDownLatch(shutdownCountDownLatchCount);
 
@@ -108,18 +103,18 @@ public abstract class ConsensusFunctionalBase {
         }
 
         public RaftCluster(int clusterSize, final ConsensusEventListener listener)
-                throws NoSuchMethodException, SecurityException, InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
+                throws NoSuchMethodException, SecurityException, InterruptedException, SnapshotInstallException, IOException, LogException {
             this(clusterSize, 250, 300, listener);
         }
 
         public RaftCluster(int clusterSize, int electionMinTimeout, int electionMaxTimeout, final ConsensusEventListener listener)
-                throws NoSuchMethodException, SecurityException, InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
+                throws NoSuchMethodException, SecurityException, InterruptedException, SnapshotInstallException, IOException, LogException {
             this(clusterSize, clusterSize, clusterSize, electionMinTimeout, electionMaxTimeout, listener);
         }
 
         public RaftCluster(int clusterSize, int startCountDownLatchCount, int shutdownCountDownLatchCount, int electionMinTimeout, int electionMaxTimeout,
                 final ConsensusEventListener listener)
-                throws NoSuchMethodException, SecurityException, InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
+                throws NoSuchMethodException, SecurityException, InterruptedException, SnapshotInstallException, IOException, LogException {
             startLatch = new CountDownLatch(startCountDownLatchCount);
             shutdownLatch = new CountDownLatch(shutdownCountDownLatchCount);
 
@@ -170,8 +165,8 @@ public abstract class ConsensusFunctionalBase {
                 }
 
                 @Override
-                public void electionTimedout() {
-                    listener.electionTimedout();
+                public void electionTimedOut() {
+                    listener.electionTimedOut();
                 }
 
                 @Override
@@ -266,7 +261,7 @@ public abstract class ConsensusFunctionalBase {
         }
 
         public Set<MemberId> createMembers(int clusterSize) {
-            Set<MemberId> members = new HashSet<MemberId>();
+            Set<MemberId> members = new HashSet<>();
             for (Integer port : NetworkUtils.getRandomFreePorts(clusterSize)) {
                 members.add(new MemberId("localhost", port));
             }
@@ -274,10 +269,10 @@ public abstract class ConsensusFunctionalBase {
         }
 
         public List<Consensus> createRafts(Set<MemberId> members, int electionMinTimeout, int electionMaxTimeout, ConsensusEventListener listener)
-                throws InterruptedException, FileNotFoundException, SnapshotInstallException, IOException, LogException {
-            List<Consensus> rafts = new ArrayList<Consensus>();
+                throws InterruptedException, SnapshotInstallException, IOException, LogException {
+            List<Consensus> rafts = new ArrayList<>();
             for (MemberId member : members) {
-                Set<MemberId> peers = (new HashSet<MemberId>(members));
+                Set<MemberId> peers = (new HashSet<>(members));
                 peers.remove(member);
                 rafts.add(getRaft(member.getHostName(), member.getPort(), peers, electionMinTimeout, electionMaxTimeout, listener));
             }

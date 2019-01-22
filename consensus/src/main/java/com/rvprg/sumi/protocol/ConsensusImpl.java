@@ -770,7 +770,7 @@ public class ConsensusImpl implements Consensus {
     }
 
     private void electionTimedout() {
-        listener.electionTimedout();
+        listener.electionTimedOut();
         logger.debug("[{}] MemberId: {}. Election timedout.", getCurrentTerm(), selfId);
         initiateElection();
     }
