@@ -103,7 +103,7 @@ public class ConsensusImpl implements Consensus {
     @Inject
     public ConsensusImpl(Configuration configuration, MemberConnector memberConnector, MessageReceiver messageReceiver,
                          Log log, StateMachine stateMachine, ConsensusEventListener listener)
-            throws InterruptedException, SnapshotInstallException, LogException {
+            throws SnapshotInstallException, LogException {
         this(configuration, memberConnector, messageReceiver, log, stateMachine, log.getTerm(), MemberRole.Follower, listener);
     }
 
@@ -171,7 +171,7 @@ public class ConsensusImpl implements Consensus {
             snapshotRecipients.remove(event.getMemberId());
         } else if (x instanceof SnapshotTransferExceptionThrownEvent) {
             SnapshotTransferExceptionThrownEvent event = (SnapshotTransferExceptionThrownEvent) x;
-            logger.info("[{}] MemberId: {}. Snapshot: {}. Error occured.", getCurrentTerm(), event.getMemberId(), event.getSnapshotDescriptor(), event.getThrowable());
+            logger.info("[{}] MemberId: {}. Snapshot: {}. Error occurred.", getCurrentTerm(), event.getMemberId(), event.getSnapshotDescriptor(), event.getThrowable());
             Channel prevValue = snapshotRecipients.remove(event.getMemberId());
             if (prevValue != null) {
                 prevValue.close();
@@ -221,10 +221,18 @@ public class ConsensusImpl implements Consensus {
 
     @Override
     public void consumeRequestVote(ActiveMember member, RequestVote requestVote) {
-        boolean ignoreMessage = checkTermRecency(requestVote.getTerm());
-        if (ignoreMessage || isCatchingUpMember()) {
+        int requestVoteTerm = requestVote.getTerm();
+        TermUpdateResult termUpdateResult = updateCurrentTerm(requestVoteTerm);
+        if (termUpdateResult == TermUpdateResult.Updated) {
+            becomeFollower();
+        } else if (termUpdateResult == TermUpdateResult.IgnoredOldTerm) {
             return;
         }
+
+        if (isCatchingUpMember()) {
+            return;
+        }
+
         Builder response = RequestVoteResponse.newBuilder();
 
         boolean grantVote = false;
@@ -256,8 +264,11 @@ public class ConsensusImpl implements Consensus {
 
     @Override
     public void consumeRequestVoteResponse(ActiveMember member, RequestVoteResponse requestVoteResponse) {
-        boolean ignoreMessage = checkTermRecency(requestVoteResponse.getTerm());
-        if (ignoreMessage) {
+        int requestVoteResponseTerm = requestVoteResponse.getTerm();
+        TermUpdateResult termUpdateResult = updateCurrentTerm(requestVoteResponseTerm);
+        if (termUpdateResult == TermUpdateResult.Updated) {
+            becomeFollower();
+        } else if (termUpdateResult == TermUpdateResult.IgnoredOldTerm) {
             listener.voteRejected();
             return;
         }
@@ -290,17 +301,17 @@ public class ConsensusImpl implements Consensus {
         return requestVote.getLastLogTerm() >= log.getLast().getTerm();
     }
 
-    private int compareAndUpdateCurrentTerm(int term) {
+    private TermUpdateResult updateCurrentTerm(int term) {
         synchronized (stateLock) {
             if (term > currentTerm) {
                 currentTerm = term;
                 log.setTerm(currentTerm);
-                return 1;
+                return TermUpdateResult.Updated;
             } else if (term < currentTerm) {
-                return -1;
+                return TermUpdateResult.IgnoredOldTerm;
             }
         }
-        return 0;
+        return TermUpdateResult.IgnoredSameTerm;
     }
 
     private void becomeLeader() {
@@ -316,10 +327,7 @@ public class ConsensusImpl implements Consensus {
             leader = selfId;
             votesReceived = 0;
 
-            memberConnector.getRegisteredMemberIds().forEach(
-                    memberId -> {
-                        updateMemberIdRelatedBookkeeping(memberId);
-                    });
+            memberConnector.getRegisteredMemberIds().forEach(memberId -> updateMemberIdRelatedBookkeeping(memberId));
         }
         applyNoOperationCommand();
         listener.electionWon(getCurrentTerm(), this);
@@ -373,21 +381,13 @@ public class ConsensusImpl implements Consensus {
         }
     }
 
-    private boolean checkTermRecency(int term) {
-        int comparisonResult = compareAndUpdateCurrentTerm(term);
-        if (comparisonResult == -1) {
-            return true;
-        }
-        if (comparisonResult == 1) {
-            becomeFollower();
-        }
-        return false;
-    }
-
     @Override
     public void consumeAppendEntries(ActiveMember member, AppendEntries appendEntries) {
-        boolean ignoreMessage = checkTermRecency(appendEntries.getTerm());
-        if (ignoreMessage) {
+        int appendEntriesTerm = appendEntries.getTerm();
+        TermUpdateResult termUpdateResult = updateCurrentTerm(appendEntriesTerm);
+        if (termUpdateResult == TermUpdateResult.Updated) {
+            becomeFollower();
+        } else if (termUpdateResult == TermUpdateResult.IgnoredOldTerm) {
             return;
         }
 
@@ -545,8 +545,11 @@ public class ConsensusImpl implements Consensus {
 
     @Override
     public void consumeAppendEntriesResponse(ActiveMember member, AppendEntriesResponse appendEntriesResponse) {
-        boolean ignoreMessage = checkTermRecency(appendEntriesResponse.getTerm());
-        if (ignoreMessage) {
+        int appendEntriesResponseTerm = appendEntriesResponse.getTerm();
+        TermUpdateResult termUpdateResult = updateCurrentTerm(appendEntriesResponseTerm);
+        if (termUpdateResult == TermUpdateResult.Updated) {
+            becomeFollower();
+        } else if (termUpdateResult == TermUpdateResult.IgnoredOldTerm) {
             return;
         }
 
@@ -1087,4 +1090,7 @@ public class ConsensusImpl implements Consensus {
         }
     }
 
+    enum TermUpdateResult {
+        Updated, IgnoredSameTerm, IgnoredOldTerm
+    }
 }
