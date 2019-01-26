@@ -408,7 +408,7 @@ public class ConsensusImpl implements Consensus {
                 logger.info("[{}] MemberId: {} Install snapshot request received", getCurrentTerm(), selfId);
                 processInstallSnapshot(member, appendEntries.getInstallSnapshot());
             } else if (appendEntries.getLogEntriesCount() == 0) {
-                processHeartbeat(appendEntries);
+                processHeartbeat();
                 log.commit(appendEntries.getLeaderCommitIndex(), stateMachine);
             } else {
                 boolean successFlag = processAppendEntries(appendEntries);
@@ -611,7 +611,7 @@ public class ConsensusImpl implements Consensus {
         scheduleAppendEntries(member.getMemberId());
     }
 
-    private void processHeartbeat(AppendEntries heartbeat) {
+    private void processHeartbeat() {
         listener.heartbeatReceived();
         scheduleHeartbeatMonitorTask();
     }
@@ -641,13 +641,13 @@ public class ConsensusImpl implements Consensus {
     private ScheduledFuture<?> getNextElectionTask() {
         listener.nextElectionScheduled();
         final int timeout = random.nextInt(configuration.getElectionMaxTimeout() - configuration.getElectionMinTimeout()) + configuration.getElectionMinTimeout();
-        return eventLoop.get().schedule(() -> ConsensusImpl.this.heartbeatTimedout(), timeout, TimeUnit.MILLISECONDS);
+        return eventLoop.get().schedule(() -> ConsensusImpl.this.heartbeatTimedOut(), timeout, TimeUnit.MILLISECONDS);
     }
 
     private void scheduleElectionTimeoutTask() {
         final int timeout = random.nextInt(configuration.getElectionMaxTimeout() - configuration.getElectionMinTimeout()) + configuration.getElectionMinTimeout();
         ScheduledFuture<?> prevTask = electionTimeoutMonitorTask.getAndSet(
-                eventLoop.get().schedule(() -> ConsensusImpl.this.electionTimedout(), timeout, TimeUnit.MILLISECONDS));
+                eventLoop.get().schedule(() -> ConsensusImpl.this.electionTimedOut(), timeout, TimeUnit.MILLISECONDS));
         cancelTask(prevTask);
     }
 
@@ -771,13 +771,13 @@ public class ConsensusImpl implements Consensus {
         return (memberConnector.getVotingMembersCount() + 1) / 2 + 1;
     }
 
-    private void electionTimedout() {
+    private void electionTimedOut() {
         listener.electionTimedOut();
         logger.debug("[{}] MemberId: {}. Election timedout.", getCurrentTerm(), selfId);
         initiateElection();
     }
 
-    private void heartbeatTimedout() {
+    private void heartbeatTimedOut() {
         listener.heartbeatTimedOut();
         initiateElection();
     }
@@ -788,10 +788,9 @@ public class ConsensusImpl implements Consensus {
 
         synchronized (stateLock) {
             role = MemberRole.Candidate;
-            ++currentTerm;
-            log.setTerm(currentTerm);
+            log.setTerm(++currentTerm);
             votedFor = null;
-            log.setVotedFor(votedFor);
+            log.setVotedFor(null);
             leader = null;
             votesReceived = 0;
             logger.debug("[{}] MemberId: {}. New election.", getCurrentTerm(), selfId);
@@ -888,12 +887,12 @@ public class ConsensusImpl implements Consensus {
             req.addAllLogEntries(logEntries);
         }
 
-        RaftMessage requestVote = RaftMessage.newBuilder()
+        RaftMessage appendEntries = RaftMessage.newBuilder()
                 .setType(MessageType.AppendEntries)
                 .setAppendEntries(req)
                 .build();
 
-        return requestVote;
+        return appendEntries;
     }
 
     private RaftMessage getRequestVoteMessage() throws LogException {
@@ -921,12 +920,12 @@ public class ConsensusImpl implements Consensus {
             }
         }
 
-        RaftMessage requestVote = RaftMessage.newBuilder()
+        RaftMessage appendEntries = RaftMessage.newBuilder()
                 .setType(MessageType.AppendEntries)
                 .setAppendEntries(req.setLeaderCommitIndex(log.getCommitIndex()))
                 .build();
 
-        return requestVote;
+        return appendEntries;
     }
 
     private void sendMessage(ActiveMember member, RaftMessage req) {
